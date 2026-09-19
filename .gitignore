@@ -20,7 +20,6 @@ yarn-debug.log*
 yarn-error.log*
 
 # prisma
-prisma/migrations/
 
 # docker
 docker-compose.override.yml
