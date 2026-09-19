@@ -1,6 +1,6 @@
 #!/bin/sh
 set -e
 echo "Running Prisma migrations..."
-node_modules/.bin/prisma migrate deploy
+node node_modules/prisma/build/index.js migrate deploy
 echo "Starting app..."
 exec node server.js
