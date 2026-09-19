@@ -92,23 +92,43 @@ model SteamGame {
   atk           Int
   def           Int
   tags          String[]
+  developers    String[]
   updatedAt     DateTime @updatedAt
 
   cards    Card[]
   auctions Auction[]
 }
 
+model Studio {
+  id                 String   @id @default(cuid())
+  name               String   @unique
+  gameCount          Int      @default(0)
+  avgReviewScore     Int      @default(0)
+  totalOwnerEstimate Int      @default(0)
+  rarity             Rarity
+  atk                Int
+  def                Int
+  updatedAt          DateTime @updatedAt
+
+  cards Card[]
+}
+
 model Card {
   id        String    @id @default(cuid())
   userId    String
-  gameId    String
+  gameId    String?
+  studioId  String?
   createdAt DateTime  @default(now())
   isPinned  Boolean   @default(false)
 
-  user          User      @relation(fields: [userId], references: [id])
-  game          SteamGame @relation(fields: [gameId], references: [id])
+  user          User       @relation(fields: [userId], references: [id])
+  game          SteamGame? @relation(fields: [gameId], references: [id])
+  studio        Studio?    @relation(fields: [studioId], references: [id])
   tradeCards    TradeCard[]
   auctionCard   Auction?
+
+  @@unique([gameId])
+  @@unique([studioId])
 }
 
 model Trade {

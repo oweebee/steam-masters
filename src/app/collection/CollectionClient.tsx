@@ -1,6 +1,9 @@
 "use client";
 import { useEffect, useState } from "react";
 import { GameCard } from "@/components/GameCard";
+import { StudioCard } from "@/components/StudioCard";
+
+type Rarity = "COMMON" | "UNCOMMON" | "RARE" | "EPIC" | "LEGENDARY";
 
 type Card = {
   id: string;
@@ -11,9 +14,17 @@ type Card = {
     description: string;
     atk: number;
     def: number;
-    rarity: "COMMON" | "UNCOMMON" | "RARE" | "EPIC" | "LEGENDARY";
+    rarity: Rarity;
     tags: string[];
-  };
+  } | null;
+  studio: {
+    id: string;
+    name: string;
+    gameCount: number;
+    atk: number;
+    def: number;
+    rarity: Rarity;
+  } | null;
 };
 
 export function CollectionClient() {
@@ -33,18 +44,29 @@ export function CollectionClient() {
     <div>
       <h1 className="text-2xl font-bold text-white mb-6">Ma collection ({cards.length})</h1>
       <div className="flex flex-wrap gap-6">
-        {cards.map((c) => (
-          <GameCard
-            key={c.id}
-            name={c.game.name}
-            headerImage={c.game.headerImage}
-            description={c.game.description}
-            atk={c.game.atk}
-            def={c.game.def}
-            rarity={c.game.rarity}
-            tags={c.game.tags}
-          />
-        ))}
+        {cards.map((c) =>
+          c.game ? (
+            <GameCard
+              key={c.id}
+              name={c.game.name}
+              headerImage={c.game.headerImage}
+              description={c.game.description}
+              atk={c.game.atk}
+              def={c.game.def}
+              rarity={c.game.rarity}
+              tags={c.game.tags}
+            />
+          ) : c.studio ? (
+            <StudioCard
+              key={c.id}
+              name={c.studio.name}
+              gameCount={c.studio.gameCount}
+              atk={c.studio.atk}
+              def={c.studio.def}
+              rarity={c.studio.rarity}
+            />
+          ) : null
+        )}
         {loaded && cards.length === 0 && (
           <p className="text-gray-500 text-sm">Aucune carte pour l'instant — ouvre un paquet !</p>
         )}

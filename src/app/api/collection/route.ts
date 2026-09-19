@@ -8,7 +8,7 @@ export async function GET() {
 
   const cards = await prisma.card.findMany({
     where: { userId: (session.user as any).id },
-    include: { game: true },
+    include: { game: true, studio: true },
     orderBy: { createdAt: "desc" },
   });
 

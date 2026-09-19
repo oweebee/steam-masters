@@ -33,18 +33,56 @@ export async function POST() {
     return NextResponse.json({ error: "Booster pas encore disponible", remainingMs: remaining }, { status: 429 });
   }
 
-  const poolSize = await prisma.steamGame.count();
-  if (poolSize === 0) {
-    return NextResponse.json({ error: "Aucun jeu Steam en base — l'admin doit en importer via /admin/games" }, { status: 400 });
+  // Règle : chaque jeu / studio ne peut être possédé que par UNE seule carte au total
+  // (unicité globale, cf. @@unique([gameId]) / @@unique([studioId]) sur Card).
+  // Le pool ne tire donc que parmi les jeux/studios pas encore réclamés par personne.
+  const [gamePoolSize, studioPoolSize] = await Promise.all([
+    prisma.steamGame.count({ where: { cards: { none: {} } } }),
+    prisma.studio.count({ where: { cards: { none: {} } } }),
+  ]);
+  const totalPool = gamePoolSize + studioPoolSize;
+
+  if (totalPool === 0) {
+    return NextResponse.json(
+      { error: "Plus aucune carte disponible — toutes les cartes existantes ont déjà été réclamées" },
+      { status: 400 }
+    );
   }
 
-  const skip = Math.floor(Math.random() * poolSize);
-  const [game] = await prisma.steamGame.findMany({ take: 1, skip });
+  const idx = Math.floor(Math.random() * totalPool);
 
-  const [card] = await prisma.$transaction([
-    prisma.card.create({ data: { userId, gameId: game.id } }),
-    prisma.user.update({ where: { id: userId }, data: { lastBoosterAt: new Date() } }),
-  ]);
+  let cardData: { userId: string; gameId?: string; studioId?: string };
+  let responseGame = null as any;
+  let responseStudio = null as any;
 
-  return NextResponse.json({ card, game });
+  if (idx < gamePoolSize) {
+    const [game] = await prisma.steamGame.findMany({ where: { cards: { none: {} } }, take: 1, skip: idx });
+    cardData = { userId, gameId: game.id };
+    responseGame = game;
+  } else {
+    const [studio] = await prisma.studio.findMany({
+      where: { cards: { none: {} } },
+      take: 1,
+      skip: idx - gamePoolSize,
+    });
+    cardData = { userId, studioId: studio.id };
+    responseStudio = studio;
+  }
+
+  try {
+    const [card] = await prisma.$transaction([
+      prisma.card.create({ data: cardData }),
+      prisma.user.update({ where: { id: userId }, data: { lastBoosterAt: new Date() } }),
+    ]);
+    return NextResponse.json({ card, game: responseGame, studio: responseStudio });
+  } catch (e: any) {
+    // Cas rare : deux boosters ouverts en même temps sur le dernier exemplaire dispo (race condition).
+    if (e.code === "P2002") {
+      return NextResponse.json(
+        { error: "Cette carte vient d'être réclamée par quelqu'un d'autre, réessaie" },
+        { status: 409 }
+      );
+    }
+    throw e;
+  }
 }

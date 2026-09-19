@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/auth";
 import { prisma } from "@/lib/prisma";
-import { getSteamGameData, computeRarity } from "@/lib/steam";
+import { getSteamGameData, computeRarity, upsertStudiosForDevelopers } from "@/lib/steam";
 
 async function requireAdmin() {
   const session = await auth();
@@ -40,6 +40,7 @@ export async function POST(req: NextRequest) {
       atk: data.reviewScore,
       def: data.peakCcu,
       tags: data.tags,
+      developers: data.developers,
     },
     create: {
       id: String(data.appid),
@@ -53,8 +54,11 @@ export async function POST(req: NextRequest) {
       atk: data.reviewScore,
       def: data.peakCcu,
       tags: data.tags,
+      developers: data.developers,
     },
   });
+
+  await upsertStudiosForDevelopers(data.developers);
 
   return NextResponse.json(game);
 }

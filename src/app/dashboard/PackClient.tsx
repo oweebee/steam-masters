@@ -1,6 +1,9 @@
 "use client";
 import { useEffect, useState } from "react";
 import { GameCard } from "@/components/GameCard";
+import { StudioCard } from "@/components/StudioCard";
+
+type Rarity = "COMMON" | "UNCOMMON" | "RARE" | "EPIC" | "LEGENDARY";
 
 type Game = {
   id: string;
@@ -9,8 +12,17 @@ type Game = {
   description: string;
   atk: number;
   def: number;
-  rarity: "COMMON" | "UNCOMMON" | "RARE" | "EPIC" | "LEGENDARY";
+  rarity: Rarity;
   tags: string[];
+};
+
+type Studio = {
+  id: string;
+  name: string;
+  gameCount: number;
+  atk: number;
+  def: number;
+  rarity: Rarity;
 };
 
 function formatDuration(ms: number) {
@@ -27,6 +39,7 @@ export function PackClient() {
   const [opening, setOpening] = useState(false);
   const [error, setError] = useState("");
   const [lastOpened, setLastOpened] = useState<Game | null>(null);
+  const [lastOpenedStudio, setLastOpenedStudio] = useState<Studio | null>(null);
 
   async function loadStatus() {
     const res = await fetch("/api/booster");
@@ -52,6 +65,7 @@ export function PackClient() {
     setOpening(true);
     setError("");
     setLastOpened(null);
+    setLastOpenedStudio(null);
     const res = await fetch("/api/booster", { method: "POST" });
     const data = await res.json();
     setOpening(false);
@@ -60,7 +74,8 @@ export function PackClient() {
       setRemainingMs(data.remainingMs ?? null);
       return;
     }
-    setLastOpened(data.game);
+    if (data.game) setLastOpened(data.game);
+    if (data.studio) setLastOpenedStudio(data.studio);
     loadStatus();
   }
 
@@ -105,18 +120,29 @@ export function PackClient() {
 
       {error && <p className="text-red-400 text-sm mt-4">{error}</p>}
 
-      {lastOpened && (
+      {(lastOpened || lastOpenedStudio) && (
         <div className="flex flex-col items-center gap-2 mt-10">
           <p className="text-green-400 text-sm">Nouvelle carte obtenue !</p>
-          <GameCard
-            name={lastOpened.name}
-            headerImage={lastOpened.headerImage}
-            description={lastOpened.description}
-            atk={lastOpened.atk}
-            def={lastOpened.def}
-            rarity={lastOpened.rarity}
-            tags={lastOpened.tags}
-          />
+          {lastOpened && (
+            <GameCard
+              name={lastOpened.name}
+              headerImage={lastOpened.headerImage}
+              description={lastOpened.description}
+              atk={lastOpened.atk}
+              def={lastOpened.def}
+              rarity={lastOpened.rarity}
+              tags={lastOpened.tags}
+            />
+          )}
+          {lastOpenedStudio && (
+            <StudioCard
+              name={lastOpenedStudio.name}
+              gameCount={lastOpenedStudio.gameCount}
+              atk={lastOpenedStudio.atk}
+              def={lastOpenedStudio.def}
+              rarity={lastOpenedStudio.rarity}
+            />
+          )}
         </div>
       )}
     </div>

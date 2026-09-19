@@ -19,6 +19,7 @@ export interface SteamGameData {
   ownerEstimate: number; // NOTE: pas de donnée officielle Steam pour le nombre de possesseurs.
                           // Source: SteamSpy (tiers, non-officiel), estimation moyenne de la fourchette publiée.
   tags: string[];
+  developers: string[]; // source: appdetails.developers (Steam officiel)
 }
 
 async function fetchAppDetails(appid: number) {
@@ -94,6 +95,7 @@ export async function getSteamGameData(appid: number): Promise<SteamGameData> {
     peakCcu,
     ownerEstimate,
     tags: details.genres?.map((g: any) => g.description) ?? [],
+    developers: details.developers ?? [],
   };
 
   await redis.set(cacheKey, JSON.stringify(data), "EX", CACHE_TTL);
@@ -107,4 +109,31 @@ export function computeRarity(ownerEstimate: number): "COMMON" | "UNCOMMON" | "R
   if (ownerEstimate > 500_000) return "RARE";
   if (ownerEstimate > 100_000) return "EPIC";
   return "LEGENDARY";
+}
+
+// Recalcule et upsert la fiche Studio pour chaque développeur, à partir de TOUS
+// les SteamGame déjà en base qui le mentionnent (agrégation à la demande, pas de
+// compteurs incrémentaux — toujours exact, pas de dérive possible).
+// Choix de design (non spécifiés par ailleurs, assumés) :
+//   ATK studio = moyenne des reviewScore de ses jeux en base
+//   DEF studio = somme des peakCcu de ses jeux en base
+//   Rareté studio = computeRarity() sur la somme des ownerEstimate de ses jeux
+export async function upsertStudiosForDevelopers(developers: string[]) {
+  for (const name of developers) {
+    if (!name) continue;
+    const games = await prisma.steamGame.findMany({ where: { developers: { has: name } } });
+    if (games.length === 0) continue;
+
+    const gameCount = games.length;
+    const avgReviewScore = Math.round(games.reduce((s, g) => s + g.reviewScore, 0) / gameCount);
+    const totalOwnerEstimate = games.reduce((s, g) => s + g.ownerEstimate, 0);
+    const totalPeakCcu = games.reduce((s, g) => s + g.peakCcu, 0);
+    const rarity = computeRarity(totalOwnerEstimate);
+
+    await prisma.studio.upsert({
+      where: { name },
+      update: { gameCount, avgReviewScore, totalOwnerEstimate, rarity, atk: avgReviewScore, def: totalPeakCcu },
+      create: { name, gameCount, avgReviewScore, totalOwnerEstimate, rarity, atk: avgReviewScore, def: totalPeakCcu },
+    });
+  }
 }
