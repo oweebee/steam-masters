@@ -8,7 +8,7 @@ import { Suspense } from "react";
 function LoginForm() {
   const router = useRouter();
   const params = useSearchParams();
-  const [form, setForm] = useState({ email: "", password: "" });
+  const [form, setForm] = useState({ identifier: "", password: "" });
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
 
@@ -33,8 +33,8 @@ function LoginForm() {
           <p className="text-green-400 text-sm mb-4">Compte admin créé. Connectez-vous.</p>
         )}
         <form onSubmit={submit} className="space-y-4">
-          <input required type="email" placeholder="Email" value={form.email}
-            onChange={(e) => setForm({ ...form, email: e.target.value })}
+          <input required type="text" placeholder="Email ou pseudo" value={form.identifier}
+            onChange={(e) => setForm({ ...form, identifier: e.target.value })}
             className="w-full bg-gray-800 text-white rounded-lg px-4 py-3 outline-none focus:ring-2 focus:ring-blue-500" />
           <input required type="password" placeholder="Mot de passe" value={form.password}
             onChange={(e) => setForm({ ...form, password: e.target.value })}
