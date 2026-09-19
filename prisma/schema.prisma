@@ -7,51 +7,60 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
-model User {
-  id          String   @id @default(cuid())
-  username    String   @unique
-  email       String   @unique
-  password    String
-  xp          Int      @default(0)
-  coins       Int      @default(100)
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+enum Role   { USER ADMIN }
+enum Status { PENDING ACTIVE REJECTED }
+enum Rarity { COMMON UNCOMMON RARE EPIC LEGENDARY }
+enum TradeStatus  { PENDING ACCEPTED DECLINED CANCELLED }
+enum TradeSide    { OFFER WANT }
+enum AuctionStatus{ ACTIVE ENDED CANCELLED }
+enum GuildRole    { OWNER ADMIN MEMBER }
+enum FriendStatus { PENDING ACCEPTED BLOCKED }
 
-  cards       Card[]
-  sentTrades     Trade[] @relation("TradeFrom")
-  receivedTrades Trade[] @relation("TradeTo")
-  bids        Bid[]
-  auctions    Auction[]
-  guild       GuildMember?
-  messages    Message[]
-  friendsFrom Friend[] @relation("FriendFrom")
-  friendsTo   Friend[] @relation("FriendTo")
+model User {
+  id        String   @id @default(cuid())
+  username  String   @unique
+  email     String   @unique
+  password  String
+  role      Role     @default(USER)
+  status    Status   @default(PENDING)
+  xp        Int      @default(0)
+  coins     Int      @default(100)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  cards          Card[]
+  sentTrades     Trade[]       @relation("TradeFrom")
+  receivedTrades Trade[]       @relation("TradeTo")
+  bids           Bid[]
+  auctions       Auction[]
+  guild          GuildMember?
+  messages       Message[]
+  friendsFrom    Friend[]      @relation("FriendFrom")
+  friendsTo      Friend[]      @relation("FriendTo")
+}
+
+model AppSetting {
+  key       String   @id
+  value     String
+  updatedAt DateTime @updatedAt
 }
 
 model SteamGame {
-  id            String  @id              // appId Steam
+  id            String   @id
   name          String
-  description   String  @db.Text
+  description   String   @db.Text
   headerImage   String
-  reviewScore   Int                      // 0-100 (Metacritic ou Steam)
-  peakCcu       Int                      // joueurs simultanés max
-  ownerEstimate Int                      // estimation propriétaires
+  reviewScore   Int
+  peakCcu       Int
+  ownerEstimate Int
   rarity        Rarity
-  atk           Int                      // = reviewScore
-  def           Int                      // = peakCcu normalisé 0-10000
+  atk           Int
+  def           Int
   tags          String[]
   updatedAt     DateTime @updatedAt
 
-  cards         Card[]
-  auctions      Auction[]
-}
-
-enum Rarity {
-  COMMON      // > 10M owners
-  UNCOMMON    // 1M–10M
-  RARE        // 100k–1M
-  EPIC        // 10k–100k
-  LEGENDARY   // < 10k (jeux de niche)
+  cards    Card[]
+  auctions Auction[]
 }
 
 model Card {
@@ -61,9 +70,8 @@ model Card {
   createdAt DateTime  @default(now())
   isPinned  Boolean   @default(false)
 
-  user      User      @relation(fields: [userId], references: [id])
-  game      SteamGame @relation(fields: [gameId], references: [id])
-
+  user          User      @relation(fields: [userId], references: [id])
+  game          SteamGame @relation(fields: [gameId], references: [id])
   tradeOffered  TradeCard[] @relation("TradeOffered")
   tradeWanted   TradeCard[] @relation("TradeWanted")
   auctionCard   Auction?
@@ -76,44 +84,38 @@ model Trade {
   status     TradeStatus @default(PENDING)
   createdAt  DateTime    @default(now())
 
-  fromUser   User        @relation("TradeFrom", fields: [fromUserId], references: [id])
-  toUser     User        @relation("TradeTo",   fields: [toUserId],   references: [id])
-  cards      TradeCard[]
+  fromUser User        @relation("TradeFrom", fields: [fromUserId], references: [id])
+  toUser   User        @relation("TradeTo",   fields: [toUserId],   references: [id])
+  cards    TradeCard[]
 }
 
-enum TradeStatus { PENDING ACCEPTED DECLINED CANCELLED }
-
 model TradeCard {
-  id        String @id @default(cuid())
-  tradeId   String
-  cardId    String
-  side      TradeSide
+  id      String    @id @default(cuid())
+  tradeId String
+  cardId  String
+  side    TradeSide
 
-  trade     Trade  @relation(fields: [tradeId], references: [id])
+  trade       Trade @relation(fields: [tradeId], references: [id])
   offeredCard Card? @relation("TradeOffered", fields: [cardId], references: [id])
   wantedCard  Card? @relation("TradeWanted",  fields: [cardId], references: [id])
 }
 
-enum TradeSide { OFFER WANT }
-
 model Auction {
-  id          String    @id @default(cuid())
-  cardId      String    @unique
-  sellerId    String
-  gameId      String
-  startPrice  Int
-  currentBid  Int
-  endsAt      DateTime
-  status      AuctionStatus @default(ACTIVE)
-  createdAt   DateTime  @default(now())
+  id         String        @id @default(cuid())
+  cardId     String        @unique
+  sellerId   String
+  gameId     String
+  startPrice Int
+  currentBid Int
+  endsAt     DateTime
+  status     AuctionStatus @default(ACTIVE)
+  createdAt  DateTime      @default(now())
 
-  card        Card      @relation(fields: [cardId], references: [id])
-  seller      User      @relation(fields: [sellerId], references: [id])
-  game        SteamGame @relation(fields: [gameId], references: [id])
-  bids        Bid[]
+  card   Card      @relation(fields: [cardId],   references: [id])
+  seller User      @relation(fields: [sellerId], references: [id])
+  game   SteamGame @relation(fields: [gameId],   references: [id])
+  bids   Bid[]
 }
-
-enum AuctionStatus { ACTIVE ENDED CANCELLED }
 
 model Bid {
   id        String   @id @default(cuid())
@@ -122,31 +124,29 @@ model Bid {
   amount    Int
   createdAt DateTime @default(now())
 
-  auction   Auction  @relation(fields: [auctionId], references: [id])
-  user      User     @relation(fields: [userId], references: [id])
+  auction Auction @relation(fields: [auctionId], references: [id])
+  user    User    @relation(fields: [userId],    references: [id])
 }
 
 model Guild {
-  id          String    @id @default(cuid())
-  name        String    @unique
+  id          String   @id @default(cuid())
+  name        String   @unique
   description String?
-  createdAt   DateTime  @default(now())
+  createdAt   DateTime @default(now())
 
-  members     GuildMember[]
+  members GuildMember[]
 }
 
 model GuildMember {
-  id       String @id @default(cuid())
-  userId   String @unique
-  guildId  String
-  role     GuildRole @default(MEMBER)
-  xp       Int       @default(0)
+  id      String    @id @default(cuid())
+  userId  String    @unique
+  guildId String
+  role    GuildRole @default(MEMBER)
+  xp      Int       @default(0)
 
-  user     User  @relation(fields: [userId], references: [id])
-  guild    Guild @relation(fields: [guildId], references: [id])
+  user  User  @relation(fields: [userId],  references: [id])
+  guild Guild @relation(fields: [guildId], references: [id])
 }
-
-enum GuildRole { OWNER ADMIN MEMBER }
 
 model Message {
   id         String   @id @default(cuid())
@@ -156,7 +156,7 @@ model Message {
   createdAt  DateTime @default(now())
   read       Boolean  @default(false)
 
-  from       User     @relation(fields: [fromUserId], references: [id])
+  from User @relation(fields: [fromUserId], references: [id])
 }
 
 model Friend {
@@ -166,10 +166,8 @@ model Friend {
   status     FriendStatus @default(PENDING)
   createdAt  DateTime     @default(now())
 
-  from       User         @relation("FriendFrom", fields: [fromUserId], references: [id])
-  to         User         @relation("FriendTo",   fields: [toUserId],   references: [id])
+  from User @relation("FriendFrom", fields: [fromUserId], references: [id])
+  to   User @relation("FriendTo",   fields: [toUserId],   references: [id])
 
   @@unique([fromUserId, toUserId])
 }
-
-enum FriendStatus { PENDING ACCEPTED BLOCKED }
