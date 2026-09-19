@@ -59,6 +59,30 @@ services:
     networks:
       - internal
 
+  mcp:
+    image: crystaldba/postgres-mcp:latest
+    restart: unless-stopped
+    command: ["--access-mode=unrestricted", "--transport=sse"]
+    environment:
+      DATABASE_URI: postgresql://postgres:${POSTGRES_PASSWORD}@postgres:5432/steammasters
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks:
+      - internal
+      - traefik
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.steammasters-mcp.rule=Host(`steammasters-mcp.obsidianspoon.com`)"
+      - "traefik.http.routers.steammasters-mcp.entrypoints=https"
+      - "traefik.http.routers.steammasters-mcp.tls=true"
+      - "traefik.http.routers.steammasters-mcp.tls.certresolver=letsencrypt"
+      - "traefik.http.services.steammasters-mcp.loadbalancer.server.port=8000"
+      - "traefik.http.routers.steammasters-mcp.middlewares=steammasters-mcp-auth"
+      - "traefik.http.middlewares.steammasters-mcp-auth.basicauth.users=mcp:$$apr1$$cSzjDy6d$$06tIRMvLcMnaFobpWd7zw0"
+      - "traefik.docker.network=traefik"
+
+
 volumes:
   pgdata:
   redisdata:
