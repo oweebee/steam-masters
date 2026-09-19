@@ -1,6 +1,7 @@
 import { auth } from "@/auth";
 import { redirect } from "next/navigation";
 import Link from "next/link";
+import { DashboardClient } from "./DashboardClient";
 
 export default async function DashboardPage() {
   const session = await auth();
@@ -18,7 +19,7 @@ export default async function DashboardPage() {
           <a href="/api/auth/signout" className="text-gray-500 hover:text-white text-sm">Déconnexion</a>
         </div>
       </div>
-      <p className="text-gray-400">Dashboard — à venir.</p>
+      <DashboardClient />
     </div>
   );
 }
