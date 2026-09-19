@@ -8,14 +8,47 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
-enum Role   { USER ADMIN }
-enum Status { PENDING ACTIVE REJECTED }
-enum Rarity { COMMON UNCOMMON RARE EPIC LEGENDARY }
-enum TradeStatus  { PENDING ACCEPTED DECLINED CANCELLED }
-enum TradeSide    { OFFER WANT }
-enum AuctionStatus{ ACTIVE ENDED CANCELLED }
-enum GuildRole    { OWNER ADMIN MEMBER }
-enum FriendStatus { PENDING ACCEPTED BLOCKED }
+enum Role {
+  USER
+  ADMIN
+}
+enum Status {
+  PENDING
+  ACTIVE
+  REJECTED
+}
+enum Rarity {
+  COMMON
+  UNCOMMON
+  RARE
+  EPIC
+  LEGENDARY
+}
+enum TradeStatus {
+  PENDING
+  ACCEPTED
+  DECLINED
+  CANCELLED
+}
+enum TradeSide {
+  OFFER
+  WANT
+}
+enum AuctionStatus {
+  ACTIVE
+  ENDED
+  CANCELLED
+}
+enum GuildRole {
+  OWNER
+  ADMIN
+  MEMBER
+}
+enum FriendStatus {
+  PENDING
+  ACCEPTED
+  BLOCKED
+}
 
 model User {
   id        String   @id @default(cuid())
@@ -73,8 +106,7 @@ model Card {
 
   user          User      @relation(fields: [userId], references: [id])
   game          SteamGame @relation(fields: [gameId], references: [id])
-  tradeOffered  TradeCard[] @relation("TradeOffered")
-  tradeWanted   TradeCard[] @relation("TradeWanted")
+  tradeCards    TradeCard[]
   auctionCard   Auction?
 }
 
@@ -96,9 +128,8 @@ model TradeCard {
   cardId  String
   side    TradeSide
 
-  trade       Trade @relation(fields: [tradeId], references: [id])
-  offeredCard Card? @relation("TradeOffered", fields: [cardId], references: [id])
-  wantedCard  Card? @relation("TradeWanted",  fields: [cardId], references: [id])
+  trade Trade @relation(fields: [tradeId], references: [id])
+  card  Card  @relation(fields: [cardId],  references: [id])
 }
 
 model Auction {
