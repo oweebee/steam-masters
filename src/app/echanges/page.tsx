@@ -1,10 +1,16 @@
+import { auth } from "@/auth";
+import { redirect } from "next/navigation";
 import { AppShell } from "@/components/AppShell";
+import { EchangesClient } from "./EchangesClient";
 
-export default function Page() {
+export default async function Page() {
+  const session = await auth();
+  if (!session) redirect("/login");
+  const userId = (session.user as any).id as string;
+
   return (
     <AppShell>
-      <h1 className="text-2xl font-bold text-white mb-4">Échanges</h1>
-      <p className="text-gray-500 text-sm">À venir.</p>
+      <EchangesClient myUserId={userId} />
     </AppShell>
   );
 }

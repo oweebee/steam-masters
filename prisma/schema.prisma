@@ -140,8 +140,11 @@ model Trade {
   id         String      @id @default(cuid())
   fromUserId String
   toUserId   String
+  offerCoins Int         @default(0) // jetons donnés par fromUser à toUser si accepté
+  wantCoins  Int         @default(0) // jetons donnés par toUser à fromUser si accepté
   status     TradeStatus @default(PENDING)
   createdAt  DateTime    @default(now())
+  resolvedAt DateTime?
 
   fromUser User        @relation("TradeFrom", fields: [fromUserId], references: [id])
   toUser   User        @relation("TradeTo",   fields: [toUserId],   references: [id])
