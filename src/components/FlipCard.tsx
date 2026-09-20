@@ -8,11 +8,17 @@ import { useState, type ReactNode } from "react";
 // React `flipped`, avec un délai calé sur la moitié de l'animation (rotation à 90°,
 // carte vue par la tranche) — la face cachée est donc RÉELLEMENT retirée du rendu,
 // indépendamment du support navigateur de backface-visibility.
+// Délai FIXE (pas conditionné par le sens du flip) : la bascule visible<->hidden
+// doit toujours se faire à la moitié de l'animation (250ms sur 500ms), qu'on aille
+// avant->arrière ou arrière->avant. Un délai qui dépend de `flipped` cache la face
+// de départ à t=0 (avant que la face d'arrivée ne s'affiche à t=250ms) => trou noir
+// de 250ms au milieu du flip (carte qui "disparaît" avant de "réapparaître").
 const faceBase: React.CSSProperties = {
   backfaceVisibility: "hidden",
   WebkitBackfaceVisibility: "hidden",
   transitionProperty: "visibility",
   transitionDuration: "0s",
+  transitionDelay: "0.25s",
 };
 
 export function FlipCard({
@@ -42,7 +48,6 @@ export function FlipCard({
           style={{
             ...faceBase,
             visibility: flipped ? "hidden" : "visible",
-            transitionDelay: flipped ? "0s" : "0.25s",
           }}
           className="absolute inset-0"
         >
@@ -55,7 +60,6 @@ export function FlipCard({
             ...faceBase,
             transform: "rotateY(180deg)",
             visibility: flipped ? "visible" : "hidden",
-            transitionDelay: flipped ? "0.25s" : "0s",
           }}
           className="absolute inset-0"
         >
