@@ -116,7 +116,10 @@ export function computeRarity(ownerEstimate: number): "COMMON" | "UNCOMMON" | "R
 // compteurs incrémentaux — toujours exact, pas de dérive possible).
 // Choix de design (non spécifiés par ailleurs, assumés) :
 //   ATK studio = moyenne des reviewScore de ses jeux en base
-//   DEF studio = somme des peakCcu de ses jeux en base
+//   DEF studio = somme des ownerEstimate de ses jeux en base (proxy "ventes" —
+//     Steam ne publie aucun chiffre de ventes officiel ; ownerEstimate vient de
+//     SteamSpy, tiers non-officiel. Remplace l'ancien proxy peakCcu, qui tombait
+//     à 0 pour les jeux solo/sans multijoueur actif au moment du fetch.)
 //   Rareté studio = computeRarity() sur la somme des ownerEstimate de ses jeux
 export async function upsertStudiosForDevelopers(developers: string[]) {
   for (const name of developers) {
@@ -127,13 +130,12 @@ export async function upsertStudiosForDevelopers(developers: string[]) {
     const gameCount = games.length;
     const avgReviewScore = Math.round(games.reduce((s, g) => s + g.reviewScore, 0) / gameCount);
     const totalOwnerEstimate = games.reduce((s, g) => s + g.ownerEstimate, 0);
-    const totalPeakCcu = games.reduce((s, g) => s + g.peakCcu, 0);
     const rarity = computeRarity(totalOwnerEstimate);
 
     await prisma.studio.upsert({
       where: { name },
-      update: { gameCount, avgReviewScore, totalOwnerEstimate, rarity, atk: avgReviewScore, def: totalPeakCcu },
-      create: { name, gameCount, avgReviewScore, totalOwnerEstimate, rarity, atk: avgReviewScore, def: totalPeakCcu },
+      update: { gameCount, avgReviewScore, totalOwnerEstimate, rarity, atk: avgReviewScore, def: totalOwnerEstimate },
+      create: { name, gameCount, avgReviewScore, totalOwnerEstimate, rarity, atk: avgReviewScore, def: totalOwnerEstimate },
     });
   }
 }
