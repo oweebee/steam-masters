@@ -1,10 +1,6 @@
-import { AppShell } from "@/components/AppShell";
+import { redirect } from "next/navigation";
 
+// Page "Amis" remplacée par "Joueurs" (liste publique, pas de système de demande).
 export default function Page() {
-  return (
-    <AppShell>
-      <h1 className="text-2xl font-bold text-white mb-4">Amis</h1>
-      <p className="text-gray-500 text-sm">À venir.</p>
-    </AppShell>
-  );
+  redirect("/joueurs");
 }
