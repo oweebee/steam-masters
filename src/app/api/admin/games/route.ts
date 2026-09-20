@@ -41,6 +41,8 @@ export async function POST(req: NextRequest) {
       def: data.ownerEstimate,
       tags: data.tags,
       developers: data.developers,
+      priceCents: data.priceCents,
+      isFree: data.isFree,
     },
     create: {
       id: String(data.appid),
@@ -55,6 +57,8 @@ export async function POST(req: NextRequest) {
       def: data.ownerEstimate,
       tags: data.tags,
       developers: data.developers,
+      priceCents: data.priceCents,
+      isFree: data.isFree,
     },
   });
 

@@ -14,6 +14,12 @@ type Game = {
   def: number;
   rarity: Rarity;
   tags: string[];
+  developers: string[];
+  reviewScore: number;
+  peakCcu: number;
+  ownerEstimate: number;
+  priceCents: number | null;
+  isFree: boolean;
 };
 
 type Studio = {
@@ -125,6 +131,7 @@ export function PackClient() {
           <p className="text-green-400 text-sm">Nouvelle carte obtenue !</p>
           {lastOpened && (
             <GameCard
+              id={lastOpened.id}
               name={lastOpened.name}
               headerImage={lastOpened.headerImage}
               description={lastOpened.description}
@@ -132,6 +139,12 @@ export function PackClient() {
               def={lastOpened.def}
               rarity={lastOpened.rarity}
               tags={lastOpened.tags}
+              developers={lastOpened.developers}
+              reviewScore={lastOpened.reviewScore}
+              peakCcu={lastOpened.peakCcu}
+              ownerEstimate={lastOpened.ownerEstimate}
+              priceCents={lastOpened.priceCents}
+              isFree={lastOpened.isFree}
             />
           )}
           {lastOpenedStudio && (

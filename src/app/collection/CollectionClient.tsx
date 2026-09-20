@@ -16,6 +16,12 @@ type Card = {
     def: number;
     rarity: Rarity;
     tags: string[];
+    developers: string[];
+    reviewScore: number;
+    peakCcu: number;
+    ownerEstimate: number;
+    priceCents: number | null;
+    isFree: boolean;
   } | null;
   studio: {
     id: string;
@@ -48,6 +54,7 @@ export function CollectionClient() {
           c.game ? (
             <GameCard
               key={c.id}
+              id={c.game.id}
               name={c.game.name}
               headerImage={c.game.headerImage}
               description={c.game.description}
@@ -55,6 +62,12 @@ export function CollectionClient() {
               def={c.game.def}
               rarity={c.game.rarity}
               tags={c.game.tags}
+              developers={c.game.developers}
+              reviewScore={c.game.reviewScore}
+              peakCcu={c.game.peakCcu}
+              ownerEstimate={c.game.ownerEstimate}
+              priceCents={c.game.priceCents}
+              isFree={c.game.isFree}
             />
           ) : c.studio ? (
             <StudioCard

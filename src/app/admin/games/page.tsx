@@ -11,6 +11,12 @@ type Game = {
   def: number;
   rarity: "COMMON" | "UNCOMMON" | "RARE" | "EPIC" | "LEGENDARY";
   tags: string[];
+  developers: string[];
+  reviewScore: number;
+  peakCcu: number;
+  ownerEstimate: number;
+  priceCents: number | null;
+  isFree: boolean;
 };
 
 type Suggestion = { appid: number; name: string; tinyImage: string };
@@ -151,6 +157,7 @@ export default function AdminGamesPage() {
         {games.map((g) => (
           <GameCard
             key={g.id}
+            id={g.id}
             name={g.name}
             headerImage={g.headerImage}
             description={g.description}
@@ -158,6 +165,12 @@ export default function AdminGamesPage() {
             def={g.def}
             rarity={g.rarity}
             tags={g.tags}
+            developers={g.developers}
+            reviewScore={g.reviewScore}
+            peakCcu={g.peakCcu}
+            ownerEstimate={g.ownerEstimate}
+            priceCents={g.priceCents}
+            isFree={g.isFree}
           />
         ))}
       </div>

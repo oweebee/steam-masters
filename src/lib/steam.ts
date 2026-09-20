@@ -20,6 +20,8 @@ export interface SteamGameData {
                           // Source: SteamSpy (tiers, non-officiel), estimation moyenne de la fourchette publiée.
   tags: string[];
   developers: string[]; // source: appdetails.developers (Steam officiel)
+  priceCents: number | null; // source: appdetails.price_overview.final (devise EUR, cc=fr) — null si non disponible
+  isFree: boolean;            // source: appdetails.is_free (Steam officiel)
 }
 
 async function fetchAppDetails(appid: number) {
@@ -96,6 +98,8 @@ export async function getSteamGameData(appid: number): Promise<SteamGameData> {
     ownerEstimate,
     tags: details.genres?.map((g: any) => g.description) ?? [],
     developers: details.developers ?? [],
+    priceCents: details.price_overview?.final ?? null,
+    isFree: !!details.is_free,
   };
 
   await redis.set(cacheKey, JSON.stringify(data), "EX", CACHE_TTL);

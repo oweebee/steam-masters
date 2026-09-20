@@ -93,6 +93,8 @@ model SteamGame {
   def           Int
   tags          String[]
   developers    String[]
+  priceCents    Int?     // prix Steam en centimes (devise EUR), null si non récupéré
+  isFree        Boolean  @default(false)
   updatedAt     DateTime @updatedAt
 
   cards    Card[]
