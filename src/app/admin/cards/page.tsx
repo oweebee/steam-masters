@@ -1,5 +1,5 @@
 "use client";
-import { useEffect, useMemo, useState } from "react";
+import { Fragment, useEffect, useMemo, useState } from "react";
 import { GameCard } from "@/components/GameCard";
 import { StudioCard } from "@/components/StudioCard";
 
@@ -22,7 +22,9 @@ type Item = {
   tags: string[];
   developers: string[];
   gameCount?: number;
-  games?: string[];
+  games?: { name: string; appid: string | null; hasCard: boolean }[];
+  about?: string | null;
+  avatarUrl?: string | null;
   claimedBy: string | null;
   updatedAt: string;
 };
@@ -60,6 +62,10 @@ export default function AdminCardsPage() {
   const [sortKey, setSortKey] = useState<SortKey>("updatedAt");
   const [sortDir, setSortDir] = useState<SortDir>("desc");
   const [view, setView] = useState<ViewMode>("list");
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [editAbout, setEditAbout] = useState("");
+  const [editAvatar, setEditAvatar] = useState("");
+  const [saving, setSaving] = useState(false);
 
   useEffect(() => {
     fetch("/api/admin/cards")
@@ -69,6 +75,27 @@ export default function AdminCardsPage() {
         setLoading(false);
       });
   }, []);
+
+  function startEdit(it: Item) {
+    setEditingId(it.id);
+    setEditAbout(it.about ?? "");
+    setEditAvatar(it.avatarUrl ?? "");
+  }
+
+  async function saveEdit(id: string) {
+    setSaving(true);
+    const res = await fetch(`/api/admin/studios/${id}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ about: editAbout, avatarUrl: editAvatar }),
+    });
+    if (res.ok) {
+      const updated = await res.json();
+      setItems((prev) => prev.map((it) => (it.id === id ? { ...it, about: updated.about, avatarUrl: updated.avatarUrl } : it)));
+      setEditingId(null);
+    }
+    setSaving(false);
+  }
 
   const filtered = useMemo(() => {
     const q = search.trim().toLowerCase();
@@ -196,29 +223,74 @@ export default function AdminCardsPage() {
                   Maj{sortIndicator("updatedAt")}
                 </th>
                 <th className="px-4 py-3">Statut</th>
+                <th className="px-4 py-3">Studio</th>
               </tr>
             </thead>
             <tbody>
               {filtered.map((it) => (
-                <tr key={`${it.type}-${it.id}`} className="border-t border-gray-800 hover:bg-gray-900/50">
-                  <td className="px-4 py-2 text-gray-400">{it.type === "GAME" ? "🎮 Jeu" : "🏢 Studio"}</td>
-                  <td className="px-4 py-2 text-white font-medium">{it.name}</td>
-                  <td className={`px-4 py-2 font-semibold ${RARITY_COLOR[it.rarity]}`}>{it.rarity}</td>
-                  <td className="px-4 py-2 text-red-400">{it.atk}</td>
-                  <td className="px-4 py-2 text-blue-400">{it.def.toLocaleString("fr-FR")}</td>
-                  <td className="px-4 py-2 text-gray-500">{new Date(it.updatedAt).toLocaleDateString("fr-FR")}</td>
-                  <td className="px-4 py-2">
-                    {it.claimedBy ? (
-                      <span className="text-amber-400">réclamée par {it.claimedBy}</span>
-                    ) : (
-                      <span className="text-green-500">libre</span>
-                    )}
-                  </td>
-                </tr>
+                <Fragment key={`${it.type}-${it.id}`}>
+                  <tr className="border-t border-gray-800 hover:bg-gray-900/50">
+                    <td className="px-4 py-2 text-gray-400">{it.type === "GAME" ? "🎮 Jeu" : "🏢 Studio"}</td>
+                    <td className="px-4 py-2 text-white font-medium">{it.name}</td>
+                    <td className={`px-4 py-2 font-semibold ${RARITY_COLOR[it.rarity]}`}>{it.rarity}</td>
+                    <td className="px-4 py-2 text-red-400">{it.atk}</td>
+                    <td className="px-4 py-2 text-blue-400">{it.def.toLocaleString("fr-FR")}</td>
+                    <td className="px-4 py-2 text-gray-500">{new Date(it.updatedAt).toLocaleDateString("fr-FR")}</td>
+                    <td className="px-4 py-2">
+                      {it.claimedBy ? (
+                        <span className="text-amber-400">réclamée par {it.claimedBy}</span>
+                      ) : (
+                        <span className="text-green-500">libre</span>
+                      )}
+                    </td>
+                    <td className="px-4 py-2">
+                      {it.type === "STUDIO" && (
+                        <button
+                          onClick={() => (editingId === it.id ? setEditingId(null) : startEdit(it))}
+                          className="text-purple-400 hover:text-purple-300 text-xs"
+                        >
+                          {editingId === it.id ? "Fermer" : "✎ Éditer"}
+                        </button>
+                      )}
+                    </td>
+                  </tr>
+                  {editingId === it.id && (
+                    <tr className="border-t border-gray-800 bg-gray-900/30">
+                      <td colSpan={8} className="px-4 py-3">
+                        <div className="flex flex-col gap-2 max-w-xl">
+                          <label className="text-[10px] uppercase text-gray-500">Avatar (URL image)</label>
+                          <input
+                            value={editAvatar}
+                            onChange={(e) => setEditAvatar(e.target.value)}
+                            placeholder="https://..."
+                            className="bg-gray-800 border border-gray-700 text-white rounded-lg px-3 py-1.5 text-sm outline-none"
+                          />
+                          <label className="text-[10px] uppercase text-gray-500">À propos</label>
+                          <textarea
+                            value={editAbout}
+                            onChange={(e) => setEditAbout(e.target.value)}
+                            rows={3}
+                            placeholder="Texte saisi manuellement (aucune API Steam ne fournit ça)"
+                            className="bg-gray-800 border border-gray-700 text-white rounded-lg px-3 py-1.5 text-sm outline-none"
+                          />
+                          <div className="flex gap-2">
+                            <button
+                              onClick={() => saveEdit(it.id)}
+                              disabled={saving}
+                              className="bg-blue-600 hover:bg-blue-500 text-white text-xs font-semibold rounded-lg px-3 py-1.5 disabled:opacity-50"
+                            >
+                              {saving ? "…" : "Enregistrer"}
+                            </button>
+                          </div>
+                        </div>
+                      </td>
+                    </tr>
+                  )}
+                </Fragment>
               ))}
               {!loading && filtered.length === 0 && (
                 <tr>
-                  <td colSpan={7} className="px-4 py-6 text-center text-gray-500">
+                  <td colSpan={8} className="px-4 py-6 text-center text-gray-500">
                     Aucune carte ne correspond aux filtres.
                   </td>
                 </tr>
@@ -256,6 +328,8 @@ export default function AdminCardsPage() {
                 def={it.def}
                 rarity={it.rarity}
                 games={it.games ?? []}
+                about={it.about}
+                avatarUrl={it.avatarUrl}
               />
             )
           )}

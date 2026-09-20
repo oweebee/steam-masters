@@ -1,5 +1,5 @@
 "use client";
-import { useState } from "react";
+import { FlipCard } from "./FlipCard";
 
 type Rarity = "COMMON" | "UNCOMMON" | "RARE" | "EPIC" | "LEGENDARY";
 
@@ -22,11 +22,6 @@ function formatPrice(cents: number | null, isFree: boolean) {
   if (cents == null) return "Prix inconnu";
   return `${(cents / 100).toFixed(2).replace(".", ",")} €`;
 }
-
-const backfaceStyle: React.CSSProperties = {
-  backfaceVisibility: "hidden",
-  WebkitBackfaceVisibility: "hidden",
-};
 
 export function GameCard({
   id,
@@ -60,111 +55,98 @@ export function GameCard({
   isFree?: boolean;
 }) {
   const style = RARITY_STYLES[rarity];
-  const [flipped, setFlipped] = useState(false);
   const canFlip = !!id;
 
-  return (
+  const front = (
     <div
-      className="relative w-72 h-[26rem] [perspective:1200px]"
-      onClick={() => canFlip && setFlipped((f) => !f)}
+      className={`w-full h-full rounded-2xl border-2 ${style.border} ${style.glow} bg-gray-900 overflow-hidden flex flex-col`}
     >
-      <div
-        className={`relative w-full h-full transition-transform duration-500 ${
-          flipped ? "[transform:rotateY(180deg)]" : ""
-        } ${canFlip ? "cursor-pointer" : ""}`}
-        style={{ transformStyle: "preserve-3d" }}
+      <span
+        className={`absolute top-2 right-2 z-10 ${style.label} text-white text-xs font-bold px-2 py-1 rounded-full`}
       >
-        {/* FACE AVANT */}
-        <div
-          style={backfaceStyle}
-          className={`absolute inset-0 rounded-2xl border-2 ${style.border} ${style.glow} bg-gray-900 overflow-hidden flex flex-col`}
-        >
-          <span
-            className={`absolute top-2 right-2 z-10 ${style.label} text-white text-xs font-bold px-2 py-1 rounded-full`}
-          >
-            {style.text}
-          </span>
+        {style.text}
+      </span>
 
-          <img src={headerImage} alt={name} className="w-full h-36 object-cover" />
+      <img src={headerImage} alt={name} className="w-full h-36 object-cover" />
 
-          <div className="p-4 flex flex-col gap-2 flex-1">
-            <h3 className="text-white font-bold text-lg leading-tight">{name}</h3>
+      <div className="p-4 flex flex-col gap-2 flex-1">
+        <h3 className="text-white font-bold text-lg leading-tight">{name}</h3>
 
-            {tags.length > 0 && (
-              <div className="flex flex-wrap gap-1">
-                {tags.slice(0, 3).map((t) => (
-                  <span key={t} className="text-[10px] bg-gray-800 text-gray-400 px-2 py-0.5 rounded-full">
-                    {t}
-                  </span>
-                ))}
-              </div>
-            )}
+        {tags.length > 0 && (
+          <div className="flex flex-wrap gap-1">
+            {tags.slice(0, 3).map((t) => (
+              <span key={t} className="text-[10px] bg-gray-800 text-gray-400 px-2 py-0.5 rounded-full">
+                {t}
+              </span>
+            ))}
+          </div>
+        )}
 
-            <p className="text-gray-400 text-xs leading-snug line-clamp-4 flex-1">{description}</p>
+        <p className="text-gray-400 text-xs leading-snug line-clamp-4 flex-1">{description}</p>
 
-            <div className="flex justify-between items-center pt-2 border-t border-gray-800 mt-2">
-              <div className="flex items-center gap-1 text-red-400 font-bold">
-                <span className="text-xs">ATK</span>
-                <span>{atk}</span>
-              </div>
-              <div className="flex items-center gap-1 text-blue-400 font-bold">
-                <span className="text-xs">DEF</span>
-                <span>{def}</span>
-              </div>
-            </div>
-            {canFlip && (
-              <p className="text-center text-gray-600 text-[10px] mt-1">Cliquer pour retourner</p>
-            )}
+        <div className="flex justify-between items-center pt-2 border-t border-gray-800 mt-2">
+          <div className="flex items-center gap-1 text-red-400 font-bold">
+            <span className="text-xs">ATK</span>
+            <span>{atk}</span>
+          </div>
+          <div className="flex items-center gap-1 text-blue-400 font-bold">
+            <span className="text-xs">DEF</span>
+            <span>{def}</span>
           </div>
         </div>
-
-        {/* FACE ARRIÈRE */}
-        <div
-          style={{ ...backfaceStyle, transform: "rotateY(180deg)" }}
-          className={`absolute inset-0 rounded-2xl border-2 ${style.border} ${style.glow} bg-gray-900 flex flex-col p-4 gap-3`}
-        >
-          <h3 className="text-white font-bold text-base leading-tight truncate">{name}</h3>
-
-          <div className="grid grid-cols-2 gap-2 text-xs">
-            <div className="bg-gray-800 rounded-lg p-2">
-              <div className="text-gray-500 text-[10px] uppercase">Avis positifs</div>
-              <div className="text-white font-semibold">{reviewScore ?? "—"}%</div>
-            </div>
-            <div className="bg-gray-800 rounded-lg p-2">
-              <div className="text-gray-500 text-[10px] uppercase">Connectés</div>
-              <div className="text-white font-semibold">{peakCcu != null ? formatOwners(peakCcu) : "—"}</div>
-            </div>
-            <div className="bg-gray-800 rounded-lg p-2">
-              <div className="text-gray-500 text-[10px] uppercase">Possesseurs (est.)</div>
-              <div className="text-white font-semibold">{ownerEstimate != null ? formatOwners(ownerEstimate) : "—"}</div>
-            </div>
-            <div className="bg-gray-800 rounded-lg p-2">
-              <div className="text-gray-500 text-[10px] uppercase">Prix</div>
-              <div className="text-white font-semibold">{formatPrice(priceCents ?? null, !!isFree)}</div>
-            </div>
-          </div>
-
-          <div className="bg-gray-800 rounded-lg p-2 text-xs">
-            <div className="text-gray-500 text-[10px] uppercase mb-0.5">Studio</div>
-            <div className="text-white truncate">{developers.length > 0 ? developers.join(", ") : "Inconnu"}</div>
-          </div>
-
-          <div className="flex-1" />
-
-          {id && (
-            <a
-              href={`https://store.steampowered.com/app/${id}`}
-              target="_blank"
-              rel="noopener noreferrer"
-              onClick={(e) => e.stopPropagation()}
-              className="text-center bg-blue-600 hover:bg-blue-500 text-white text-xs font-semibold rounded-lg py-2"
-            >
-              Voir sur Steam ↗
-            </a>
-          )}
-          <p className="text-center text-gray-600 text-[10px]">Cliquer pour revenir</p>
-        </div>
+        {canFlip && (
+          <p className="text-center text-gray-600 text-[10px] mt-1">Cliquer pour retourner</p>
+        )}
       </div>
     </div>
   );
+
+  const back = (
+    <div
+      className={`w-full h-full rounded-2xl border-2 ${style.border} ${style.glow} bg-gray-900 flex flex-col p-4 gap-3`}
+    >
+      <h3 className="text-white font-bold text-base leading-tight truncate">{name}</h3>
+
+      <div className="grid grid-cols-2 gap-2 text-xs">
+        <div className="bg-gray-800 rounded-lg p-2">
+          <div className="text-gray-500 text-[10px] uppercase">Avis positifs</div>
+          <div className="text-white font-semibold">{reviewScore ?? "—"}%</div>
+        </div>
+        <div className="bg-gray-800 rounded-lg p-2">
+          <div className="text-gray-500 text-[10px] uppercase">Connectés</div>
+          <div className="text-white font-semibold">{peakCcu != null ? formatOwners(peakCcu) : "—"}</div>
+        </div>
+        <div className="bg-gray-800 rounded-lg p-2">
+          <div className="text-gray-500 text-[10px] uppercase">Possesseurs (est.)</div>
+          <div className="text-white font-semibold">{ownerEstimate != null ? formatOwners(ownerEstimate) : "—"}</div>
+        </div>
+        <div className="bg-gray-800 rounded-lg p-2">
+          <div className="text-gray-500 text-[10px] uppercase">Prix</div>
+          <div className="text-white font-semibold">{formatPrice(priceCents ?? null, !!isFree)}</div>
+        </div>
+      </div>
+
+      <div className="bg-gray-800 rounded-lg p-2 text-xs">
+        <div className="text-gray-500 text-[10px] uppercase mb-0.5">Studio</div>
+        <div className="text-white truncate">{developers.length > 0 ? developers.join(", ") : "Inconnu"}</div>
+      </div>
+
+      <div className="flex-1" />
+
+      {id && (
+        <a
+          href={`https://store.steampowered.com/app/${id}`}
+          target="_blank"
+          rel="noopener noreferrer"
+          onClick={(e) => e.stopPropagation()}
+          className="text-center bg-blue-600 hover:bg-blue-500 text-white text-xs font-semibold rounded-lg py-2"
+        >
+          Voir sur Steam ↗
+        </a>
+      )}
+      <p className="text-center text-gray-600 text-[10px]">Cliquer pour revenir</p>
+    </div>
+  );
+
+  return <FlipCard front={front} back={back} canFlip={canFlip} />;
 }

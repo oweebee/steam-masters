@@ -1,10 +1,10 @@
 import { AppShell } from "@/components/AppShell";
+import { ToutesLesCartesClient } from "./ToutesLesCartesClient";
 
 export default function Page() {
   return (
     <AppShell>
-      <h1 className="text-2xl font-bold text-white mb-4">Toutes les cartes</h1>
-      <p className="text-gray-500 text-sm">À venir.</p>
+      <ToutesLesCartesClient />
     </AppShell>
   );
 }

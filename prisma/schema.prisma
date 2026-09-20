@@ -108,6 +108,8 @@ model Studio {
   avgReviewScore     Int      @default(0)
   totalOwnerEstimate Int      @default(0)
   games              String[] @default([]) // noms réels des jeux (SteamGame.name) où ce dev apparaît dans developers[]
+  about              String?  @db.Text // saisi manuellement par un admin (aucune API Steam/SteamSpy ne fournit de bio studio)
+  avatarUrl          String?  // saisi manuellement par un admin (aucune API publique de logo studio)
   rarity             Rarity
   atk                Int
   def                Int

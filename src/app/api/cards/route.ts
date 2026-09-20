@@ -3,13 +3,11 @@ import { auth } from "@/auth";
 import { prisma } from "@/lib/prisma";
 import { buildGameLinkMap, toStudioGameLinks } from "@/lib/studioGames";
 
-async function requireAdmin() {
-  const session = await auth();
-  if (!session || (session.user as any)?.role !== "ADMIN") throw new Error("Unauthorized");
-}
-
+// Vue publique (tout user connecté) de toutes les cartes du jeu — "Toutes les cartes"
+// façon WikiMasters. Mêmes données que /api/admin/cards, sans nécessiter le rôle ADMIN.
 export async function GET() {
-  try { await requireAdmin(); } catch { return NextResponse.json({ error: "Unauthorized" }, { status: 401 }); }
+  const session = await auth();
+  if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
   const [games, studios] = await Promise.all([
     prisma.steamGame.findMany({

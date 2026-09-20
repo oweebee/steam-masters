@@ -30,6 +30,9 @@ type Card = {
     atk: number;
     def: number;
     rarity: Rarity;
+    games: { name: string; appid: string | null; hasCard: boolean }[];
+    about: string | null;
+    avatarUrl: string | null;
   } | null;
 };
 
@@ -77,6 +80,9 @@ export function CollectionClient() {
               atk={c.studio.atk}
               def={c.studio.def}
               rarity={c.studio.rarity}
+              games={c.studio.games}
+              about={c.studio.about}
+              avatarUrl={c.studio.avatarUrl}
             />
           ) : null
         )}
