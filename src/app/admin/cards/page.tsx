@@ -1,5 +1,7 @@
 "use client";
 import { useEffect, useMemo, useState } from "react";
+import { GameCard } from "@/components/GameCard";
+import { StudioCard } from "@/components/StudioCard";
 
 type Rarity = "COMMON" | "UNCOMMON" | "RARE" | "EPIC" | "LEGENDARY";
 
@@ -8,17 +10,24 @@ type Item = {
   id: string;
   name: string;
   headerImage: string | null;
+  description?: string;
   rarity: Rarity;
   atk: number;
   def: number;
   ownerEstimate: number;
   reviewScore: number;
+  peakCcu?: number;
+  priceCents?: number | null;
+  isFree?: boolean;
   tags: string[];
   developers: string[];
   gameCount?: number;
+  games?: string[];
   claimedBy: string | null;
   updatedAt: string;
 };
+
+type ViewMode = "list" | "cards";
 
 const RARITY_ORDER: Record<Rarity, number> = {
   LEGENDARY: 0,
@@ -50,6 +59,7 @@ export default function AdminCardsPage() {
   const [rarityFilter, setRarityFilter] = useState<Rarity | "ALL">("ALL");
   const [sortKey, setSortKey] = useState<SortKey>("updatedAt");
   const [sortDir, setSortDir] = useState<SortDir>("desc");
+  const [view, setView] = useState<ViewMode>("list");
 
   useEffect(() => {
     fetch("/api/admin/cards")
@@ -104,7 +114,23 @@ export default function AdminCardsPage() {
 
   return (
     <div className="min-h-screen bg-gray-950 p-8">
-      <h1 className="text-2xl font-bold text-white mb-1">Toutes les cartes</h1>
+      <div className="flex items-center justify-between mb-1">
+        <h1 className="text-2xl font-bold text-white">Toutes les cartes</h1>
+        <div className="flex bg-gray-900 border border-gray-800 rounded-lg overflow-hidden">
+          <button
+            onClick={() => setView("list")}
+            className={`px-3 py-1.5 text-sm ${view === "list" ? "bg-blue-600 text-white" : "text-gray-400 hover:text-white"}`}
+          >
+            ☰ Liste
+          </button>
+          <button
+            onClick={() => setView("cards")}
+            className={`px-3 py-1.5 text-sm ${view === "cards" ? "bg-blue-600 text-white" : "text-gray-400 hover:text-white"}`}
+          >
+            ▦ Cartes
+          </button>
+        </div>
+      </div>
       <p className="text-gray-500 text-sm mb-6">
         {loading ? "Chargement…" : `${filtered.length} / ${items.length} carte(s)`}
       </p>
@@ -148,57 +174,96 @@ export default function AdminCardsPage() {
         </select>
       </div>
 
-      <div className="overflow-x-auto border border-gray-800 rounded-xl">
-        <table className="w-full text-sm text-left">
-          <thead className="bg-gray-900 text-gray-400 select-none">
-            <tr>
-              <th className="px-4 py-3">Type</th>
-              <th className="px-4 py-3 cursor-pointer hover:text-white" onClick={() => toggleSort("name")}>
-                Nom{sortIndicator("name")}
-              </th>
-              <th className="px-4 py-3 cursor-pointer hover:text-white" onClick={() => toggleSort("rarity")}>
-                Rareté{sortIndicator("rarity")}
-              </th>
-              <th className="px-4 py-3 cursor-pointer hover:text-white" onClick={() => toggleSort("atk")}>
-                ATK{sortIndicator("atk")}
-              </th>
-              <th className="px-4 py-3 cursor-pointer hover:text-white" onClick={() => toggleSort("def")}>
-                DEF (possesseurs est.){sortIndicator("def")}
-              </th>
-              <th className="px-4 py-3 cursor-pointer hover:text-white" onClick={() => toggleSort("updatedAt")}>
-                Maj{sortIndicator("updatedAt")}
-              </th>
-              <th className="px-4 py-3">Statut</th>
-            </tr>
-          </thead>
-          <tbody>
-            {filtered.map((it) => (
-              <tr key={`${it.type}-${it.id}`} className="border-t border-gray-800 hover:bg-gray-900/50">
-                <td className="px-4 py-2 text-gray-400">{it.type === "GAME" ? "🎮 Jeu" : "🏢 Studio"}</td>
-                <td className="px-4 py-2 text-white font-medium">{it.name}</td>
-                <td className={`px-4 py-2 font-semibold ${RARITY_COLOR[it.rarity]}`}>{it.rarity}</td>
-                <td className="px-4 py-2 text-red-400">{it.atk}</td>
-                <td className="px-4 py-2 text-blue-400">{it.def.toLocaleString("fr-FR")}</td>
-                <td className="px-4 py-2 text-gray-500">{new Date(it.updatedAt).toLocaleDateString("fr-FR")}</td>
-                <td className="px-4 py-2">
-                  {it.claimedBy ? (
-                    <span className="text-amber-400">réclamée par {it.claimedBy}</span>
-                  ) : (
-                    <span className="text-green-500">libre</span>
-                  )}
-                </td>
-              </tr>
-            ))}
-            {!loading && filtered.length === 0 && (
+      {view === "list" ? (
+        <div className="overflow-x-auto border border-gray-800 rounded-xl">
+          <table className="w-full text-sm text-left">
+            <thead className="bg-gray-900 text-gray-400 select-none">
               <tr>
-                <td colSpan={7} className="px-4 py-6 text-center text-gray-500">
-                  Aucune carte ne correspond aux filtres.
-                </td>
+                <th className="px-4 py-3">Type</th>
+                <th className="px-4 py-3 cursor-pointer hover:text-white" onClick={() => toggleSort("name")}>
+                  Nom{sortIndicator("name")}
+                </th>
+                <th className="px-4 py-3 cursor-pointer hover:text-white" onClick={() => toggleSort("rarity")}>
+                  Rareté{sortIndicator("rarity")}
+                </th>
+                <th className="px-4 py-3 cursor-pointer hover:text-white" onClick={() => toggleSort("atk")}>
+                  ATK{sortIndicator("atk")}
+                </th>
+                <th className="px-4 py-3 cursor-pointer hover:text-white" onClick={() => toggleSort("def")}>
+                  DEF (possesseurs est.){sortIndicator("def")}
+                </th>
+                <th className="px-4 py-3 cursor-pointer hover:text-white" onClick={() => toggleSort("updatedAt")}>
+                  Maj{sortIndicator("updatedAt")}
+                </th>
+                <th className="px-4 py-3">Statut</th>
               </tr>
-            )}
-          </tbody>
-        </table>
-      </div>
+            </thead>
+            <tbody>
+              {filtered.map((it) => (
+                <tr key={`${it.type}-${it.id}`} className="border-t border-gray-800 hover:bg-gray-900/50">
+                  <td className="px-4 py-2 text-gray-400">{it.type === "GAME" ? "🎮 Jeu" : "🏢 Studio"}</td>
+                  <td className="px-4 py-2 text-white font-medium">{it.name}</td>
+                  <td className={`px-4 py-2 font-semibold ${RARITY_COLOR[it.rarity]}`}>{it.rarity}</td>
+                  <td className="px-4 py-2 text-red-400">{it.atk}</td>
+                  <td className="px-4 py-2 text-blue-400">{it.def.toLocaleString("fr-FR")}</td>
+                  <td className="px-4 py-2 text-gray-500">{new Date(it.updatedAt).toLocaleDateString("fr-FR")}</td>
+                  <td className="px-4 py-2">
+                    {it.claimedBy ? (
+                      <span className="text-amber-400">réclamée par {it.claimedBy}</span>
+                    ) : (
+                      <span className="text-green-500">libre</span>
+                    )}
+                  </td>
+                </tr>
+              ))}
+              {!loading && filtered.length === 0 && (
+                <tr>
+                  <td colSpan={7} className="px-4 py-6 text-center text-gray-500">
+                    Aucune carte ne correspond aux filtres.
+                  </td>
+                </tr>
+              )}
+            </tbody>
+          </table>
+        </div>
+      ) : (
+        <div className="flex flex-wrap gap-6">
+          {filtered.map((it) =>
+            it.type === "GAME" ? (
+              <GameCard
+                key={`GAME-${it.id}`}
+                id={it.id}
+                name={it.name}
+                headerImage={it.headerImage ?? ""}
+                description={it.description ?? ""}
+                atk={it.atk}
+                def={it.def}
+                rarity={it.rarity}
+                tags={it.tags}
+                developers={it.developers}
+                reviewScore={it.reviewScore}
+                peakCcu={it.peakCcu}
+                ownerEstimate={it.ownerEstimate}
+                priceCents={it.priceCents}
+                isFree={it.isFree}
+              />
+            ) : (
+              <StudioCard
+                key={`STUDIO-${it.id}`}
+                name={it.name}
+                gameCount={it.gameCount ?? 0}
+                atk={it.atk}
+                def={it.def}
+                rarity={it.rarity}
+                games={it.games ?? []}
+              />
+            )
+          )}
+          {!loading && filtered.length === 0 && (
+            <p className="text-gray-500 text-sm">Aucune carte ne correspond aux filtres.</p>
+          )}
+        </div>
+      )}
     </div>
   );
 }

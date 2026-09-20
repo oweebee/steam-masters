@@ -134,12 +134,13 @@ export async function upsertStudiosForDevelopers(developers: string[]) {
     const gameCount = games.length;
     const avgReviewScore = Math.round(games.reduce((s, g) => s + g.reviewScore, 0) / gameCount);
     const totalOwnerEstimate = games.reduce((s, g) => s + g.ownerEstimate, 0);
+    const gameNames = games.map((g) => g.name).sort();
     const rarity = computeRarity(totalOwnerEstimate);
 
     await prisma.studio.upsert({
       where: { name },
-      update: { gameCount, avgReviewScore, totalOwnerEstimate, rarity, atk: avgReviewScore, def: totalOwnerEstimate },
-      create: { name, gameCount, avgReviewScore, totalOwnerEstimate, rarity, atk: avgReviewScore, def: totalOwnerEstimate },
+      update: { gameCount, avgReviewScore, totalOwnerEstimate, games: gameNames, rarity, atk: avgReviewScore, def: totalOwnerEstimate },
+      create: { name, gameCount, avgReviewScore, totalOwnerEstimate, games: gameNames, rarity, atk: avgReviewScore, def: totalOwnerEstimate },
     });
   }
 }

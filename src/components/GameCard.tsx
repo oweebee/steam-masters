@@ -23,6 +23,11 @@ function formatPrice(cents: number | null, isFree: boolean) {
   return `${(cents / 100).toFixed(2).replace(".", ",")} €`;
 }
 
+const backfaceStyle: React.CSSProperties = {
+  backfaceVisibility: "hidden",
+  WebkitBackfaceVisibility: "hidden",
+};
+
 export function GameCard({
   id,
   name,
@@ -64,13 +69,15 @@ export function GameCard({
       onClick={() => canFlip && setFlipped((f) => !f)}
     >
       <div
-        className={`relative w-full h-full transition-transform duration-500 [transform-style:preserve-3d] ${
+        className={`relative w-full h-full transition-transform duration-500 ${
           flipped ? "[transform:rotateY(180deg)]" : ""
         } ${canFlip ? "cursor-pointer" : ""}`}
+        style={{ transformStyle: "preserve-3d" }}
       >
         {/* FACE AVANT */}
         <div
-          className={`absolute inset-0 [backface-visibility:hidden] rounded-2xl border-2 ${style.border} ${style.glow} bg-gray-900 overflow-hidden flex flex-col`}
+          style={backfaceStyle}
+          className={`absolute inset-0 rounded-2xl border-2 ${style.border} ${style.glow} bg-gray-900 overflow-hidden flex flex-col`}
         >
           <span
             className={`absolute top-2 right-2 z-10 ${style.label} text-white text-xs font-bold px-2 py-1 rounded-full`}
@@ -113,7 +120,8 @@ export function GameCard({
 
         {/* FACE ARRIÈRE */}
         <div
-          className={`absolute inset-0 [backface-visibility:hidden] [transform:rotateY(180deg)] rounded-2xl border-2 ${style.border} ${style.glow} bg-gray-900 flex flex-col p-4 gap-3`}
+          style={{ ...backfaceStyle, transform: "rotateY(180deg)" }}
+          className={`absolute inset-0 rounded-2xl border-2 ${style.border} ${style.glow} bg-gray-900 flex flex-col p-4 gap-3`}
         >
           <h3 className="text-white font-bold text-base leading-tight truncate">{name}</h3>
 
