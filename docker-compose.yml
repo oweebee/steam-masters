@@ -73,15 +73,13 @@ services:
       - traefik
     labels:
       - "traefik.enable=true"
-      - "traefik.http.routers.steammasters-mcp.rule=Host(`steammasters.obsidianspoon.com`) && PathPrefix(`/mcp`)"
+      - "traefik.http.routers.steammasters-mcp.rule=Host(`steammasters-mcp.obsidianspoon.com`)"
       - "traefik.http.routers.steammasters-mcp.entrypoints=https"
       - "traefik.http.routers.steammasters-mcp.tls=true"
       - "traefik.http.routers.steammasters-mcp.tls.certresolver=letsencrypt"
-      - "traefik.http.routers.steammasters-mcp.priority=100"
       - "traefik.http.services.steammasters-mcp.loadbalancer.server.port=8000"
-      - "traefik.http.routers.steammasters-mcp.middlewares=steammasters-mcp-auth,steammasters-mcp-strip"
+      - "traefik.http.routers.steammasters-mcp.middlewares=steammasters-mcp-auth"
       - "traefik.http.middlewares.steammasters-mcp-auth.basicauth.users=mcp:$$apr1$$cSzjDy6d$$06tIRMvLcMnaFobpWd7zw0"
-      - "traefik.http.middlewares.steammasters-mcp-strip.stripprefix.prefixes=/mcp"
       - "traefik.docker.network=traefik"
 
 
