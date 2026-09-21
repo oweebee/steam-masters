@@ -12,19 +12,45 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ error: "Nom de studio invalide" }, { status: 400 });
   }
 
+  const studio = await prisma.studio.findUnique({
+    where: { name },
+    select: { games: true },
+  });
+  const localGames = await prisma.steamGame.findMany({
+    where: {
+      OR: [
+        { developers: { has: name } },
+        ...(studio?.games.length ? [{ name: { in: studio.games } }] : []),
+      ],
+    },
+    select: { id: true, name: true, headerImage: true },
+    orderBy: { name: "asc" },
+  });
+  const localById = new Map(localGames.map((game) => [game.id, game]));
+
   try {
     const steamGames = await getSteamDeveloperGames(name);
-    const localGames = await prisma.steamGame.findMany({
-      where: { id: { in: steamGames.map((game) => game.appid) } },
-      select: { id: true },
-    });
-    const localById = new Map(localGames.map((game) => [game.id, game]));
-
-    return NextResponse.json(steamGames.map((game) => ({
+    const merged = new Map(steamGames.map((game) => [game.appid, {
       ...game,
       hasCard: localById.has(game.appid),
-    })));
+    }]));
+    localGames.forEach((game) => merged.set(game.id, {
+      appid: game.id,
+      name: game.name,
+      headerImage: game.headerImage,
+      hasCard: true,
+    }));
+
+    return NextResponse.json(Array.from(merged.values()));
   } catch (error) {
+    if (localGames.length > 0) {
+      return NextResponse.json(localGames.map((game) => ({
+        appid: game.id,
+        name: game.name,
+        headerImage: game.headerImage,
+        hasCard: true,
+      })));
+    }
     const message = error instanceof Error ? error.message : "Catalogue Steam indisponible";
     return NextResponse.json({ error: message }, { status: 502 });
   }

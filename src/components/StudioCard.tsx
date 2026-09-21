@@ -29,6 +29,8 @@ export function StudioCard({
 }) {
   const style = RARITY_STYLES[rarity];
   const [resolvedGames, setResolvedGames] = useState<GameLink[]>(games);
+  const [loadState, setLoadState] = useState<"loading" | "ready" | "error">("loading");
+  const [reloadKey, setReloadKey] = useState(0);
   const frontRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -37,10 +39,13 @@ export function StudioCard({
 
     let cancelled = false;
     const loadOfficialGames = async () => {
-      const res = await fetch(`/api/studios/games?name=${encodeURIComponent(name)}`);
-      if (!res.ok || cancelled) return;
-      const data = await res.json();
-      if (Array.isArray(data)) {
+      setLoadState("loading");
+      try {
+        const res = await fetch(`/api/studios/games?name=${encodeURIComponent(name)}`);
+        if (!res.ok) throw new Error("Catalogue indisponible");
+        const data = await res.json();
+        if (cancelled) return;
+        if (Array.isArray(data) && data.length > 0) {
         setResolvedGames((current) => {
           const currentById = new Map(current.map((game) => [game.appid ?? game.name, game]));
           return data.map((game: GameLink) => ({
@@ -48,6 +53,10 @@ export function StudioCard({
             ...game,
           }));
         });
+        }
+        setLoadState("ready");
+      } catch {
+        if (!cancelled) setLoadState("error");
       }
     };
 
@@ -66,7 +75,7 @@ export function StudioCard({
       cancelled = true;
       observer.disconnect();
     };
-  }, [name]);
+  }, [name, reloadKey]);
 
   const gameImages = useMemo(
     () => Array.from(new Set(resolvedGames.map((game) => game.headerImage).filter((image): image is string => !!image))),
@@ -91,8 +100,26 @@ export function StudioCard({
         <div className="min-h-12">
           <span className="text-[10px] uppercase tracking-wide text-amber-700">Jeux</span>
           <p className="text-gray-400 text-xs leading-snug line-clamp-2">
-            {resolvedGames.length > 0 ? resolvedGames.map((game) => game.name).join(" • ") : "Recherche sur Steam…"}
+            {resolvedGames.length > 0
+              ? resolvedGames.map((game) => game.name).join(" • ")
+              : loadState === "loading"
+                ? "Recherche sur Steam…"
+                : loadState === "error"
+                  ? "Catalogue momentanément indisponible"
+                  : "Aucun jeu Steam trouvé"}
           </p>
+          {resolvedGames.length === 0 && loadState === "error" && (
+            <button
+              type="button"
+              onClick={(event) => {
+                event.stopPropagation();
+                setReloadKey((value) => value + 1);
+              }}
+              className="mt-1 text-[10px] text-amber-600 hover:text-amber-400 underline"
+            >
+              Réessayer
+            </button>
+          )}
         </div>
 
         <div className="steam-card-visual steam-studio-visual w-[calc(100%+2rem)] h-28 -mx-4 mt-auto bg-gradient-to-br from-gray-800 to-gray-900 flex items-center justify-center overflow-hidden">

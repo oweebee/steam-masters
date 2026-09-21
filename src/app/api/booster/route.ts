@@ -1,15 +1,22 @@
 import { NextResponse } from "next/server";
+import type { SteamGame, Studio } from "@prisma/client";
 import { auth } from "@/auth";
 import { prisma } from "@/lib/prisma";
 import { rollCardRarity, RARITY_CAP, nextLowerRarity, rollAtkForRarity, type Rarity } from "@/lib/rarityRoll";
 
 const BOOSTER_INTERVAL_MS = 60 * 60 * 1000; // 1 heure
+type StudioResponse = Omit<Studio, "games"> & {
+  coverImage: string | null;
+  games: { name: string; appid: string; hasCard: boolean; headerImage: string }[];
+};
 
 export async function GET() {
   const session = await auth();
   if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
-  const user = await prisma.user.findUnique({ where: { id: (session.user as any).id } });
+  const userId = (session.user as { id?: string }).id;
+  if (!userId) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  const user = await prisma.user.findUnique({ where: { id: userId } });
   if (!user) return NextResponse.json({ error: "User introuvable" }, { status: 404 });
 
   const now = Date.now();
@@ -23,7 +30,8 @@ export async function POST() {
   const session = await auth();
   if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
-  const userId = (session.user as any).id as string;
+  const userId = (session.user as { id?: string }).id;
+  if (!userId) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   const user = await prisma.user.findUnique({ where: { id: userId } });
   if (!user) return NextResponse.json({ error: "User introuvable" }, { status: 404 });
 
@@ -51,8 +59,8 @@ export async function POST() {
 
   let gameId: string | undefined;
   let studioId: string | undefined;
-  let responseGame: any = null;
-  let responseStudio: any = null;
+  let responseGame: SteamGame | null = null;
+  let responseStudio: StudioResponse | null = null;
 
   if (idx < gamePoolSize) {
     const [game] = await prisma.steamGame.findMany({ take: 1, skip: idx });
@@ -62,8 +70,12 @@ export async function POST() {
     const [studio] = await prisma.studio.findMany({ take: 1, skip: idx - gamePoolSize });
     studioId = studio.id;
     const studioGames = await prisma.steamGame.findMany({
-      where: { developers: { has: studio.name } },
-      include: { cards: { select: { id: true } } },
+      where: {
+        OR: [
+          { developers: { has: studio.name } },
+          ...(studio.games.length ? [{ name: { in: studio.games } }] : []),
+        ],
+      },
       orderBy: { name: "asc" },
     });
     responseStudio = {
@@ -72,7 +84,7 @@ export async function POST() {
       games: studioGames.map((game) => ({
         name: game.name,
         appid: game.id,
-        hasCard: game.cards.length > 0,
+        hasCard: true,
         headerImage: game.headerImage,
       })),
     };
