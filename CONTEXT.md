@@ -20,9 +20,9 @@ Cartes = jeux Steam + studios/développeurs. Stats dérivées de données Steam/
 ## Logique des cartes (refonte 2026-09-21)
 Deux notions de "rareté" bien distinctes, ne pas les confondre :
 
-1. **Rareté intrinsèque du jeu/studio (catalogue)** — inchangée depuis le début, basée sur `ownerEstimate` réel (SteamSpy) :
-   - COMMON >10M / UNCOMMON 2–10M / RARE 500k–2M / EPIC 100k–500k / LEGENDARY <100k possesseurs estimés
-   - ATK jeu = review score Steam (0–100) ; DEF jeu = ownerEstimate ; idem agrégé pour Studio (moyenne review / somme ownerEstimate de ses jeux en base)
+1. **Rareté du jeu/studio (catalogue)** — **CHANGÉ 2026-09-21 (2e passe)** : n'est PLUS dérivée de `ownerEstimate` (l'ancien mapping par seuils classait à tort les jeux récents à faible estimation SteamSpy en Légendaire). Tirée via la MÊME loot table que `Card.rarity` (0,5 % Légendaire / 5 % Épique / 10 % Rare / 20 % Peu commune / reste Commune), **une seule fois à la création** du jeu/studio en base, puis figée (un refresh Steam ne la recalcule jamais). Exception explicite et assumée à la règle anti-casse #6 (source réelle obligatoire) — confirmée par l'user le 2026-09-21.
+   - ATK jeu = review score Steam (0–100, réel) ; DEF jeu = ownerEstimate (réel) — inchangés, seule `rarity` catalogue est désormais aléatoire.
+   - **Règle DEF > 0 obligatoire à l'import** (`/api/admin/games`, `POST`) : un jeu avec `ownerEstimate <= 0` est refusé (HTTP 422). Migration 0014 a purgé rétroactivement les jeux DEF=0 déjà en base (+ leurs Card/Trade/Auction liés), recalculé les studios à partir des jeux valides restants, supprimé les studios sans jeu valide, et redistribué la rareté catalogue restante selon les taux ci-dessus.
    - Affichée sur les vues catalogue (`/toutes-les-cartes`, `/admin/cards`)
 
 2. **Rareté de l'exemplaire de carte (`Card.rarity`)** — tirée indépendamment à CHAQUE pull booster via une loot table fixe, figée ensuite, modifiable SEULEMENT par un admin (`/api/admin/instances/[id]`) :
@@ -47,6 +47,6 @@ Deux notions de "rareté" bien distinctes, ne pas les confondre :
 3. node_modules exclus du repo (.gitignore)
 4. .env jamais commité — utiliser .env.example
 5. `output: "standalone"` dans next.config.ts — obligatoire pour Docker
-6. Ne jamais fabriquer de donnée (atk/def/rarity/prix/bio/logo studio) sans source réelle vérifiée (API ou saisie manuelle explicite d'un admin, jamais générée par l'IA) — toute formule doit être documentée ici ET dans `AppSetting.MCP_GUIDE` (tenu à jour en même temps, via MCP)
+6. Ne jamais fabriquer de donnée (atk/def/prix/bio/logo studio) sans source réelle vérifiée (API ou saisie manuelle explicite d'un admin, jamais générée par l'IA) — toute formule doit être documentée ici ET dans `AppSetting.MCP_GUIDE` (tenu à jour en même temps, via MCP). **Exception explicite, confirmée par l'user** : la rareté (catalogue ET exemplaire) est un mécanisme de jeu tiré aléatoirement, pas une donnée Steam — voir « Logique des cartes » ci-dessus.
 7. Un service MCP en transport SSE ne peut PAS être routé par sous-chemin sur un domaine partagé — toujours sous-domaine Host-only dédié
 8. Workflow de sync : édition dans un clone cloud → build de vérification (`npm run build`) → copie vers le device (`device_commit_files`) → commit sur le device (`device_bash`) → **`push.bat` côté user** (le device Windows local a `npm install` cassé et pas de credential helper git, donc jamais de build/push local)
