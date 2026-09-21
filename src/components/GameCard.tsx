@@ -1,15 +1,6 @@
 "use client";
 import { FlipCard } from "./FlipCard";
-
-type Rarity = "COMMON" | "UNCOMMON" | "RARE" | "EPIC" | "LEGENDARY";
-
-const RARITY_STYLES: Record<Rarity, { border: string; glow: string; label: string; text: string }> = {
-  COMMON:    { border: "border-gray-500",   glow: "",                             label: "bg-gray-600",   text: "Commune" },
-  UNCOMMON:  { border: "border-green-500",  glow: "shadow-[0_0_12px_rgba(34,197,94,0.4)]",  label: "bg-green-600",  text: "Peu commune" },
-  RARE:      { border: "border-blue-500",   glow: "shadow-[0_0_14px_rgba(59,130,246,0.5)]", label: "bg-blue-600",   text: "Rare" },
-  EPIC:      { border: "border-purple-500", glow: "shadow-[0_0_16px_rgba(168,85,247,0.6)]", label: "bg-purple-600", text: "Épique" },
-  LEGENDARY: { border: "border-amber-400",  glow: "shadow-[0_0_20px_rgba(251,191,36,0.7)]", label: "bg-amber-500",  text: "Légendaire" },
-};
+import { RARITY_STYLES, type Rarity } from "@/lib/rarityStyles";
 
 function formatOwners(n: number) {
   if (n >= 1_000_000) return `${(n / 1_000_000).toFixed(1)}M`;

@@ -5,6 +5,8 @@ import { StudioCard } from "@/components/StudioCard";
 
 type Rarity = "COMMON" | "UNCOMMON" | "RARE" | "EPIC" | "LEGENDARY";
 
+type Instance = { id: string; username: string; rarity: Rarity };
+
 type Item = {
   type: "GAME" | "STUDIO";
   id: string;
@@ -25,7 +27,8 @@ type Item = {
   games?: { name: string; appid: string | null; hasCard: boolean }[];
   about?: string | null;
   avatarUrl?: string | null;
-  claimedBy: string | null;
+  copies: number;
+  instances: Instance[];
   updatedAt: string;
 };
 
@@ -40,11 +43,19 @@ const RARITY_ORDER: Record<Rarity, number> = {
 };
 
 const RARITY_COLOR: Record<Rarity, string> = {
-  COMMON: "text-gray-400",
+  COMMON: "text-gray-300",
   UNCOMMON: "text-green-400",
   RARE: "text-blue-400",
   EPIC: "text-purple-400",
-  LEGENDARY: "text-amber-400",
+  LEGENDARY: "text-orange-400",
+};
+
+const RARITY_LABEL: Record<Rarity, string> = {
+  COMMON: "⚪ Blanc",
+  UNCOMMON: "🟢 Vert",
+  RARE: "🔵 Bleu",
+  EPIC: "🟣 Violet",
+  LEGENDARY: "🟠 Orange",
 };
 
 type SortKey = "name" | "rarity" | "atk" | "def" | "ownerEstimate" | "reviewScore" | "updatedAt";
@@ -66,6 +77,8 @@ export default function AdminCardsPage() {
   const [editAbout, setEditAbout] = useState("");
   const [editAvatar, setEditAvatar] = useState("");
   const [saving, setSaving] = useState(false);
+  const [expandedId, setExpandedId] = useState<string | null>(null);
+  const [savingInstanceId, setSavingInstanceId] = useState<string | null>(null);
 
   useEffect(() => {
     fetch("/api/admin/cards")
@@ -97,14 +110,33 @@ export default function AdminCardsPage() {
     setSaving(false);
   }
 
+  async function setInstanceRarity(itemId: string, instanceId: string, rarity: Rarity) {
+    setSavingInstanceId(instanceId);
+    const res = await fetch(`/api/admin/instances/${instanceId}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ rarity }),
+    });
+    if (res.ok) {
+      setItems((prev) =>
+        prev.map((it) =>
+          it.id === itemId
+            ? { ...it, instances: it.instances.map((i) => (i.id === instanceId ? { ...i, rarity } : i)) }
+            : it
+        )
+      );
+    }
+    setSavingInstanceId(null);
+  }
+
   const filtered = useMemo(() => {
     const q = search.trim().toLowerCase();
     let out = items.filter((it) => {
       if (q && !it.name.toLowerCase().includes(q) && !it.developers.some((d) => d.toLowerCase().includes(q))) return false;
       if (typeFilter !== "ALL" && it.type !== typeFilter) return false;
       if (rarityFilter !== "ALL" && it.rarity !== rarityFilter) return false;
-      if (claimFilter === "CLAIMED" && !it.claimedBy) return false;
-      if (claimFilter === "FREE" && it.claimedBy) return false;
+      if (claimFilter === "CLAIMED" && it.copies === 0) return false;
+      if (claimFilter === "FREE" && it.copies > 0) return false;
       return true;
     });
 
@@ -158,8 +190,12 @@ export default function AdminCardsPage() {
           </button>
         </div>
       </div>
-      <p className="text-gray-500 text-sm mb-6">
+      <p className="text-gray-500 text-sm mb-1">
         {loading ? "Chargement…" : `${filtered.length} / ${items.length} carte(s)`}
+      </p>
+      <p className="text-gray-600 text-xs mb-6">
+        La rareté (couleur) affichée par défaut ici est celle du jeu/studio (basée sur les possesseurs estimés
+        réels). Chaque exemplaire tiré a sa PROPRE rareté (loot table), visible et modifiable via « Exemplaires ».
       </p>
 
       <div className="flex flex-wrap gap-3 mb-6">
@@ -183,7 +219,7 @@ export default function AdminCardsPage() {
           onChange={(e) => setRarityFilter(e.target.value as Rarity | "ALL")}
           className="bg-gray-900 border border-gray-800 text-white rounded-lg px-3 py-2 outline-none"
         >
-          <option value="ALL">Toutes raretés</option>
+          <option value="ALL">Toutes raretés (jeu/studio)</option>
           <option value="LEGENDARY">Légendaire</option>
           <option value="EPIC">Épique</option>
           <option value="RARE">Rare</option>
@@ -195,9 +231,9 @@ export default function AdminCardsPage() {
           onChange={(e) => setClaimFilter(e.target.value as ClaimFilter)}
           className="bg-gray-900 border border-gray-800 text-white rounded-lg px-3 py-2 outline-none"
         >
-          <option value="ALL">Réclamée ou non</option>
-          <option value="CLAIMED">Réclamée</option>
-          <option value="FREE">Libre (pool)</option>
+          <option value="ALL">Tirée ou non</option>
+          <option value="CLAIMED">Au moins 1 exemplaire tiré</option>
+          <option value="FREE">Jamais tirée</option>
         </select>
       </div>
 
@@ -211,7 +247,7 @@ export default function AdminCardsPage() {
                   Nom{sortIndicator("name")}
                 </th>
                 <th className="px-4 py-3 cursor-pointer hover:text-white" onClick={() => toggleSort("rarity")}>
-                  Rareté{sortIndicator("rarity")}
+                  Rareté (jeu/studio){sortIndicator("rarity")}
                 </th>
                 <th className="px-4 py-3 cursor-pointer hover:text-white" onClick={() => toggleSort("atk")}>
                   ATK{sortIndicator("atk")}
@@ -222,8 +258,8 @@ export default function AdminCardsPage() {
                 <th className="px-4 py-3 cursor-pointer hover:text-white" onClick={() => toggleSort("updatedAt")}>
                   Maj{sortIndicator("updatedAt")}
                 </th>
-                <th className="px-4 py-3">Statut</th>
-                <th className="px-4 py-3">Studio</th>
+                <th className="px-4 py-3">Exemplaires</th>
+                <th className="px-4 py-3">Éditer</th>
               </tr>
             </thead>
             <tbody>
@@ -237,10 +273,15 @@ export default function AdminCardsPage() {
                     <td className="px-4 py-2 text-blue-400">{it.def.toLocaleString("fr-FR")}</td>
                     <td className="px-4 py-2 text-gray-500">{new Date(it.updatedAt).toLocaleDateString("fr-FR")}</td>
                     <td className="px-4 py-2">
-                      {it.claimedBy ? (
-                        <span className="text-amber-400">réclamée par {it.claimedBy}</span>
+                      {it.copies > 0 ? (
+                        <button
+                          onClick={() => setExpandedId(expandedId === it.id ? null : it.id)}
+                          className="text-blue-400 hover:text-blue-300"
+                        >
+                          {it.copies} exemplaire{it.copies > 1 ? "s" : ""} {expandedId === it.id ? "▲" : "▼"}
+                        </button>
                       ) : (
-                        <span className="text-green-500">libre</span>
+                        <span className="text-gray-600">aucun</span>
                       )}
                     </td>
                     <td className="px-4 py-2">
@@ -254,6 +295,31 @@ export default function AdminCardsPage() {
                       )}
                     </td>
                   </tr>
+
+                  {expandedId === it.id && (
+                    <tr className="border-t border-gray-800 bg-gray-900/30">
+                      <td colSpan={8} className="px-4 py-3">
+                        <div className="flex flex-col gap-1 max-w-xl">
+                          {it.instances.map((inst) => (
+                            <div key={inst.id} className="flex items-center gap-3 text-sm">
+                              <span className="text-gray-400 w-32 truncate">{inst.username}</span>
+                              <select
+                                value={inst.rarity}
+                                disabled={savingInstanceId === inst.id}
+                                onChange={(e) => setInstanceRarity(it.id, inst.id, e.target.value as Rarity)}
+                                className={`bg-gray-800 border border-gray-700 rounded-lg px-2 py-1 text-xs outline-none ${RARITY_COLOR[inst.rarity]}`}
+                              >
+                                {(Object.keys(RARITY_LABEL) as Rarity[]).map((r) => (
+                                  <option key={r} value={r}>{RARITY_LABEL[r]}</option>
+                                ))}
+                              </select>
+                            </div>
+                          ))}
+                        </div>
+                      </td>
+                    </tr>
+                  )}
+
                   {editingId === it.id && (
                     <tr className="border-t border-gray-800 bg-gray-900/30">
                       <td colSpan={8} className="px-4 py-3">

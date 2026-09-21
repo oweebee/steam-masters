@@ -123,6 +123,13 @@ model Card {
   userId    String
   gameId    String?
   studioId  String?
+  // Rareté PROPRE à cet exemplaire de carte, tirée au moment du pull (loot table
+  // booster), figée ensuite — n'est PLUS liée à SteamGame.rarity/Studio.rarity
+  // (qui restent un indicateur intrinsèque basé sur ownerEstimate réel, inchangé).
+  // Un même jeu/studio peut désormais être tiré plusieurs fois (plus d'unicité
+  // globale) avec une rareté différente à chaque exemplaire. Modifiable ensuite
+  // UNIQUEMENT par un admin (voir /api/admin/instances/[id]).
+  rarity    Rarity    @default(COMMON)
   createdAt DateTime  @default(now())
   isPinned  Boolean   @default(false)
 
@@ -131,9 +138,6 @@ model Card {
   studio        Studio?    @relation(fields: [studioId], references: [id])
   tradeCards    TradeCard[]
   auctionCard   Auction?
-
-  @@unique([gameId])
-  @@unique([studioId])
 }
 
 model Trade {

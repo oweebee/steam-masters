@@ -25,7 +25,7 @@ type Item = {
   games?: { name: string; appid: string | null; hasCard: boolean }[];
   about?: string | null;
   avatarUrl?: string | null;
-  claimedBy: string | null;
+  copies: number;
   updatedAt: string;
 };
 

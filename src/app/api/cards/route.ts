@@ -39,7 +39,7 @@ export async function GET() {
       isFree: g.isFree,
       tags: g.tags,
       developers: g.developers,
-      claimedBy: g.cards[0]?.user.username ?? null,
+      copies: g.cards.length,
       updatedAt: g.updatedAt,
     })),
     ...studios.map((s) => ({
@@ -58,7 +58,7 @@ export async function GET() {
       games: toStudioGameLinks(s.games, gameLinkMap),
       about: s.about,
       avatarUrl: s.avatarUrl,
-      claimedBy: s.cards[0]?.user.username ?? null,
+      copies: s.cards.length,
       updatedAt: s.updatedAt,
     })),
   ];

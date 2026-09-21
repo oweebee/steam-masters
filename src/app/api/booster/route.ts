@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { auth } from "@/auth";
 import { prisma } from "@/lib/prisma";
+import { rollCardRarity } from "@/lib/rarityRoll";
 
 const BOOSTER_INTERVAL_MS = 60 * 60 * 1000; // 1 heure
 
@@ -33,56 +34,41 @@ export async function POST() {
     return NextResponse.json({ error: "Booster pas encore disponible", remainingMs: remaining }, { status: 429 });
   }
 
-  // Règle : chaque jeu / studio ne peut être possédé que par UNE seule carte au total
-  // (unicité globale, cf. @@unique([gameId]) / @@unique([studioId]) sur Card).
-  // Le pool ne tire donc que parmi les jeux/studios pas encore réclamés par personne.
+  // Les cartes ne sont plus uniques : un même jeu/studio peut être tiré plusieurs
+  // fois par plusieurs joueurs (ou le même). Le tirage pioche uniformément dans
+  // TOUT le catalogue (jeux + studios), puis roule une rareté indépendante pour
+  // cet exemplaire via la loot table fixe (voir lib/rarityRoll.ts).
   const [gamePoolSize, studioPoolSize] = await Promise.all([
-    prisma.steamGame.count({ where: { cards: { none: {} } } }),
-    prisma.studio.count({ where: { cards: { none: {} } } }),
+    prisma.steamGame.count(),
+    prisma.studio.count(),
   ]);
   const totalPool = gamePoolSize + studioPoolSize;
 
   if (totalPool === 0) {
-    return NextResponse.json(
-      { error: "Plus aucune carte disponible — toutes les cartes existantes ont déjà été réclamées" },
-      { status: 400 }
-    );
+    return NextResponse.json({ error: "Catalogue vide — aucun jeu importé pour l'instant" }, { status: 400 });
   }
 
   const idx = Math.floor(Math.random() * totalPool);
+  const rarity = rollCardRarity();
 
-  let cardData: { userId: string; gameId?: string; studioId?: string };
+  let cardData: { userId: string; gameId?: string; studioId?: string; rarity: ReturnType<typeof rollCardRarity> };
   let responseGame = null as any;
   let responseStudio = null as any;
 
   if (idx < gamePoolSize) {
-    const [game] = await prisma.steamGame.findMany({ where: { cards: { none: {} } }, take: 1, skip: idx });
-    cardData = { userId, gameId: game.id };
-    responseGame = game;
+    const [game] = await prisma.steamGame.findMany({ take: 1, skip: idx });
+    cardData = { userId, gameId: game.id, rarity };
+    responseGame = { ...game, rarity };
   } else {
-    const [studio] = await prisma.studio.findMany({
-      where: { cards: { none: {} } },
-      take: 1,
-      skip: idx - gamePoolSize,
-    });
-    cardData = { userId, studioId: studio.id };
-    responseStudio = studio;
+    const [studio] = await prisma.studio.findMany({ take: 1, skip: idx - gamePoolSize });
+    cardData = { userId, studioId: studio.id, rarity };
+    responseStudio = { ...studio, rarity };
   }
 
-  try {
-    const [card] = await prisma.$transaction([
-      prisma.card.create({ data: cardData }),
-      prisma.user.update({ where: { id: userId }, data: { lastBoosterAt: new Date() } }),
-    ]);
-    return NextResponse.json({ card, game: responseGame, studio: responseStudio });
-  } catch (e: any) {
-    // Cas rare : deux boosters ouverts en même temps sur le dernier exemplaire dispo (race condition).
-    if (e.code === "P2002") {
-      return NextResponse.json(
-        { error: "Cette carte vient d'être réclamée par quelqu'un d'autre, réessaie" },
-        { status: 409 }
-      );
-    }
-    throw e;
-  }
+  const [card] = await prisma.$transaction([
+    prisma.card.create({ data: cardData }),
+    prisma.user.update({ where: { id: userId }, data: { lastBoosterAt: new Date() } }),
+  ]);
+
+  return NextResponse.json({ card, game: responseGame, studio: responseStudio });
 }

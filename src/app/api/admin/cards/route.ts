@@ -41,7 +41,10 @@ export async function GET() {
       isFree: g.isFree,
       tags: g.tags,
       developers: g.developers,
-      claimedBy: g.cards[0]?.user.username ?? null,
+      // Plus d'unicité : un jeu peut avoir 0, 1 ou N exemplaires tirés (par le même
+      // joueur ou des joueurs différents), chacun avec sa propre rareté.
+      copies: g.cards.length,
+      instances: g.cards.map((c) => ({ id: c.id, username: c.user.username, rarity: c.rarity })),
       updatedAt: g.updatedAt,
     })),
     ...studios.map((s) => ({
@@ -60,7 +63,8 @@ export async function GET() {
       games: toStudioGameLinks(s.games, gameLinkMap),
       about: s.about,
       avatarUrl: s.avatarUrl,
-      claimedBy: s.cards[0]?.user.username ?? null,
+      copies: s.cards.length,
+      instances: s.cards.map((c) => ({ id: c.id, username: c.user.username, rarity: c.rarity })),
       updatedAt: s.updatedAt,
     })),
   ];

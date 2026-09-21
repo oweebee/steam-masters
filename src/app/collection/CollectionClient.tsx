@@ -7,6 +7,9 @@ type Rarity = "COMMON" | "UNCOMMON" | "RARE" | "EPIC" | "LEGENDARY";
 
 type Card = {
   id: string;
+  // Rareté propre à CET exemplaire (loot table booster), indépendante de la
+  // rareté intrinsèque du jeu/studio (ownerEstimate) — c'est elle qu'on affiche.
+  rarity: Rarity;
   game: {
     id: string;
     name: string;
@@ -14,7 +17,6 @@ type Card = {
     description: string;
     atk: number;
     def: number;
-    rarity: Rarity;
     tags: string[];
     developers: string[];
     reviewScore: number;
@@ -63,7 +65,7 @@ export function CollectionClient() {
               description={c.game.description}
               atk={c.game.atk}
               def={c.game.def}
-              rarity={c.game.rarity}
+              rarity={c.rarity}
               tags={c.game.tags}
               developers={c.game.developers}
               reviewScore={c.game.reviewScore}
@@ -79,7 +81,7 @@ export function CollectionClient() {
               gameCount={c.studio.gameCount}
               atk={c.studio.atk}
               def={c.studio.def}
-              rarity={c.studio.rarity}
+              rarity={c.rarity}
               games={c.studio.games}
               about={c.studio.about}
               avatarUrl={c.studio.avatarUrl}
