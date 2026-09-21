@@ -30,6 +30,29 @@ export interface SteamDeveloperGame {
   headerImage: string;
 }
 
+export async function discoverSteamGameAppids(maxResults = 200): Promise<string[]> {
+  const appids = new Set<string>();
+  const pageSize = 50;
+
+  for (let start = 0; start < maxResults; start += pageSize) {
+    const response = await fetch(
+      `https://store.steampowered.com/search/results/?query&start=${start}&count=${pageSize}` +
+        `&dynamic_data=&sort_by=Released_DESC&category1=998&ndl=1&infinite=1&ignore_preferences=1`,
+      { cache: "no-store", headers: { "User-Agent": "SteamMasters/1.0" } }
+    );
+    if (!response.ok) throw new Error(`Steam discovery HTTP ${response.status}`);
+    const payload = await response.json();
+    const pageIds = Array.from(
+      String(payload.results_html ?? "").matchAll(/data-ds-appid="(\d+)"/g),
+      (match) => match[1]
+    );
+    pageIds.forEach((appid) => appids.add(appid));
+    if (pageIds.length === 0) break;
+  }
+
+  return Array.from(appids);
+}
+
 async function fetchAppDetails(appid: number) {
   const res = await fetch(
     `https://store.steampowered.com/api/appdetails?appids=${appid}&cc=fr&l=french`,
@@ -93,6 +116,7 @@ export async function getSteamGameData(appid: number): Promise<SteamGameData> {
     fetchCurrentPlayers(appid),
     fetchOwnerEstimate(appid),
   ]);
+  if (details.type !== "game") throw new Error(`Steam appdetails: appid ${appid} n'est pas un jeu`);
 
   const data: SteamGameData = {
     appid,

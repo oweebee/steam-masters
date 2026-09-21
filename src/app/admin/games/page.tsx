@@ -35,6 +35,9 @@ export default function AdminGamesPage() {
   const [syncingStudios, setSyncingStudios] = useState(false);
   const [syncProgress, setSyncProgress] = useState({ done: 0, total: 0, imported: 0, errors: 0 });
   const [syncMessage, setSyncMessage] = useState("");
+  const [seeding, setSeeding] = useState(false);
+  const [seedMessage, setSeedMessage] = useState("");
+  const [seedProgress, setSeedProgress] = useState({ base: 0, studiosDone: 0, studiosTotal: 0, errors: 0 });
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   async function load() {
@@ -142,6 +145,111 @@ export default function AdminGamesPage() {
     load();
   }
 
+  async function addTwentyNewGames() {
+    setSeeding(true);
+    setSeedMessage("Recherche de jeux absents du catalogue…");
+    setSeedProgress({ base: 0, studiosDone: 0, studiosTotal: 0, errors: 0 });
+
+    const [beforeGamesRes, beforeStudiosRes, discoveryRes] = await Promise.all([
+      fetch("/api/admin/games"),
+      fetch("/api/admin/studios/sync"),
+      fetch("/api/admin/games/discover"),
+    ]);
+    if (!beforeGamesRes.ok || !beforeStudiosRes.ok || !discoveryRes.ok) {
+      const errorData = await discoveryRes.json().catch(() => ({}));
+      setSeedMessage(errorData.error ?? "Impossible de préparer l’import automatique.");
+      setSeeding(false);
+      return;
+    }
+
+    const beforeGames: Game[] = await beforeGamesRes.json();
+    const beforeStudiosData = await beforeStudiosRes.json();
+    const discoveryData = await discoveryRes.json();
+    const candidates: string[] = Array.isArray(discoveryData.appids) ? discoveryData.appids : [];
+    const studioQueue: string[] = [];
+    const knownStudios = new Set<string>();
+    let base = 0;
+    let errors = 0;
+
+    for (const candidate of candidates) {
+      if (base >= 20) break;
+      setSeedMessage(`Import du jeu inédit ${base + 1}/20…`);
+      const response = await fetch("/api/admin/games", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ appid: candidate }),
+      });
+      if (!response.ok) {
+        errors += 1;
+        setSeedProgress((current) => ({ ...current, errors }));
+        continue;
+      }
+      const game: Game = await response.json();
+      base += 1;
+      for (const developer of game.developers) {
+        if (!knownStudios.has(developer)) {
+          knownStudios.add(developer);
+          studioQueue.push(developer);
+        }
+      }
+      setSeedProgress({ base, studiosDone: 0, studiosTotal: studioQueue.length, errors });
+    }
+
+    if (base < 20) {
+      setSeedMessage(`Import incomplet : ${base}/20 jeux ajoutés. ${errors} candidat(s) refusé(s) par Steam.`);
+      setSeeding(false);
+      load();
+      return;
+    }
+
+    for (let index = 0; index < studioQueue.length; index += 1) {
+      setSeedMessage(`Complétion du studio ${studioQueue[index]}…`);
+      const response = await fetch("/api/admin/studios/sync", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ name: studioQueue[index] }),
+      });
+      if (response.ok) {
+        const data = await response.json();
+        errors += Array.isArray(data.errors) ? data.errors.length : 0;
+        for (const related of data.relatedStudios ?? []) {
+          if (!knownStudios.has(related)) {
+            knownStudios.add(related);
+            studioQueue.push(related);
+          }
+        }
+      } else {
+        errors += 1;
+      }
+      setSeedProgress({ base, studiosDone: index + 1, studiosTotal: studioQueue.length, errors });
+    }
+
+    const [afterGamesRes, afterStudiosRes] = await Promise.all([
+      fetch("/api/admin/games"),
+      fetch("/api/admin/studios/sync"),
+    ]);
+    if (!afterGamesRes.ok || !afterStudiosRes.ok) {
+      setSeedMessage(`Import terminé, mais le décompte final n’a pas pu être chargé. ${errors} erreur(s).`);
+      setSeeding(false);
+      load();
+      return;
+    }
+    const afterGames: Game[] = await afterGamesRes.json();
+    const afterStudiosData = await afterStudiosRes.json();
+    const newGames = Math.max(0, afterGames.length - beforeGames.length);
+    const associatedGames = Math.max(0, newGames - base);
+    const beforeStudioCount = Array.isArray(beforeStudiosData.studios) ? beforeStudiosData.studios.length : 0;
+    const afterStudioCount = Array.isArray(afterStudiosData.studios) ? afterStudiosData.studios.length : 0;
+    const newStudios = Math.max(0, afterStudioCount - beforeStudioCount);
+    const totalCards = newGames + newStudios;
+
+    setSeedMessage(
+      `Terminé : ${base} jeux inédits + ${associatedGames} jeux associés + ${newStudios} studios = ${totalCards} nouvelles cartes. ${errors} erreur(s).`
+    );
+    setSeeding(false);
+    load();
+  }
+
   return (
     <div className="min-h-screen bg-gray-950 p-8">
       <h1 className="text-2xl font-bold text-white mb-6">Import de jeux Steam</h1>
@@ -202,6 +310,33 @@ export default function AdminGamesPage() {
       </form>
       {error && <p className="text-red-400 text-sm mb-4">{error}</p>}
 
+      <div className="bg-gray-900 border border-gray-800 rounded-xl p-4 mb-4 max-w-2xl">
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <div>
+            <h2 className="text-white font-semibold">Extension automatique du catalogue</h2>
+            <p className="text-gray-500 text-xs mt-1">
+              Ajoute 20 jeux Steam absents, leurs studios, puis tous les jeux manquants de ces studios.
+            </p>
+          </div>
+          <button
+            type="button"
+            onClick={addTwentyNewGames}
+            disabled={seeding || syncingStudios}
+            className="bg-blue-600 hover:bg-blue-500 text-white font-semibold rounded-lg px-4 py-2 disabled:opacity-50"
+          >
+            {seeding ? "Ajout en cours…" : "Ajouter 20 jeux inédits"}
+          </button>
+        </div>
+        {(seeding || seedMessage) && (
+          <div className="mt-3 text-xs">
+            <p className="text-gray-400">{seedMessage}</p>
+            <p className="text-gray-600 mt-1">
+              Jeux initiaux : {seedProgress.base}/20 · Studios : {seedProgress.studiosDone}/{seedProgress.studiosTotal} · Erreurs : {seedProgress.errors}
+            </p>
+          </div>
+        )}
+      </div>
+
       <div className="bg-gray-900 border border-gray-800 rounded-xl p-4 mb-8 max-w-2xl">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div>
@@ -213,7 +348,7 @@ export default function AdminGamesPage() {
           <button
             type="button"
             onClick={syncAllStudios}
-            disabled={syncingStudios}
+            disabled={syncingStudios || seeding}
             className="bg-blue-600 hover:bg-blue-500 text-white font-semibold rounded-lg px-4 py-2 disabled:opacity-50"
           >
             {syncingStudios ? "Synchronisation…" : "Synchroniser tous les studios"}

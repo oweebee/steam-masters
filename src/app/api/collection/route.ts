@@ -7,9 +7,20 @@ export async function GET() {
   const session = await auth();
   if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
+  const userId = (session.user as { id?: string }).id;
+  if (!userId) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+
   const cards = await prisma.card.findMany({
-    where: { userId: (session.user as any).id },
-    include: { game: true, studio: true },
+    where: { userId },
+    include: {
+      game: true,
+      studio: true,
+      tradeCards: {
+        where: { trade: { status: "PENDING" } },
+        select: { id: true },
+      },
+      auctionCard: { select: { id: true } },
+    },
     orderBy: { createdAt: "desc" },
   });
 
@@ -17,10 +28,11 @@ export async function GET() {
     cards.flatMap((c) => c.studio?.name ? [c.studio.name] : [])
   );
 
-  const out = cards.map((c) => ({
-    ...c,
-    studio: c.studio
-      ? { ...c.studio, games: studioGamesMap.get(c.studio.name) ?? [] }
+  const out = cards.map(({ tradeCards, auctionCard, ...card }) => ({
+    ...card,
+    sellable: tradeCards.length === 0 && !auctionCard,
+    studio: card.studio
+      ? { ...card.studio, games: studioGamesMap.get(card.studio.name) ?? [] }
       : null,
   }));
 

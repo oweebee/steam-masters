@@ -380,6 +380,276 @@ a.bg-purple-600 {
   box-shadow: inset 0 1px 0 rgba(255,255,255,0.035), 0 2px 5px rgba(0,0,0,0.24);
 }
 
+/* Registre des joueurs et coffre de collection. */
+.steam-player-registry {
+  background:
+    linear-gradient(135deg, rgba(180, 135, 67, 0.07), transparent 32%),
+    linear-gradient(180deg, #1d1712, #100d0a);
+  border-color: #5c4028;
+  box-shadow: inset 0 1px 0 rgba(230, 179, 98, 0.08), 0 12px 28px rgba(0,0,0,0.3);
+}
+
+.steam-player-medallion {
+  display: inline-flex;
+  width: 2rem;
+  height: 2rem;
+  flex: 0 0 auto;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid #a16e36;
+  border-radius: 50%;
+  color: #f0c17c;
+  font-family: Georgia, "Times New Roman", serif;
+  font-weight: 700;
+  background: radial-gradient(circle at 35% 28%, #684325, #211710 66%);
+  box-shadow: inset 0 0 0 3px #17100c, inset 0 0 0 4px #76502e, 0 2px 7px #000;
+}
+
+.steam-player-medallion-large { width: 2.8rem; height: 2.8rem; font-size: 1.15rem; }
+
+.steam-library-button {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.65rem;
+  min-width: 8.5rem;
+  padding: 0.38rem 0.72rem 0.38rem 0.42rem;
+  border: 1px solid #82572e;
+  border-radius: 0.55rem;
+  color: #e6d7c2;
+  text-align: left;
+  background: linear-gradient(180deg, #33271d, #17110d);
+  box-shadow: inset 0 1px 0 rgba(255,205,130,0.12), 0 3px 8px rgba(0,0,0,0.38);
+  transition: border-color 160ms ease, transform 160ms ease, filter 160ms ease;
+}
+
+.steam-library-button:hover {
+  transform: translateY(-1px);
+  border-color: #c38440;
+  filter: brightness(1.12);
+}
+
+.steam-library-button strong,
+.steam-library-button small { display: block; line-height: 1.15; }
+.steam-library-button strong { color: #f2e7d6; font-size: 0.75rem; }
+.steam-library-button small { margin-top: 0.16rem; color: #907c65; font-size: 0.62rem; }
+
+.steam-library-wheel {
+  position: relative;
+  display: inline-flex;
+  width: 2rem;
+  height: 2rem;
+  flex: 0 0 auto;
+  align-items: center;
+  justify-content: center;
+  border: 4px solid #9d5c36;
+  border-radius: 50%;
+  background: #281713;
+  box-shadow: inset 0 0 0 2px #4b2b1d, 0 0 0 1px #d29a57;
+}
+
+.steam-library-wheel::before,
+.steam-library-wheel::after {
+  content: "";
+  position: absolute;
+  width: 1.45rem;
+  height: 2px;
+  background: #bd7448;
+  box-shadow: 0 0 0 1px rgba(56,28,18,0.55);
+}
+.steam-library-wheel::after { transform: rotate(90deg); }
+.steam-library-wheel span { width: 0.42rem; height: 0.42rem; z-index: 1; border-radius: 50%; background: #d49b5a; }
+
+.steam-library-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 80;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1rem;
+  background: rgba(5, 4, 3, 0.82);
+  backdrop-filter: blur(5px);
+}
+
+.steam-library-vault {
+  position: relative;
+  width: min(56rem, 100%);
+  max-height: min(46rem, calc(100vh - 2rem));
+  overflow: hidden;
+  border: 2px solid #80572f;
+  border-radius: 1rem;
+  background:
+    radial-gradient(circle at 100% 0, rgba(164, 38, 28, 0.13), transparent 24rem),
+    repeating-linear-gradient(135deg, transparent 0 18px, rgba(255,255,255,0.01) 19px 20px),
+    #15110e;
+  box-shadow: inset 0 0 0 4px #0b0907, inset 0 0 0 5px #50361f, 0 24px 70px #000;
+}
+
+.steam-library-vault::before {
+  content: "";
+  position: absolute;
+  inset: 8px;
+  z-index: 2;
+  pointer-events: none;
+  border: 1px solid rgba(197, 139, 68, 0.22);
+  border-radius: 0.65rem;
+}
+
+.steam-library-header {
+  position: relative;
+  z-index: 3;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 1.1rem 1.25rem;
+  border-bottom: 1px solid #694527;
+  background: linear-gradient(180deg, #2b2118, #18120e);
+}
+
+.steam-library-close {
+  width: 2.2rem;
+  height: 2.2rem;
+  border: 1px solid #754528;
+  border-radius: 50%;
+  color: #c89555;
+  font-size: 1.5rem;
+  line-height: 1;
+  background: #1b120e;
+}
+.steam-library-close:hover { color: #fff0db; border-color: #bd7448; }
+
+.steam-library-counter {
+  position: relative;
+  z-index: 3;
+  display: flex;
+  justify-content: space-between;
+  padding: 0.55rem 1.35rem;
+  color: #917c63;
+  font-size: 0.72rem;
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+  border-bottom: 1px solid #3e2d20;
+}
+
+.steam-library-grid {
+  position: relative;
+  z-index: 1;
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(11rem, 1fr));
+  gap: 0.8rem;
+  max-height: 34rem;
+  overflow-y: auto;
+  padding: 1.25rem;
+}
+
+.steam-library-card {
+  overflow: hidden;
+  min-width: 0;
+  border-radius: 0.6rem;
+  background: linear-gradient(160deg, #282019, #12100e);
+  box-shadow: inset 0 0 0 1px rgba(0,0,0,0.7), 0 5px 12px rgba(0,0,0,0.35);
+}
+.steam-library-card img,
+.steam-library-studio { width: 100%; height: 5.8rem; object-fit: cover; }
+.steam-library-studio { display: flex; align-items: center; justify-content: center; font-size: 2rem; background: linear-gradient(145deg, #2b241d, #111a24); }
+.steam-library-card > div:last-child { padding: 0.55rem 0.65rem 0.65rem; }
+.steam-library-card strong { display: block; overflow: hidden; color: #eee3d3; font-size: 0.78rem; text-overflow: ellipsis; white-space: nowrap; }
+.steam-library-card small { display: block; margin-top: 0.2rem; color: #776856; font-size: 0.6rem; text-transform: uppercase; letter-spacing: 0.1em; }
+
+.steam-library-empty {
+  grid-column: 1 / -1;
+  padding: 3rem 1rem;
+  color: #81715e;
+  text-align: center;
+}
+.steam-library-empty button { margin-top: 0.75rem; color: #c98a45; text-decoration: underline; }
+
+@media (max-width: 640px) {
+  .steam-library-overlay { align-items: flex-end; padding: 0; }
+  .steam-library-vault { max-height: 88vh; border-radius: 1rem 1rem 0 0; }
+  .steam-library-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); padding: 0.9rem; }
+}
+
+/* Mode de revente de la collection personnelle. */
+.steam-collection-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  margin-bottom: 1.25rem;
+  padding: 0.9rem 1rem;
+  border: 1px solid #553a25;
+  border-radius: 0.75rem;
+  background: linear-gradient(135deg, rgba(180,135,67,0.08), transparent 42%), #17120e;
+  box-shadow: inset 0 1px 0 rgba(255,198,112,0.06), 0 6px 18px rgba(0,0,0,0.25);
+}
+
+.steam-sale-start,
+.steam-sale-confirm,
+.steam-sale-secondary {
+  border-radius: 0.5rem;
+  padding: 0.58rem 0.85rem;
+  font-size: 0.75rem;
+  font-weight: 700;
+  transition: filter 150ms ease, transform 150ms ease;
+}
+.steam-sale-start,
+.steam-sale-confirm {
+  color: #fff0de;
+  border: 1px solid #bd5b3d;
+  background: linear-gradient(180deg, #a33127, #641a16);
+  box-shadow: inset 0 1px 0 rgba(255,255,255,0.14), 0 3px 8px rgba(0,0,0,0.3);
+}
+.steam-sale-start:hover,
+.steam-sale-confirm:hover { filter: brightness(1.15); transform: translateY(-1px); }
+.steam-sale-start:disabled,
+.steam-sale-confirm:disabled { cursor: not-allowed; opacity: 0.45; filter: none; transform: none; }
+.steam-sale-secondary { color: #c5b49f; border: 1px solid #60452e; background: #251d17; }
+.steam-sale-secondary:hover { color: #fff; border-color: #95663a; }
+.steam-sale-actions { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 0.45rem; }
+.steam-sale-message { margin: -0.5rem 0 1rem; color: #dfad65; font-size: 0.82rem; }
+
+.steam-sale-card { position: relative; border-radius: 1rem; transition: transform 160ms ease, box-shadow 160ms ease; }
+.steam-sale-card-selected { transform: translateY(-4px); box-shadow: 0 0 0 3px #cc6a3d, 0 0 24px rgba(191,65,40,0.38); }
+.steam-sale-card-target {
+  position: absolute;
+  inset: 0;
+  z-index: 60;
+  cursor: pointer;
+  border: 2px solid rgba(184,126,61,0.55);
+  border-radius: 1rem;
+  background: rgba(9,7,5,0.22);
+}
+.steam-sale-card-target:hover { background: rgba(181,73,39,0.1); border-color: #c67a45; }
+.steam-sale-card-target > span {
+  position: absolute;
+  top: 0.65rem;
+  right: 0.65rem;
+  display: flex;
+  width: 2.25rem;
+  height: 2.25rem;
+  align-items: center;
+  justify-content: center;
+  border: 2px solid #a46b39;
+  border-radius: 50%;
+  color: #e4b26d;
+  font-size: 1.1rem;
+  font-weight: 900;
+  background: radial-gradient(circle at 35% 25%, #4d3522, #17100c 72%);
+  box-shadow: inset 0 0 0 2px #0c0907, 0 3px 10px #000;
+}
+.steam-sale-card-target.is-selected { border-color: #e06b42; background: rgba(143,31,24,0.22); }
+.steam-sale-card-target.is-selected > span { color: #fff3df; border-color: #eb7a4e; background: #8e251d; }
+.steam-sale-card-target.is-locked { cursor: not-allowed; border-color: #51483e; background: rgba(0,0,0,0.55); }
+.steam-sale-card-target.is-locked > span { border-color: #655b50; color: #8b8174; filter: grayscale(1); }
+
+@media (max-width: 760px) {
+  .steam-collection-toolbar { align-items: stretch; flex-direction: column; }
+  .steam-sale-actions { justify-content: stretch; }
+  .steam-sale-actions button { flex: 1 1 auto; }
+}
+
 .steam-card-action {
   text-transform: uppercase;
   letter-spacing: 0.06em;
