@@ -201,6 +201,8 @@ a.bg-purple-600 {
 }
 
 .steam-card-shell {
+  --card-accent: #c4b49e;
+  --card-accent-soft: rgba(196, 180, 158, 0.22);
   position: relative;
   overflow: hidden;
   background:
@@ -211,6 +213,11 @@ a.bg-purple-600 {
     inset 0 0 24px rgba(0,0,0,0.6),
     0 10px 24px rgba(0,0,0,0.42);
 }
+
+.steam-card-shell[data-rarity="UNCOMMON"] { --card-accent: #43b967; --card-accent-soft: rgba(67,185,103,0.25); }
+.steam-card-shell[data-rarity="RARE"] { --card-accent: #4b91dc; --card-accent-soft: rgba(75,145,220,0.27); }
+.steam-card-shell[data-rarity="EPIC"] { --card-accent: #a967dc; --card-accent-soft: rgba(169,103,220,0.27); }
+.steam-card-shell[data-rarity="LEGENDARY"] { --card-accent: #e58238; --card-accent-soft: rgba(229,130,56,0.3); }
 
 .steam-card-shell::after {
   content: "";
@@ -241,6 +248,102 @@ a.bg-purple-600 {
   filter: saturate(0.9) contrast(1.04);
 }
 
+.steam-card-rig {
+  position: absolute;
+  inset: 0;
+  z-index: 24;
+  overflow: hidden;
+  pointer-events: none;
+  border-radius: 0.9rem;
+}
+
+.steam-card-pipe {
+  position: absolute;
+  display: block;
+  background: linear-gradient(180deg, #c18a50 0 18%, #59371f 22% 72%, #c08a50 78% 100%);
+  box-shadow: 0 1px 2px #000, inset 0 0 0 1px rgba(255,210,139,0.14);
+  opacity: 0.82;
+}
+
+.steam-card-pipe-top {
+  top: 6px;
+  left: 3.1rem;
+  width: 3.7rem;
+  height: 4px;
+  border-radius: 3px;
+}
+
+.steam-card-pipe-top::after {
+  content: "";
+  position: absolute;
+  right: -4px;
+  top: -2px;
+  width: 8px;
+  height: 8px;
+  border: 2px solid #79502e;
+  border-radius: 50%;
+  background: #271811;
+}
+
+.steam-card-pipe-side {
+  right: 5px;
+  top: 3.6rem;
+  width: 4px;
+  height: 3.25rem;
+  border-radius: 3px;
+  background: linear-gradient(90deg, #c18a50 0 18%, #59371f 22% 72%, #c08a50 78% 100%);
+}
+
+.steam-card-cog {
+  position: absolute;
+  color: #8e5b32;
+  font-size: 1.35rem;
+  line-height: 1;
+  text-shadow: 0 1px 0 #d0a167, 0 2px 3px #000;
+  opacity: 0.82;
+}
+.steam-card-cog-left { left: 7px; bottom: 6px; transform: rotate(-12deg); }
+.steam-card-cog-right { right: 7px; top: 7px; font-size: 1.05rem; transform: rotate(18deg); }
+
+.steam-card-clamp {
+  position: absolute;
+  top: 46%;
+  width: 9px;
+  height: 2.25rem;
+  border: 1px solid #7a4f2d;
+  background: linear-gradient(90deg, #312017, #a06a39 48%, #382319);
+  box-shadow: inset 0 2px 0 #15100d, inset 0 -2px 0 #15100d, 0 2px 3px #000;
+}
+.steam-card-clamp-left { left: 2px; border-radius: 0 5px 5px 0; }
+.steam-card-clamp-right { right: 2px; border-radius: 5px 0 0 5px; }
+
+.steam-card-image-dial {
+  position: absolute;
+  left: 50%;
+  bottom: -0.9rem;
+  z-index: 5;
+  display: flex;
+  width: 1.8rem;
+  height: 1.8rem;
+  align-items: center;
+  justify-content: center;
+  transform: translateX(-50%);
+  border: 2px solid #9b6938;
+  border-radius: 50%;
+  background: radial-gradient(circle, #37271d 0 34%, #b17a43 36% 45%, #17110d 48%);
+  box-shadow: 0 2px 5px #000, 0 0 8px var(--card-accent-soft);
+}
+
+.steam-card-image-dial i {
+  width: 2px;
+  height: 0.55rem;
+  transform: rotate(38deg) translateY(-1px);
+  transform-origin: bottom;
+  border-radius: 2px;
+  background: var(--card-accent);
+  box-shadow: 0 0 4px var(--card-accent);
+}
+
 .steam-card-visual {
   position: relative;
   flex: 0 0 auto;
@@ -258,6 +361,7 @@ a.bg-purple-600 {
 
 .steam-studio-visual {
   border-top: 2px solid #6d4a2b;
+  overflow: visible !important;
 }
 
 .steam-studio-mosaic {
@@ -301,6 +405,17 @@ a.bg-purple-600 {
   box-shadow: inset 0 0 0 3px rgba(16,12,9,0.72), inset 0 0 0 4px rgba(184,130,67,0.28);
 }
 
+.steam-card-visual::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: 3;
+  pointer-events: none;
+  clip-path: polygon(0 0, 100% 0, 100% 100%, 87% 100%, 84% 94%, 16% 94%, 13% 100%, 0 100%);
+  border: 1px solid rgba(221,168,91,0.35);
+  box-shadow: inset 0 0 18px rgba(0,0,0,0.42);
+}
+
 .steam-card-content {
   position: relative;
   background:
@@ -320,6 +435,11 @@ a.bg-purple-600 {
     linear-gradient(90deg, rgba(158,102,48,0.23), transparent 18% 82%, rgba(73,42,23,0.24)),
     linear-gradient(180deg, #2c231b, #17120f);
   box-shadow: inset 0 1px 0 rgba(244,190,105,0.11), 0 2px 5px rgba(0,0,0,0.35);
+}
+
+.steam-card-nameplate {
+  border-top-color: color-mix(in srgb, var(--card-accent) 52%, #604329);
+  box-shadow: inset 0 1px 0 rgba(244,190,105,0.11), 0 2px 5px rgba(0,0,0,0.35), 0 0 10px var(--card-accent-soft);
 }
 
 .steam-card-nameplate::before,
@@ -351,12 +471,27 @@ a.bg-purple-600 {
 }
 
 .steam-statbar {
+  position: relative;
   border-color: #5a3f29;
   background: linear-gradient(90deg, rgba(121, 34, 27, 0.12), transparent 45%, rgba(81, 105, 117, 0.08));
   margin-left: -0.35rem;
   margin-right: -0.35rem;
   padding-left: 0.35rem;
   padding-right: 0.35rem;
+}
+
+.steam-statbar::before {
+  content: "";
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 1.15rem;
+  height: 1.15rem;
+  transform: translate(-50%, -35%);
+  border: 2px solid #755033;
+  border-radius: 50%;
+  background: radial-gradient(circle, var(--card-accent) 0 2px, #221710 3px 48%, #865a34 50% 62%, #15100d 64%);
+  box-shadow: 0 2px 4px #000, 0 0 6px var(--card-accent-soft);
 }
 
 .steam-stat {
@@ -367,6 +502,16 @@ a.bg-purple-600 {
   border-radius: 0.35rem;
   background: linear-gradient(180deg, rgba(255,255,255,0.045), rgba(0,0,0,0.22));
   box-shadow: inset 0 1px 0 rgba(255,255,255,0.07), 0 2px 5px rgba(0,0,0,0.32);
+}
+
+.steam-stat > span:last-child {
+  min-width: 2.4rem;
+  padding-left: 0.38rem;
+  border-left: 1px solid rgba(196,137,73,0.3);
+  text-align: center;
+  font-family: Georgia, "Times New Roman", serif;
+  font-size: 0.92rem;
+  letter-spacing: 0.02em;
 }
 
 .steam-stat-atk { border-color: rgba(180, 61, 45, 0.48); }
@@ -648,6 +793,71 @@ a.bg-purple-600 {
   .steam-collection-toolbar { align-items: stretch; flex-direction: column; }
   .steam-sale-actions { justify-content: stretch; }
   .steam-sale-actions button { flex: 1 1 auto; }
+}
+
+/* Rapport détaillé de l'aspiration Steam. */
+.steam-import-report {
+  margin-top: 1rem;
+  padding-top: 0.85rem;
+  border-top: 1px solid #4f3825;
+}
+
+.steam-import-summary {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 0.45rem;
+  margin-bottom: 0.75rem;
+}
+.steam-import-summary span {
+  padding: 0.55rem;
+  border: 1px solid #523923;
+  border-radius: 0.45rem;
+  color: #8f7b65;
+  text-align: center;
+  background: #17120e;
+}
+.steam-import-summary strong { display: block; color: #e2ad65; font-size: 1rem; }
+
+.steam-import-report details { border-top: 1px solid #3e2d20; }
+.steam-import-report summary {
+  cursor: pointer;
+  padding: 0.65rem 0.2rem;
+  color: #cbbba5;
+  font-size: 0.72rem;
+  font-weight: 700;
+}
+
+.steam-import-game-list {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.4rem;
+  padding-bottom: 0.7rem;
+}
+.steam-import-game {
+  display: flex;
+  min-width: 0;
+  gap: 0.55rem;
+  align-items: center;
+  padding: 0.42rem;
+  border: 1px solid #493422;
+  border-radius: 0.4rem;
+  background: #1b1511;
+}
+.steam-import-game img { width: 3.5rem; height: 2rem; flex: 0 0 auto; border-radius: 0.25rem; object-fit: cover; }
+.steam-import-game strong,
+.steam-import-game small { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.steam-import-game strong { color: #eee2d1; font-size: 0.69rem; }
+.steam-import-game small { color: #806f5d; font-size: 0.59rem; }
+
+.steam-import-studios { display: flex; flex-wrap: wrap; gap: 0.35rem; padding-bottom: 0.7rem; }
+.steam-import-studios span { padding: 0.3rem 0.5rem; border: 1px solid #5b4028; border-radius: 999px; color: #bf9a68; background: #1a1410; }
+.steam-import-studios p,
+.steam-import-game-list > p { color: #756655; padding: 0.5rem; }
+.steam-import-errors { max-height: 10rem; overflow-y: auto; padding: 0 0 0.7rem 1rem; color: #bd6957; font-size: 0.62rem; }
+
+@media (max-width: 640px) {
+  .steam-import-summary { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .steam-import-game-list { grid-template-columns: 1fr; }
 }
 
 .steam-card-action {

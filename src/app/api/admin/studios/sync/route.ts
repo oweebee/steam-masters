@@ -6,7 +6,7 @@ import {
   getSteamGameData,
   upsertStudiosForDevelopers,
 } from "@/lib/steam";
-import { rollCardRarity } from "@/lib/rarityRoll";
+import { getNextCatalogRarity } from "@/lib/catalogRarity";
 
 async function requireAdmin() {
   const session = await auth();
@@ -38,6 +38,7 @@ export async function POST(req: NextRequest) {
   })).map((game) => game.id));
 
   let imported = 0;
+  const importedGames: { id: string; name: string; headerImage: string; def: number; rarity: string }[] = [];
   const errors: { appid: string; error: string }[] = [];
   const affectedDevelopers = new Set<string>([name]);
 
@@ -46,7 +47,7 @@ export async function POST(req: NextRequest) {
     try {
       const data = await getSteamGameData(Number(officialGame.appid));
       if (data.ownerEstimate <= 0) throw new Error("Jeu refusé : DEF doit être supérieur à 0");
-      const rarity = rollCardRarity();
+      const rarity = await getNextCatalogRarity();
       await prisma.steamGame.create({
         data: {
           id: String(data.appid),
@@ -66,6 +67,13 @@ export async function POST(req: NextRequest) {
         },
       });
       data.developers.forEach((developer) => affectedDevelopers.add(developer));
+      importedGames.push({
+        id: String(data.appid),
+        name: data.name,
+        headerImage: data.headerImage,
+        def: data.ownerEstimate,
+        rarity,
+      });
       imported += 1;
     } catch (error) {
       errors.push({
@@ -80,6 +88,7 @@ export async function POST(req: NextRequest) {
     studio: name,
     official: officialGames.length,
     imported,
+    importedGames,
     existing: officialGames.length - imported - errors.length,
     errors,
     relatedStudios: Array.from(affectedDevelopers),

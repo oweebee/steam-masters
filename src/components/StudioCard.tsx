@@ -2,6 +2,7 @@
 import Link from "next/link";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { FlipCard } from "./FlipCard";
+import { CardOrnaments } from "./CardOrnaments";
 import { RARITY_STYLES, type Rarity } from "@/lib/rarityStyles";
 
 type GameLink = { name: string; appid: string | null; hasCard: boolean; headerImage?: string | null };
@@ -46,13 +47,13 @@ export function StudioCard({
         const data = await res.json();
         if (cancelled) return;
         if (Array.isArray(data) && data.length > 0) {
-        setResolvedGames((current) => {
-          const currentById = new Map(current.map((game) => [game.appid ?? game.name, game]));
-          return data.map((game: GameLink) => ({
-            ...currentById.get(game.appid ?? game.name),
-            ...game,
-          }));
-        });
+          setResolvedGames((current) => {
+            const currentById = new Map(current.map((game) => [game.appid ?? game.name, game]));
+            return data.map((game: GameLink) => ({
+              ...currentById.get(game.appid ?? game.name),
+              ...game,
+            }));
+          });
         }
         setLoadState("ready");
       } catch {
@@ -90,8 +91,10 @@ export function StudioCard({
   const front = (
     <div
       ref={frontRef}
+      data-rarity={rarity}
       className={`steam-card-shell w-full h-full rounded-2xl border-2 ${style.border} ${style.glow} bg-gray-900 overflow-hidden flex flex-col`}
     >
+      <CardOrnaments />
       <div className="steam-card-content p-4 flex flex-col gap-2 flex-1">
         <span className="text-[10px] uppercase tracking-wide text-gray-500">Studio</span>
         <div className="steam-card-nameplate">
@@ -134,6 +137,7 @@ export function StudioCard({
           ) : (
             <span className="text-4xl">🏢</span>
           )}
+          <span className="steam-card-image-dial" aria-hidden="true"><i /></span>
         </div>
 
         <div className="steam-statbar flex justify-between items-center pt-2 border-t border-gray-800">
@@ -155,8 +159,10 @@ export function StudioCard({
 
   const back = (
     <div
+      data-rarity={rarity}
       className={`steam-card-shell w-full h-full rounded-2xl border-2 ${style.border} ${style.glow} bg-gray-900 flex flex-col p-4 gap-2`}
     >
+      <CardOrnaments />
       <div className="steam-card-nameplate">
         <h3 className="steam-card-title text-white font-bold text-base leading-tight truncate">{name}</h3>
       </div>

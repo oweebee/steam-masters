@@ -21,6 +21,29 @@ type Game = {
 
 type Suggestion = { appid: number; name: string; tinyImage: string };
 type StudioMatch = { id: string; name: string; gameCount: number };
+type ImportGameDetail = {
+  id: string;
+  name: string;
+  headerImage: string;
+  def: number;
+  rarity: string;
+  developers: string[];
+  sourceStudio?: string;
+};
+type SeedReport = {
+  initialGames: ImportGameDetail[];
+  associatedGames: ImportGameDetail[];
+  createdStudios: string[];
+  totalCards: number;
+  errors: string[];
+};
+const RARITY_NAME: Record<string, string> = {
+  COMMON: "Commune",
+  UNCOMMON: "Peu commune",
+  RARE: "Rare",
+  EPIC: "Épique",
+  LEGENDARY: "Légendaire",
+};
 
 export default function AdminGamesPage() {
   const [games, setGames] = useState<Game[]>([]);
@@ -38,6 +61,7 @@ export default function AdminGamesPage() {
   const [seeding, setSeeding] = useState(false);
   const [seedMessage, setSeedMessage] = useState("");
   const [seedProgress, setSeedProgress] = useState({ base: 0, studiosDone: 0, studiosTotal: 0, errors: 0 });
+  const [seedReport, setSeedReport] = useState<SeedReport | null>(null);
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   async function load() {
@@ -149,6 +173,7 @@ export default function AdminGamesPage() {
     setSeeding(true);
     setSeedMessage("Recherche de jeux absents du catalogue…");
     setSeedProgress({ base: 0, studiosDone: 0, studiosTotal: 0, errors: 0 });
+    setSeedReport(null);
 
     const [beforeGamesRes, beforeStudiosRes, discoveryRes] = await Promise.all([
       fetch("/api/admin/games"),
@@ -168,6 +193,9 @@ export default function AdminGamesPage() {
     const candidates: string[] = Array.isArray(discoveryData.appids) ? discoveryData.appids : [];
     const studioQueue: string[] = [];
     const knownStudios = new Set<string>();
+    const initialGames: ImportGameDetail[] = [];
+    const associatedGameDetails = new Map<string, ImportGameDetail>();
+    const errorDetails: string[] = [];
     let base = 0;
     let errors = 0;
 
@@ -180,11 +208,21 @@ export default function AdminGamesPage() {
         body: JSON.stringify({ appid: candidate }),
       });
       if (!response.ok) {
+        const failure = await response.json().catch(() => ({}));
         errors += 1;
+        errorDetails.push(`#${candidate} : ${failure.error ?? "import refusé"}`);
         setSeedProgress((current) => ({ ...current, errors }));
         continue;
       }
       const game: Game = await response.json();
+      initialGames.push({
+        id: game.id,
+        name: game.name,
+        headerImage: game.headerImage,
+        def: game.def,
+        rarity: game.rarity,
+        developers: game.developers,
+      });
       base += 1;
       for (const developer of game.developers) {
         if (!knownStudios.has(developer)) {
@@ -197,6 +235,7 @@ export default function AdminGamesPage() {
 
     if (base < 20) {
       setSeedMessage(`Import incomplet : ${base}/20 jeux ajoutés. ${errors} candidat(s) refusé(s) par Steam.`);
+      setSeedReport({ initialGames, associatedGames: [], createdStudios: [], totalCards: base, errors: errorDetails });
       setSeeding(false);
       load();
       return;
@@ -212,6 +251,16 @@ export default function AdminGamesPage() {
       if (response.ok) {
         const data = await response.json();
         errors += Array.isArray(data.errors) ? data.errors.length : 0;
+        for (const game of data.importedGames ?? []) {
+          associatedGameDetails.set(game.id, {
+            ...game,
+            developers: [],
+            sourceStudio: studioQueue[index],
+          });
+        }
+        for (const failure of data.errors ?? []) {
+          errorDetails.push(`${studioQueue[index]} · #${failure.appid} : ${failure.error}`);
+        }
         for (const related of data.relatedStudios ?? []) {
           if (!knownStudios.has(related)) {
             knownStudios.add(related);
@@ -220,6 +269,8 @@ export default function AdminGamesPage() {
         }
       } else {
         errors += 1;
+        const failure = await response.json().catch(() => ({}));
+        errorDetails.push(`${studioQueue[index]} : ${failure.error ?? "synchronisation impossible"}`);
       }
       setSeedProgress({ base, studiosDone: index + 1, studiosTotal: studioQueue.length, errors });
     }
@@ -237,15 +288,25 @@ export default function AdminGamesPage() {
     const afterGames: Game[] = await afterGamesRes.json();
     const afterStudiosData = await afterStudiosRes.json();
     const newGames = Math.max(0, afterGames.length - beforeGames.length);
-    const associatedGames = Math.max(0, newGames - base);
+    const associatedGameCount = Math.max(0, newGames - base);
     const beforeStudioCount = Array.isArray(beforeStudiosData.studios) ? beforeStudiosData.studios.length : 0;
     const afterStudioCount = Array.isArray(afterStudiosData.studios) ? afterStudiosData.studios.length : 0;
     const newStudios = Math.max(0, afterStudioCount - beforeStudioCount);
     const totalCards = newGames + newStudios;
+    const beforeStudioNames = new Set<string>(Array.isArray(beforeStudiosData.studios) ? beforeStudiosData.studios : []);
+    const createdStudios = (Array.isArray(afterStudiosData.studios) ? afterStudiosData.studios : [])
+      .filter((studio: string) => !beforeStudioNames.has(studio));
 
     setSeedMessage(
-      `Terminé : ${base} jeux inédits + ${associatedGames} jeux associés + ${newStudios} studios = ${totalCards} nouvelles cartes. ${errors} erreur(s).`
+      `Terminé : ${base} jeux inédits + ${associatedGameCount} jeux associés + ${newStudios} studios = ${totalCards} nouvelles cartes. ${errors} erreur(s).`
     );
+    setSeedReport({
+      initialGames,
+      associatedGames: Array.from(associatedGameDetails.values()),
+      createdStudios,
+      totalCards,
+      errors: errorDetails,
+    });
     setSeeding(false);
     load();
   }
@@ -333,6 +394,66 @@ export default function AdminGamesPage() {
             <p className="text-gray-600 mt-1">
               Jeux initiaux : {seedProgress.base}/20 · Studios : {seedProgress.studiosDone}/{seedProgress.studiosTotal} · Erreurs : {seedProgress.errors}
             </p>
+          </div>
+        )}
+        {seedReport && (
+          <div className="steam-import-report">
+            <div className="steam-import-summary">
+              <span><strong>{seedReport.initialGames.length}</strong> jeux initiaux</span>
+              <span><strong>{seedReport.associatedGames.length}</strong> jeux des studios</span>
+              <span><strong>{seedReport.createdStudios.length}</strong> studios créés</span>
+              <span><strong>{seedReport.totalCards}</strong> cartes au total</span>
+            </div>
+
+            <details open>
+              <summary>Jeux importés directement ({seedReport.initialGames.length})</summary>
+              <div className="steam-import-game-list">
+                {seedReport.initialGames.map((game) => (
+                  <div key={game.id} className="steam-import-game">
+                    <img src={game.headerImage} alt="" />
+                    <span className="min-w-0">
+                      <strong>{game.name}</strong>
+                      <small>DEF {game.def.toLocaleString("fr-FR")} · {RARITY_NAME[game.rarity] ?? game.rarity}</small>
+                      <small>{game.developers.join(" · ")}</small>
+                    </span>
+                  </div>
+                ))}
+              </div>
+            </details>
+
+            <details>
+              <summary>Studios nouvellement liés ({seedReport.createdStudios.length})</summary>
+              <div className="steam-import-studios">
+                {seedReport.createdStudios.map((studio) => <span key={studio}>⚙ {studio}</span>)}
+                {seedReport.createdStudios.length === 0 && <p>Aucun nouveau studio.</p>}
+              </div>
+            </details>
+
+            <details>
+              <summary>Cartes Jeu recréées depuis les studios ({seedReport.associatedGames.length})</summary>
+              <div className="steam-import-game-list">
+                {seedReport.associatedGames.map((game) => (
+                  <div key={game.id} className="steam-import-game">
+                    <img src={game.headerImage} alt="" />
+                    <span className="min-w-0">
+                      <strong>{game.name}</strong>
+                      <small>via {game.sourceStudio} · DEF {game.def.toLocaleString("fr-FR")}</small>
+                      <small>{RARITY_NAME[game.rarity] ?? game.rarity}</small>
+                    </span>
+                  </div>
+                ))}
+                {seedReport.associatedGames.length === 0 && <p>Aucune carte supplémentaire.</p>}
+              </div>
+            </details>
+
+            {seedReport.errors.length > 0 && (
+              <details>
+                <summary>Imports refusés ({seedReport.errors.length})</summary>
+                <ul className="steam-import-errors">
+                  {seedReport.errors.map((message, index) => <li key={`${message}-${index}`}>{message}</li>)}
+                </ul>
+              </details>
+            )}
           </div>
         )}
       </div>

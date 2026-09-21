@@ -1,6 +1,6 @@
 import { prisma } from "@/lib/prisma";
 import { redis } from "@/lib/redis";
-import { rollCardRarity } from "@/lib/rarityRoll";
+import { getNextCatalogRarity } from "@/lib/catalogRarity";
 
 const CACHE_TTL = 60 * 30; // 30 min
 
@@ -214,19 +214,25 @@ export async function upsertStudiosForDevelopers(developers: string[]) {
     const avgReviewScore = Math.round(games.reduce((s, g) => s + g.reviewScore, 0) / gameCount);
     const totalOwnerEstimate = games.reduce((s, g) => s + g.ownerEstimate, 0);
     const gameNames = games.map((g) => g.name).sort();
-    await prisma.studio.upsert({
-      where: { name },
-      update: { gameCount, avgReviewScore, totalOwnerEstimate, games: gameNames, atk: avgReviewScore, def: totalOwnerEstimate },
-      create: {
+    const existing = await prisma.studio.findUnique({ where: { name }, select: { id: true } });
+    if (existing) {
+      await prisma.studio.update({
+        where: { id: existing.id },
+        data: { gameCount, avgReviewScore, totalOwnerEstimate, games: gameNames, atk: avgReviewScore, def: totalOwnerEstimate },
+      });
+    } else {
+      await prisma.studio.create({
+        data: {
         name,
         gameCount,
         avgReviewScore,
         totalOwnerEstimate,
         games: gameNames,
-        rarity: rollCardRarity(),
+        rarity: await getNextCatalogRarity(),
         atk: avgReviewScore,
         def: totalOwnerEstimate,
-      },
-    });
+        },
+      });
+    }
   }
 }

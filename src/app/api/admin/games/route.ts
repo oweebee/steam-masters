@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/auth";
 import { prisma } from "@/lib/prisma";
 import { getSteamGameData, upsertStudiosForDevelopers } from "@/lib/steam";
-import { rollCardRarity } from "@/lib/rarityRoll";
+import { getNextCatalogRarity } from "@/lib/catalogRarity";
 
 async function requireAdmin() {
   const session = await auth();
@@ -35,7 +35,7 @@ export async function POST(req: NextRequest) {
   });
   // Rareté tirée une seule fois à la création. Un rafraîchissement Steam ne la
   // recalcule jamais et ne transforme donc plus les petits jeux en Légendaires.
-  const rarity = existing?.rarity ?? rollCardRarity();
+  const rarity = existing?.rarity ?? await getNextCatalogRarity();
 
   const game = await prisma.steamGame.upsert({
     where: { id: String(data.appid) },

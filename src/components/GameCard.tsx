@@ -1,5 +1,6 @@
 "use client";
 import { FlipCard } from "./FlipCard";
+import { CardOrnaments } from "./CardOrnaments";
 import { RARITY_STYLES, type Rarity } from "@/lib/rarityStyles";
 
 function formatOwners(n: number) {
@@ -50,10 +51,13 @@ export function GameCard({
 
   const front = (
     <div
+      data-rarity={rarity}
       className={`steam-card-shell w-full h-full rounded-2xl border-2 ${style.border} ${style.glow} bg-gray-900 overflow-hidden flex flex-col`}
     >
+      <CardOrnaments />
       <div className="steam-card-visual">
         <img src={headerImage} alt={name} className="w-full h-36 object-cover" />
+        <span className="steam-card-image-dial" aria-hidden="true"><i /></span>
       </div>
 
       <div className="steam-card-content p-4 flex flex-col gap-2 flex-1">
@@ -92,8 +96,10 @@ export function GameCard({
 
   const back = (
     <div
+      data-rarity={rarity}
       className={`steam-card-shell w-full h-full rounded-2xl border-2 ${style.border} ${style.glow} bg-gray-900 flex flex-col p-4 gap-3`}
     >
+      <CardOrnaments />
       <div className="steam-card-nameplate">
         <h3 className="steam-card-title text-white font-bold text-base leading-tight truncate">{name}</h3>
       </div>
