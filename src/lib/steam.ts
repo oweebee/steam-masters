@@ -1,5 +1,6 @@
 import { prisma } from "@/lib/prisma";
 import { redis } from "@/lib/redis";
+import { rollCardRarity } from "@/lib/rarityRoll";
 
 const CACHE_TTL = 60 * 30; // 30 min
 
@@ -37,7 +38,7 @@ export async function discoverSteamGameAppids(maxResults = 200): Promise<string[
   for (let start = 0; start < maxResults; start += pageSize) {
     const response = await fetch(
       `https://store.steampowered.com/search/results/?query&start=${start}&count=${pageSize}` +
-        `&dynamic_data=&sort_by=Released_DESC&category1=998&ndl=1&infinite=1&ignore_preferences=1`,
+        `&dynamic_data=&sort_by=Reviews_DESC&category1=998&ndl=1&infinite=1&ignore_preferences=1`,
       { cache: "no-store", headers: { "User-Agent": "SteamMasters/1.0" } }
     );
     if (!response.ok) throw new Error(`Steam discovery HTTP ${response.status}`);
@@ -97,7 +98,7 @@ async function fetchOwnerEstimate(appid: number): Promise<number> {
   const range: string | undefined = json?.owners;
   if (!range) return 0;
   const [lo, hi] = range.split("..").map((s) => parseInt(s.replace(/[,.\s]/g, ""), 10));
-  if (!lo || !hi) return 0;
+  if (!Number.isFinite(lo) || !Number.isFinite(hi) || hi < lo) return 0;
   return Math.round((lo + hi) / 2);
 }
 
@@ -193,15 +194,6 @@ export async function getSteamDeveloperGames(developerName: string): Promise<Ste
   return games;
 }
 
-export function computeRarity(ownerEstimate: number): "COMMON" | "UNCOMMON" | "RARE" | "EPIC" | "LEGENDARY" {
-  // Moins de possesseurs = plus rare. Seuils provisoires, à ajuster.
-  if (ownerEstimate > 10_000_000) return "COMMON";
-  if (ownerEstimate > 2_000_000) return "UNCOMMON";
-  if (ownerEstimate > 500_000) return "RARE";
-  if (ownerEstimate > 100_000) return "EPIC";
-  return "LEGENDARY";
-}
-
 // Recalcule et upsert la fiche Studio pour chaque développeur, à partir de TOUS
 // les SteamGame déjà en base qui le mentionnent (agrégation à la demande, pas de
 // compteurs incrémentaux — toujours exact, pas de dérive possible).
@@ -211,7 +203,7 @@ export function computeRarity(ownerEstimate: number): "COMMON" | "UNCOMMON" | "R
 //     Steam ne publie aucun chiffre de ventes officiel ; ownerEstimate vient de
 //     SteamSpy, tiers non-officiel. Remplace l'ancien proxy peakCcu, qui tombait
 //     à 0 pour les jeux solo/sans multijoueur actif au moment du fetch.)
-//   Rareté studio = computeRarity() sur la somme des ownerEstimate de ses jeux
+//   Rareté studio = tirée une fois à sa création, puis figée.
 export async function upsertStudiosForDevelopers(developers: string[]) {
   for (const name of developers) {
     if (!name) continue;
@@ -222,12 +214,19 @@ export async function upsertStudiosForDevelopers(developers: string[]) {
     const avgReviewScore = Math.round(games.reduce((s, g) => s + g.reviewScore, 0) / gameCount);
     const totalOwnerEstimate = games.reduce((s, g) => s + g.ownerEstimate, 0);
     const gameNames = games.map((g) => g.name).sort();
-    const rarity = computeRarity(totalOwnerEstimate);
-
     await prisma.studio.upsert({
       where: { name },
-      update: { gameCount, avgReviewScore, totalOwnerEstimate, games: gameNames, rarity, atk: avgReviewScore, def: totalOwnerEstimate },
-      create: { name, gameCount, avgReviewScore, totalOwnerEstimate, games: gameNames, rarity, atk: avgReviewScore, def: totalOwnerEstimate },
+      update: { gameCount, avgReviewScore, totalOwnerEstimate, games: gameNames, atk: avgReviewScore, def: totalOwnerEstimate },
+      create: {
+        name,
+        gameCount,
+        avgReviewScore,
+        totalOwnerEstimate,
+        games: gameNames,
+        rarity: rollCardRarity(),
+        atk: avgReviewScore,
+        def: totalOwnerEstimate,
+      },
     });
   }
 }

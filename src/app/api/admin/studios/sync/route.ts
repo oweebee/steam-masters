@@ -2,11 +2,11 @@ import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/auth";
 import { prisma } from "@/lib/prisma";
 import {
-  computeRarity,
   getSteamDeveloperGames,
   getSteamGameData,
   upsertStudiosForDevelopers,
 } from "@/lib/steam";
+import { rollCardRarity } from "@/lib/rarityRoll";
 
 async function requireAdmin() {
   const session = await auth();
@@ -45,7 +45,8 @@ export async function POST(req: NextRequest) {
     if (existing.has(officialGame.appid)) continue;
     try {
       const data = await getSteamGameData(Number(officialGame.appid));
-      const rarity = computeRarity(data.ownerEstimate);
+      if (data.ownerEstimate <= 0) throw new Error("Jeu refusé : DEF doit être supérieur à 0");
+      const rarity = rollCardRarity();
       await prisma.steamGame.create({
         data: {
           id: String(data.appid),

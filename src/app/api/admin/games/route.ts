@@ -1,7 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/auth";
 import { prisma } from "@/lib/prisma";
-import { getSteamGameData, computeRarity, upsertStudiosForDevelopers } from "@/lib/steam";
+import { getSteamGameData, upsertStudiosForDevelopers } from "@/lib/steam";
+import { rollCardRarity } from "@/lib/rarityRoll";
 
 async function requireAdmin() {
   const session = await auth();
@@ -24,8 +25,17 @@ export async function POST(req: NextRequest) {
   } catch (e: any) {
     return NextResponse.json({ error: e.message }, { status: 400 });
   }
+  if (data.ownerEstimate <= 0) {
+    return NextResponse.json({ error: "Jeu refusé : DEF doit être supérieur à 0" }, { status: 422 });
+  }
 
-  const rarity = computeRarity(data.ownerEstimate);
+  const existing = await prisma.steamGame.findUnique({
+    where: { id: String(data.appid) },
+    select: { rarity: true },
+  });
+  // Rareté tirée une seule fois à la création. Un rafraîchissement Steam ne la
+  // recalcule jamais et ne transforme donc plus les petits jeux en Légendaires.
+  const rarity = existing?.rarity ?? rollCardRarity();
 
   const game = await prisma.steamGame.upsert({
     where: { id: String(data.appid) },
@@ -36,7 +46,6 @@ export async function POST(req: NextRequest) {
       reviewScore: data.reviewScore,
       peakCcu: data.peakCcu,
       ownerEstimate: data.ownerEstimate,
-      rarity,
       atk: data.reviewScore,
       def: data.ownerEstimate,
       tags: data.tags,
