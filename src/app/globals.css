@@ -1,8 +1,15 @@
 @import "tailwindcss";
 
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  --background: #0c0a08;
+  --foreground: #ede5d8;
+  --steam-red: #a91f1f;
+  --steam-red-bright: #d13a2f;
+  --steam-brass: #b48743;
+  --steam-copper: #8f4f2c;
+  --steam-iron: #171411;
+  --steam-panel: #211b16;
+  --steam-line: #4b3827;
 }
 
 @theme inline {
@@ -14,13 +21,173 @@
 
 @media (prefers-color-scheme: dark) {
   :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
+    --background: #0c0a08;
+    --foreground: #ede5d8;
   }
 }
 
 body {
-  background: var(--background);
+  background:
+    radial-gradient(circle at 15% 0%, rgba(169, 31, 31, 0.12), transparent 32rem),
+    radial-gradient(circle at 90% 18%, rgba(180, 135, 67, 0.08), transparent 28rem),
+    linear-gradient(145deg, #100d0a 0%, #080706 58%, #120d09 100%);
+  background-attachment: fixed;
   color: var(--foreground);
   font-family: Arial, Helvetica, sans-serif;
+}
+
+/* Palette globale : acier sombre, cuivre et laiton, sans surcharger les écrans. */
+.bg-gray-950 { background-color: #0c0a08; }
+.bg-gray-900 { background-color: #18130f; }
+.bg-gray-800 { background-color: #282019; }
+.border-gray-800 { border-color: #493625; }
+.border-gray-700 { border-color: #62472d; }
+.text-gray-300 { color: #d9cdbc; }
+.text-gray-400 { color: #ab9b87; }
+.text-gray-500 { color: #81715e; }
+.text-gray-600 { color: #685847; }
+
+.min-h-screen.bg-gray-950 {
+  background:
+    radial-gradient(circle at 12% 0%, rgba(169, 31, 31, 0.11), transparent 28rem),
+    radial-gradient(circle at 88% 22%, rgba(180, 135, 67, 0.07), transparent 32rem),
+    linear-gradient(145deg, #100d0a, #080706 62%, #130e0a);
+}
+
+h1, h2 {
+  font-family: Georgia, "Times New Roman", serif;
+  letter-spacing: 0.025em;
+  text-shadow: 0 1px 0 #000, 0 0 18px rgba(180, 135, 67, 0.08);
+}
+
+input, select, textarea {
+  box-shadow: inset 0 1px 4px rgba(0, 0, 0, 0.5);
+}
+
+input:focus, select:focus, textarea:focus {
+  border-color: #a8743e !important;
+  --tw-ring-color: rgba(180, 135, 67, 0.55) !important;
+  box-shadow: inset 0 1px 4px rgba(0,0,0,0.5), 0 0 0 2px rgba(180, 135, 67, 0.34) !important;
+}
+
+.bg-gray-900.border,
+.bg-gray-800.border {
+  box-shadow: inset 0 1px 0 rgba(222, 173, 95, 0.04), 0 6px 18px rgba(0,0,0,0.2);
+}
+
+button.bg-blue-600,
+a.bg-blue-600 {
+  background: linear-gradient(180deg, #c4352d 0%, #861918 100%) !important;
+  border: 1px solid #d05b45;
+  box-shadow: inset 0 1px 0 rgba(255,255,255,0.15), 0 3px 10px rgba(0,0,0,0.28);
+}
+
+button.bg-blue-600:hover,
+a.bg-blue-600:hover {
+  background: linear-gradient(180deg, #dd4738 0%, #9d201d 100%) !important;
+}
+
+button.bg-purple-600,
+a.bg-purple-600 {
+  background: linear-gradient(180deg, #b16f35 0%, #70401f 100%) !important;
+  border: 1px solid #c18b50;
+}
+
+.steam-app-shell {
+  background:
+    linear-gradient(rgba(8, 7, 6, 0.88), rgba(8, 7, 6, 0.94)),
+    repeating-linear-gradient(90deg, transparent 0 47px, rgba(180, 135, 67, 0.035) 48px 49px);
+}
+
+.steam-main {
+  position: relative;
+  min-width: 0;
+}
+
+.steam-main::before {
+  content: "";
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  background:
+    repeating-linear-gradient(0deg, transparent 0 3px, rgba(255,255,255,0.008) 4px),
+    radial-gradient(circle at 50% -15%, rgba(180, 135, 67, 0.08), transparent 38rem);
+  z-index: 0;
+}
+
+.steam-main > * {
+  position: relative;
+  z-index: 1;
+}
+
+.steam-sidebar {
+  background:
+    linear-gradient(90deg, rgba(255,255,255,0.02), transparent 18%),
+    linear-gradient(180deg, #211a14 0%, #110e0b 48%, #18100c 100%);
+  border-color: #63462c;
+  box-shadow: inset -1px 0 0 rgba(196, 145, 76, 0.18), 8px 0 24px rgba(0,0,0,0.32);
+}
+
+.steam-sidebar nav a {
+  border: 1px solid transparent;
+}
+
+.steam-sidebar nav a:hover {
+  border-color: rgba(180, 135, 67, 0.25);
+  background-color: rgba(83, 56, 35, 0.55);
+}
+
+.steam-admin-tabs {
+  background: linear-gradient(180deg, #1d1712, #100d0a);
+  border-color: #5b4029;
+  box-shadow: 0 5px 18px rgba(0,0,0,0.3);
+}
+
+.steam-card-shell {
+  position: relative;
+  background:
+    linear-gradient(135deg, rgba(180, 135, 67, 0.08), transparent 28%),
+    linear-gradient(160deg, #251e18 0%, #110f0d 52%, #1d1510 100%);
+  box-shadow:
+    inset 0 0 0 1px rgba(225, 174, 91, 0.12),
+    inset 0 0 24px rgba(0,0,0,0.6),
+    0 10px 24px rgba(0,0,0,0.42);
+}
+
+.steam-card-shell::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: 20;
+  pointer-events: none;
+  border-radius: 0.9rem;
+  background:
+    radial-gradient(circle at 10px 10px, #e0b66c 0 2px, #6c4525 3px, transparent 4px),
+    radial-gradient(circle at calc(100% - 10px) 10px, #e0b66c 0 2px, #6c4525 3px, transparent 4px),
+    radial-gradient(circle at 10px calc(100% - 10px), #e0b66c 0 2px, #6c4525 3px, transparent 4px),
+    radial-gradient(circle at calc(100% - 10px) calc(100% - 10px), #e0b66c 0 2px, #6c4525 3px, transparent 4px);
+}
+
+.steam-card-shell img {
+  filter: saturate(0.9) contrast(1.04);
+  border-bottom: 1px solid rgba(180, 135, 67, 0.35);
+}
+
+.steam-card-title {
+  font-family: Georgia, "Times New Roman", serif;
+  letter-spacing: 0.01em;
+  text-shadow: 0 1px 0 #000;
+}
+
+.steam-statbar {
+  border-color: #5a3f29;
+  background: linear-gradient(90deg, rgba(121, 34, 27, 0.12), transparent 45%, rgba(81, 105, 117, 0.08));
+  margin-left: -0.35rem;
+  margin-right: -0.35rem;
+  padding-left: 0.35rem;
+  padding-right: 0.35rem;
+}
+
+* {
+  scrollbar-color: #78502d #17120e;
 }

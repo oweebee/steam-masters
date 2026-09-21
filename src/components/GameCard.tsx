@@ -50,7 +50,7 @@ export function GameCard({
 
   const front = (
     <div
-      className={`w-full h-full rounded-2xl border-2 ${style.border} ${style.glow} bg-gray-900 overflow-hidden flex flex-col`}
+      className={`steam-card-shell w-full h-full rounded-2xl border-2 ${style.border} ${style.glow} bg-gray-900 overflow-hidden flex flex-col`}
     >
       <span
         className={`absolute top-2 right-2 z-10 ${style.label} text-white text-xs font-bold px-2 py-1 rounded-full`}
@@ -61,7 +61,7 @@ export function GameCard({
       <img src={headerImage} alt={name} className="w-full h-36 object-cover" />
 
       <div className="p-4 flex flex-col gap-2 flex-1">
-        <h3 className="text-white font-bold text-lg leading-tight">{name}</h3>
+        <h3 className="steam-card-title text-white font-bold text-lg leading-tight">{name}</h3>
 
         {tags.length > 0 && (
           <div className="flex flex-wrap gap-1">
@@ -75,7 +75,7 @@ export function GameCard({
 
         <p className="text-gray-400 text-xs leading-snug line-clamp-4 flex-1">{description}</p>
 
-        <div className="flex justify-between items-center pt-2 border-t border-gray-800 mt-2">
+        <div className="steam-statbar flex justify-between items-center pt-2 border-t border-gray-800 mt-2">
           <div className="flex items-center gap-1 text-red-400 font-bold">
             <span className="text-xs">ATK</span>
             <span>{atk}</span>
@@ -94,9 +94,9 @@ export function GameCard({
 
   const back = (
     <div
-      className={`w-full h-full rounded-2xl border-2 ${style.border} ${style.glow} bg-gray-900 flex flex-col p-4 gap-3`}
+      className={`steam-card-shell w-full h-full rounded-2xl border-2 ${style.border} ${style.glow} bg-gray-900 flex flex-col p-4 gap-3`}
     >
-      <h3 className="text-white font-bold text-base leading-tight truncate">{name}</h3>
+      <h3 className="steam-card-title text-white font-bold text-base leading-tight truncate">{name}</h3>
 
       <div className="grid grid-cols-2 gap-2 text-xs">
         <div className="bg-gray-800 rounded-lg p-2">

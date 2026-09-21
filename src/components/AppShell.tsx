@@ -11,9 +11,9 @@ export async function AppShell({ children }: { children: React.ReactNode }) {
   const isAdmin = (session.user as any)?.role === "ADMIN";
 
   return (
-    <div className="min-h-screen bg-gray-950 flex">
+    <div className="steam-app-shell min-h-screen bg-gray-950 flex">
       <Sidebar isAdmin={isAdmin} username={session.user?.name ?? ""} coins={user?.coins ?? 0} />
-      <main className="flex-1 p-8">{children}</main>
+      <main className="steam-main flex-1 p-8">{children}</main>
     </div>
   );
 }

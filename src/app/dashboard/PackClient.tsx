@@ -100,7 +100,7 @@ export function PackClient() {
         <div
           className={`w-40 h-52 mx-auto rounded-2xl border-2 flex items-center justify-center transition
           ${canOpen && !opening
-            ? "border-blue-500 bg-gradient-to-br from-blue-900 via-gray-900 to-purple-900 shadow-[0_0_30px_rgba(59,130,246,0.4)] group-hover:scale-105"
+            ? "border-red-700 bg-gradient-to-br from-red-950 via-gray-900 to-amber-950 shadow-[0_0_30px_rgba(169,31,31,0.34)] group-hover:scale-105"
             : "border-gray-800 bg-gray-900 opacity-50"}`}
         >
           <span className="text-5xl">📦</span>
@@ -109,7 +109,7 @@ export function PackClient() {
 
       <div className="mt-6">
         {opening ? (
-          <p className="text-blue-400 font-semibold">Ouverture…</p>
+          <p className="text-red-400 font-semibold">Ouverture…</p>
         ) : canOpen ? (
           <button
             onClick={openBooster}

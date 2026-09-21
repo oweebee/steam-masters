@@ -48,12 +48,15 @@ export function Sidebar({ isAdmin, username, coins }: { isAdmin: boolean; userna
 
   return (
     <aside
-      className={`shrink-0 bg-gray-900 border-r border-gray-800 min-h-screen p-3 flex flex-col sticky top-0 transition-all duration-200 ${
+      className={`steam-sidebar shrink-0 bg-gray-900 border-r border-gray-800 min-h-screen p-3 flex flex-col sticky top-0 transition-all duration-200 ${
         collapsed ? "w-16" : "w-64"
       } ${loaded ? "" : "invisible"}`}
     >
-      <div className="flex items-center justify-between mb-2 px-1">
-        {!collapsed && <span className="text-lg font-bold text-white truncate">Steam Masters</span>}
+      <div className={`flex mb-2 px-1 ${collapsed ? "flex-col items-center gap-1" : "items-center justify-between"}`}>
+        <Link href="/dashboard" title="Steam Masters" className="flex items-center gap-2 min-w-0">
+          <img src="/icons/icon-192.png" alt="" className="w-8 h-8 shrink-0" />
+          {!collapsed && <span className="text-lg font-bold text-white truncate">Steam Masters</span>}
+        </Link>
         <button
           onClick={toggle}
           title={collapsed ? "Déplier le menu" : "Replier le menu"}
@@ -75,7 +78,7 @@ export function Sidebar({ isAdmin, username, coins }: { isAdmin: boolean; userna
               title={collapsed ? item.label : undefined}
               className={`flex items-center gap-2 px-2.5 py-2 rounded-lg text-sm transition ${
                 collapsed ? "justify-center" : ""
-              } ${active ? "bg-blue-600 text-white" : "text-gray-400 hover:bg-gray-800 hover:text-white"}`}
+              } ${active ? "bg-blue-600 text-white border-red-500/60" : "text-gray-400 hover:bg-gray-800 hover:text-white"}`}
             >
               <span className="shrink-0">{item.icon}</span>
               {!collapsed && <span className="truncate">{item.label}</span>}

@@ -29,7 +29,7 @@ export function StudioCard({
 
   const front = (
     <div
-      className={`w-full h-full rounded-2xl border-2 ${style.border} ${style.glow} bg-gray-900 overflow-hidden flex flex-col`}
+      className={`steam-card-shell w-full h-full rounded-2xl border-2 ${style.border} ${style.glow} bg-gray-900 overflow-hidden flex flex-col`}
     >
       <span
         className={`absolute top-2 right-2 z-10 ${style.label} text-white text-xs font-bold px-2 py-1 rounded-full`}
@@ -47,12 +47,12 @@ export function StudioCard({
 
       <div className="p-4 flex flex-col gap-2 flex-1">
         <span className="text-[10px] uppercase tracking-wide text-gray-500">Studio</span>
-        <h3 className="text-white font-bold text-lg leading-tight">{name}</h3>
+        <h3 className="steam-card-title text-white font-bold text-lg leading-tight">{name}</h3>
         <p className="text-gray-400 text-xs leading-snug flex-1">
           {gameCount} jeu{gameCount > 1 ? "x" : ""} en base
         </p>
 
-        <div className="flex justify-between items-center pt-2 border-t border-gray-800 mt-2">
+        <div className="steam-statbar flex justify-between items-center pt-2 border-t border-gray-800 mt-2">
           <div className="flex items-center gap-1 text-red-400 font-bold">
             <span className="text-xs">ATK</span>
             <span>{atk}</span>
@@ -71,9 +71,9 @@ export function StudioCard({
 
   const back = (
     <div
-      className={`w-full h-full rounded-2xl border-2 ${style.border} ${style.glow} bg-gray-900 flex flex-col p-4 gap-2`}
+      className={`steam-card-shell w-full h-full rounded-2xl border-2 ${style.border} ${style.glow} bg-gray-900 flex flex-col p-4 gap-2`}
     >
-      <h3 className="text-white font-bold text-base leading-tight truncate">{name}</h3>
+      <h3 className="steam-card-title text-white font-bold text-base leading-tight truncate">{name}</h3>
       {about && (
         <p className="text-gray-400 text-xs leading-snug line-clamp-3 border-b border-gray-800 pb-2">{about}</p>
       )}
