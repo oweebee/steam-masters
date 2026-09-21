@@ -3,6 +3,25 @@ import { redis } from "@/lib/redis";
 import { getNextCatalogRarity } from "@/lib/catalogRarity";
 
 const CACHE_TTL = 60 * 30; // 30 min
+const STORE_HEADERS = {
+  // Le User-Agent applicatif était refusé en HTTP 403 par la recherche Steam
+  // depuis certains hébergeurs. Ces en-têtes reproduisent une requête web
+  // standard ; SteamSpy reste le secours si Steam Store refuse encore l'IP.
+  "User-Agent": "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 Chrome/124 Safari/537.36",
+  Accept: "application/json,text/plain,*/*",
+  "Accept-Language": "fr-FR,fr;q=0.9,en;q=0.8",
+  Referer: "https://store.steampowered.com/",
+};
+
+async function steamSpyAppids(url: string): Promise<string[]> {
+  const response = await fetch(url, { cache: "no-store", headers: STORE_HEADERS });
+  if (!response.ok) throw new Error(`SteamSpy HTTP ${response.status}`);
+  const payload = await response.json();
+  if (!payload || typeof payload !== "object") return [];
+  return Object.entries(payload as Record<string, { appid?: number }>)
+    .map(([key, value]) => String(value?.appid ?? key))
+    .filter((appid) => /^\d+$/.test(appid));
+}
 
 async function getSteamApiKey(): Promise<string | null> {
   const row = await prisma.appSetting.findUnique({ where: { key: "STEAM_API_KEY" } });
@@ -36,22 +55,43 @@ export async function discoverSteamGameAppids(maxResults = 200): Promise<string[
   const pageSize = 50;
 
   for (let start = 0; start < maxResults; start += pageSize) {
-    const response = await fetch(
-      `https://store.steampowered.com/search/results/?query&start=${start}&count=${pageSize}` +
-        `&dynamic_data=&sort_by=Reviews_DESC&category1=998&ndl=1&infinite=1&ignore_preferences=1`,
-      { cache: "no-store", headers: { "User-Agent": "SteamMasters/1.0" } }
-    );
-    if (!response.ok) throw new Error(`Steam discovery HTTP ${response.status}`);
-    const payload = await response.json();
-    const pageIds = Array.from(
-      String(payload.results_html ?? "").matchAll(/data-ds-appid="(\d+)"/g),
-      (match) => match[1]
-    );
-    pageIds.forEach((appid) => appids.add(appid));
-    if (pageIds.length === 0) break;
+    try {
+      const response = await fetch(
+        `https://store.steampowered.com/search/results/?query&start=${start}&count=${pageSize}` +
+          `&dynamic_data=&sort_by=Reviews_DESC&category1=998&ndl=1&infinite=1&ignore_preferences=1`,
+        { cache: "no-store", headers: STORE_HEADERS }
+      );
+      if (!response.ok) break;
+      const payload = await response.json();
+      const pageIds = Array.from(
+        String(payload.results_html ?? "").matchAll(/data-ds-appid="(\d+)"/g),
+        (match) => match[1]
+      );
+      pageIds.forEach((appid) => appids.add(appid));
+      if (pageIds.length === 0) break;
+    } catch {
+      break;
+    }
   }
 
-  return Array.from(appids);
+  // Repli indépendant de Steam Store, qui protège l'import automatique contre
+  // ses 403. Les listes SteamSpy contiennent uniquement des applications jeu
+  // populaires et évitent de sonder au hasard des DLC/outils.
+  if (appids.size < maxResults) {
+    for (const request of ["top100in2weeks", "top100forever", "top100owned", "all&page=0"]) {
+      try {
+        const ids = await steamSpyAppids(`https://steamspy.com/api.php?request=${request}`);
+        ids.forEach((appid) => appids.add(appid));
+      } catch {
+        // Une liste indisponible n'empêche pas d'utiliser les autres sources.
+      }
+      if (appids.size >= maxResults) break;
+    }
+  }
+
+  if (appids.size === 0) throw new Error("Découverte Steam et source de secours indisponibles");
+
+  return Array.from(appids).slice(0, maxResults);
 }
 
 async function fetchAppDetails(appid: number) {
@@ -150,27 +190,46 @@ export async function getSteamDeveloperGames(developerName: string): Promise<Ste
   const pageSize = 50;
   let start = 0;
   let total = 1;
+  let storeSearchAvailable = true;
 
   while (start < total && start < 500) {
-    const searchRes = await fetch(
-      `https://store.steampowered.com/search/results/?query&start=${start}&count=${pageSize}` +
-        `&dynamic_data=&sort_by=_ASC&developer=${encodeURIComponent(developerName)}` +
-        `&ndl=1&infinite=1&ignore_preferences=1`,
-      { cache: "no-store", headers: { "User-Agent": "SteamMasters/1.0" } }
-    );
-    if (!searchRes.ok) throw new Error(`Steam developer search HTTP ${searchRes.status}`);
+    try {
+      const searchRes = await fetch(
+        `https://store.steampowered.com/search/results/?query&start=${start}&count=${pageSize}` +
+          `&dynamic_data=&sort_by=_ASC&developer=${encodeURIComponent(developerName)}` +
+          `&ndl=1&infinite=1&ignore_preferences=1`,
+        { cache: "no-store", headers: STORE_HEADERS }
+      );
+      if (!searchRes.ok) {
+        storeSearchAvailable = false;
+        break;
+      }
 
-    const payload = await searchRes.json();
-    total = Number(payload.total_count) || 0;
-    const pageIds = Array.from(
-      String(payload.results_html ?? "").matchAll(/data-ds-appid="(\d+)"/g),
-      (match) => Number(match[1])
-    );
-    for (const appid of pageIds) {
-      if (!appids.includes(appid)) appids.push(appid);
+      const payload = await searchRes.json();
+      total = Number(payload.total_count) || 0;
+      const pageIds = Array.from(
+        String(payload.results_html ?? "").matchAll(/data-ds-appid="(\d+)"/g),
+        (match) => Number(match[1])
+      );
+      for (const appid of pageIds) {
+        if (!appids.includes(appid)) appids.push(appid);
+      }
+      if (pageIds.length === 0) break;
+      start += pageSize;
+    } catch {
+      storeSearchAvailable = false;
+      break;
     }
-    if (pageIds.length === 0) break;
-    start += pageSize;
+  }
+
+  if (!storeSearchAvailable || appids.length === 0) {
+    const fallbackIds = await steamSpyAppids(
+      `https://steamspy.com/api.php?request=developer&developer=${encodeURIComponent(developerName)}`
+    );
+    for (const appid of fallbackIds) {
+      const numericId = Number(appid);
+      if (Number.isInteger(numericId) && !appids.includes(numericId)) appids.push(numericId);
+    }
   }
 
   const games: SteamDeveloperGame[] = [];

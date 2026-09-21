@@ -34,7 +34,7 @@ export async function POST(req: Request) {
         tx.tradeCard.count({
           where: { cardId: { in: cardIds }, trade: { status: "PENDING" } },
         }),
-        tx.auction.count({ where: { cardId: { in: cardIds } } }),
+        tx.auction.count({ where: { cardId: { in: cardIds }, status: "ACTIVE" } }),
       ]);
       if (pendingTrades > 0) {
         throw new Error("Une carte sélectionnée est engagée dans un échange");

@@ -1,10 +1,12 @@
+import { auth } from "@/auth";
 import { AppShell } from "@/components/AppShell";
+import { redirect } from "next/navigation";
+import { MarcheClient } from "./MarcheClient";
 
-export default function Page() {
-  return (
-    <AppShell>
-      <h1 className="text-2xl font-bold text-white mb-4">Marché</h1>
-      <p className="text-gray-500 text-sm">À venir.</p>
-    </AppShell>
-  );
+export default async function Page() {
+  const session = await auth();
+  const userId = (session?.user as { id?: string } | undefined)?.id;
+  if (!userId) redirect("/login");
+
+  return <AppShell><MarcheClient userId={userId} /></AppShell>;
 }

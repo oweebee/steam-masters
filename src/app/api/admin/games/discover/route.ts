@@ -10,13 +10,15 @@ export async function GET() {
   }
 
   try {
-    const discovered = await discoverSteamGameAppids(300);
+    // Une réserve large est nécessaire lorsque les listes populaires ont déjà
+    // été importées : le client s'arrête dès que 20 ajouts valides aboutissent.
+    const discovered = await discoverSteamGameAppids(1000);
     const existing = new Set((await prisma.steamGame.findMany({
       where: { id: { in: discovered } },
       select: { id: true },
     })).map((game) => game.id));
 
-    return NextResponse.json({ appids: discovered.filter((appid) => !existing.has(appid)) });
+    return NextResponse.json({ appids: discovered.filter((appid) => !existing.has(appid)).slice(0, 500) });
   } catch (error) {
     const message = error instanceof Error ? error.message : "Découverte Steam impossible";
     return NextResponse.json({ error: message }, { status: 502 });

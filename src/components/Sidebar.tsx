@@ -9,7 +9,7 @@ const NAV = [
   { href: "/dashboard", label: "Paquets", icon: "📦", active: true },
   { href: "/collection", label: "Collection", icon: "🗂️", active: true },
   { href: "/echanges", label: "Échanges", icon: "🔁", active: true },
-  { href: "/marche", label: "Marché", icon: "💰", active: false },
+  { href: "/marche", label: "Marché", icon: "💰", active: true },
   { href: "/profil", label: "Profil", icon: "👤", active: false },
   { href: "/toutes-les-cartes", label: "Toutes les cartes", icon: "🃏", active: true },
   { href: "/guilde", label: "Guilde", icon: "🏰", active: false },
@@ -30,12 +30,23 @@ export function Sidebar({ isAdmin, username, coins }: { isAdmin: boolean; userna
   const [loaded, setLoaded] = useState(false);
 
   useEffect(() => {
-    try {
-      const stored = localStorage.getItem(STORAGE_KEY);
-      // Pas de préférence enregistrée => reste replié (comportement par défaut demandé).
-      if (stored !== null) setCollapsed(stored === "1");
-    } catch {}
-    setLoaded(true);
+    const initialize = window.setTimeout(() => {
+      try {
+        const standalone = window.matchMedia("(display-mode: standalone)").matches
+          || (window.navigator as Navigator & { standalone?: boolean }).standalone === true;
+        if (standalone) {
+          // Une nouvelle ouverture de la PWA commence toujours avec le rail
+          // compact, quelle que soit la préférence laissée à la session passée.
+          setCollapsed(true);
+          localStorage.setItem(STORAGE_KEY, "1");
+        } else {
+          const stored = localStorage.getItem(STORAGE_KEY);
+          if (stored !== null) setCollapsed(stored === "1");
+        }
+      } catch {}
+      setLoaded(true);
+    }, 0);
+    return () => window.clearTimeout(initialize);
   }, []);
 
   function toggle() {
@@ -107,13 +118,13 @@ export function Sidebar({ isAdmin, username, coins }: { isAdmin: boolean; userna
 
       <div className={`border-t border-gray-800 pt-3 px-1 flex items-center ${collapsed ? "flex-col gap-2" : "justify-between"}`}>
         {!collapsed && <span className="text-gray-400 text-sm truncate">{username}</span>}
-        <a
+        <Link
           href="/api/auth/signout"
           title="Déconnexion"
           className="text-gray-500 hover:text-white text-sm shrink-0"
         >
           {collapsed ? "⏻" : "Déconnexion"}
-        </a>
+        </Link>
       </div>
     </aside>
   );

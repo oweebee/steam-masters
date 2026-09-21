@@ -31,7 +31,14 @@ export async function POST(req: NextRequest) {
   const studio = await prisma.studio.findUnique({ where: { name }, select: { id: true } });
   if (!studio) return NextResponse.json({ error: "Studio introuvable" }, { status: 404 });
 
-  const officialGames = await getSteamDeveloperGames(name);
+  let officialGames: Awaited<ReturnType<typeof getSteamDeveloperGames>>;
+  try {
+    officialGames = await getSteamDeveloperGames(name);
+  } catch (error) {
+    return NextResponse.json({
+      error: error instanceof Error ? error.message : "Catalogue du studio indisponible",
+    }, { status: 502 });
+  }
   const existing = new Set((await prisma.steamGame.findMany({
     where: { id: { in: officialGames.map((game) => game.appid) } },
     select: { id: true },

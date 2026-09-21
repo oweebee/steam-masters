@@ -945,3 +945,66 @@ a.bg-purple-600 {
 * {
   scrollbar-color: #78502d #17120e;
 }
+
+/* Marché — hôtel des ventes steampunk, inspiré de la mécanique d'enchères de
+   WikiMasters mais adapté aux exemplaires Jeu et Studio de Steam Masters. */
+.steam-market { max-width: 92rem; margin: 0 auto; }
+.steam-market-header {
+  position: relative; display: flex; min-height: 9rem; align-items: center; justify-content: space-between;
+  margin-bottom: 1rem; padding: 1.4rem 1.7rem; overflow: hidden; border: 1px solid #704925; border-radius: 1rem;
+  background: radial-gradient(circle at 85% 10%, rgba(186,58,39,.2), transparent 18rem), repeating-linear-gradient(135deg, transparent 0 18px, rgba(255,255,255,.012) 19px 20px), linear-gradient(145deg,#2b2017,#120f0c 65%);
+  box-shadow: inset 0 0 0 4px #100c09, inset 0 0 0 5px rgba(198,139,68,.25), 0 12px 30px rgba(0,0,0,.35);
+}
+.steam-market-header::after { content:""; position:absolute; left:1rem; right:1rem; bottom:.45rem; height:3px; border-radius:3px; background:linear-gradient(90deg,transparent,#a52b24 16% 84%,transparent); }
+.steam-market-header h1 { margin:.2rem 0; color:#f6ead8; font-size:clamp(1.75rem,4vw,2.7rem); }
+.steam-market-header p { color:#9c8971; font-size:.84rem; }
+.steam-market-eyebrow { color:#c38143; font-size:.65rem; font-weight:800; letter-spacing:.2em; text-transform:uppercase; }
+.steam-market-gauge { display:grid; width:5.5rem; height:5.5rem; flex:0 0 auto; place-items:center; border:7px solid #764525; border-radius:50%; color:#c9553d; font-size:2.4rem; background:radial-gradient(circle,#291713 0 35%,#a56835 37% 42%,#18110d 45%); box-shadow:inset 0 0 0 3px #150d0a,0 0 0 2px #bd8144,0 6px 14px #000; }
+.steam-market-gauge span { filter:drop-shadow(0 2px 2px #000); }
+
+.steam-market-sellbox { margin-bottom:1rem; padding:1rem; border:1px solid #5c3e26; border-radius:.85rem; background:linear-gradient(120deg,rgba(142,38,28,.1),transparent 35%),#17120e; box-shadow:inset 0 1px rgba(255,202,125,.06),0 6px 18px rgba(0,0,0,.25); }
+.steam-market-section-title { display:flex; align-items:center; gap:.7rem; margin-bottom:.8rem; }
+.steam-market-section-title h2 { color:#eee1d0; font-size:1rem; }
+.steam-market-section-title p { color:#796957; font-size:.68rem; }
+.steam-market-icon { display:grid; width:2.3rem; height:2.3rem; place-items:center; border:1px solid #8c5e31; border-radius:50%; background:radial-gradient(circle at 35% 30%,#604326,#1a120d 70%); box-shadow:inset 0 0 0 3px #100c09; }
+.steam-market-sellform { display:grid; grid-template-columns:minmax(12rem,2fr) minmax(8rem,.7fr) minmax(8rem,.7fr) auto; gap:.65rem; align-items:end; }
+.steam-market-sellform label { min-width:0; }
+.steam-market-sellform label > span { display:block; margin:0 0 .25rem .15rem; color:#9a846b; font-size:.61rem; font-weight:800; letter-spacing:.08em; text-transform:uppercase; }
+.steam-market-sellform input,.steam-market-sellform select,.steam-market-controls input,.steam-market-controls select,.steam-market-bidbox input { width:100%; height:2.55rem; border:1px solid #594027; border-radius:.42rem; color:#e8dac8; background:#211914; padding:0 .7rem; font-size:.77rem; }
+.steam-market-sellform button,.steam-market-bidbox button { height:2.55rem; padding:0 1rem; border:1px solid #cf6249; border-radius:.42rem; color:#fff1e5; font-weight:800; background:linear-gradient(#c33c30,#811d1a); box-shadow:inset 0 1px rgba(255,255,255,.14),0 3px 8px #000; }
+.steam-market-sellform button:disabled,.steam-market-bidbox button:disabled { opacity:.45; }
+.steam-market-notice { margin-bottom:1rem; padding:.7rem .9rem; border:1px solid #5d7139; border-radius:.5rem; color:#b9d785; background:#172012; font-size:.76rem; }
+.steam-market-notice.is-error { border-color:#843b2f; color:#e48672; background:#251310; }
+
+.steam-market-controls { display:grid; grid-template-columns:auto minmax(13rem,1fr) repeat(3,minmax(8.5rem,auto)); gap:.55rem; align-items:center; margin:1rem 0 .55rem; }
+.steam-market-scopes { display:flex; padding:.2rem; border:1px solid #4b3422; border-radius:.48rem; background:#130f0c; }
+.steam-market-scopes button { padding:.48rem .68rem; border-radius:.32rem; color:#826f5c; font-size:.68rem; white-space:nowrap; }
+.steam-market-scopes button.is-active { color:#fff0dc; background:linear-gradient(#49311f,#2a1d15); box-shadow:inset 0 0 0 1px #75502f; }
+.steam-market-count { margin-bottom:.75rem; color:#776653; font-size:.67rem; letter-spacing:.08em; text-transform:uppercase; }
+.steam-market-grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(16.5rem,1fr)); gap:1rem; }
+.steam-market-card { --market-accent:#c4b49e; position:relative; overflow:hidden; border:2px solid var(--market-accent); border-radius:.9rem; background:linear-gradient(155deg,#281f18,#100e0c 58%,#20150f); box-shadow:inset 0 0 0 4px #0b0907,inset 0 0 0 5px rgba(190,136,69,.22),0 10px 24px rgba(0,0,0,.42); }
+.steam-market-card[data-rarity="UNCOMMON"] { --market-accent:#43b967; }.steam-market-card[data-rarity="RARE"] { --market-accent:#4b91dc; }.steam-market-card[data-rarity="EPIC"] { --market-accent:#a967dc; }.steam-market-card[data-rarity="LEGENDARY"] { --market-accent:#e58238; }
+.steam-market-card::before { content:""; position:absolute; inset:8px; z-index:5; pointer-events:none; border:1px solid rgba(200,146,75,.17); border-radius:.55rem; }
+.steam-market-card-topline { display:flex; justify-content:space-between; padding:.65rem .85rem .55rem; color:#9a7e60; font-size:.61rem; font-weight:800; letter-spacing:.11em; text-transform:uppercase; background:linear-gradient(#281e16,#17120e); }
+.steam-market-card-topline span:last-child { color:#e09c54; }
+.steam-market-card-image { position:relative; display:grid; height:8.5rem; place-items:center; overflow:hidden; border-block:2px solid #684427; background:linear-gradient(145deg,#2b251f,#101820); }
+.steam-market-card-image img { width:100%; height:100%; object-fit:cover; filter:saturate(.88) contrast(1.04); }
+.steam-market-card-image > span { font-size:3rem; }
+.steam-market-card-image::after { content:""; position:absolute; inset:0; box-shadow:inset 0 0 22px #000; background:linear-gradient(90deg,rgba(0,0,0,.25),transparent 15% 85%,rgba(0,0,0,.25)); }
+.steam-market-card-image i { position:absolute; z-index:3; right:.7rem; bottom:-.75rem; display:grid; width:2rem; height:2rem; place-items:center; border:2px solid #966139; border-radius:50%; color:var(--market-accent); font-style:normal; background:#1b120d; box-shadow:0 2px 5px #000; }
+.steam-market-card-body { position:relative; z-index:6; padding:.85rem; }
+.steam-market-card-body h3 { overflow:hidden; color:#f2e6d5; font-family:Georgia,serif; font-size:1.02rem; text-overflow:ellipsis; white-space:nowrap; }
+.steam-market-card-body > p { color:#776857; font-size:.65rem; }.steam-market-card-body > p strong { color:#bda487; }
+.steam-market-stats { display:flex; justify-content:space-between; gap:.5rem; margin:.7rem 0; }
+.steam-market-stats span { min-width:5.4rem; padding:.35rem .55rem; border:1px solid #563b27; border-radius:.35rem; color:#e2d7c8; text-align:center; background:#17120f; font-family:Georgia,serif; font-weight:800; }
+.steam-market-stats small { margin-right:.4rem; color:#ad5a4a; font-family:Arial,sans-serif; font-size:.58rem; }
+.steam-market-stats span:last-child small { color:#628daf; }
+.steam-market-price { display:grid; grid-template-columns:1fr 1fr; gap:.45rem; padding:.6rem; border-block:1px solid #493320; background:linear-gradient(90deg,rgba(161,97,41,.08),transparent); }
+.steam-market-price span { min-width:0; }.steam-market-price small,.steam-market-price strong { display:block; }.steam-market-price small { color:#756452; font-size:.56rem; text-transform:uppercase; }.steam-market-price strong { margin-top:.1rem; color:#e3ad62; font-size:.8rem; }
+.steam-market-bids { min-height:1.6rem; padding:.45rem 0 .35rem; color:#9c866c !important; }
+.steam-market-bidbox { display:grid; grid-template-columns:1fr auto; gap:.4rem; }.steam-market-bidbox input { height:2.3rem; }.steam-market-bidbox button { height:2.3rem; }
+.steam-market-cancel { width:100%; height:2.3rem; border:1px solid #714229; border-radius:.4rem; color:#c98d63; font-size:.72rem; background:#24150f; }.steam-market-cancel:disabled { color:#6f6254; border-color:#46382d; opacity:.7; }
+.steam-market-empty { grid-column:1/-1; padding:3rem 1rem; border:1px dashed #4c3523; border-radius:.8rem; color:#806d59; text-align:center; background:rgba(20,15,12,.65); }
+
+@media (max-width: 1050px) { .steam-market-sellform { grid-template-columns:1fr 1fr; }.steam-market-controls { grid-template-columns:1fr 1fr; }.steam-market-scopes { grid-column:1/-1; }.steam-market-controls input { grid-column:1/-1; } }
+@media (max-width: 640px) { .steam-main { padding:1rem !important; }.steam-market-header { min-height:7rem; padding:1rem; }.steam-market-gauge { width:3.8rem;height:3.8rem;font-size:1.7rem;border-width:5px; }.steam-market-header p { display:none; }.steam-market-sellform,.steam-market-controls { grid-template-columns:1fr; }.steam-market-scopes,.steam-market-controls input { grid-column:auto; }.steam-market-scopes button { flex:1; }.steam-market-grid { grid-template-columns:1fr; } }

@@ -115,7 +115,8 @@ model Studio {
   def                Int
   updatedAt          DateTime @updatedAt
 
-  cards Card[]
+  cards    Card[]
+  auctions Auction[]
 }
 
 model Card {
@@ -144,7 +145,7 @@ model Card {
   game          SteamGame? @relation(fields: [gameId], references: [id])
   studio        Studio?    @relation(fields: [studioId], references: [id])
   tradeCards    TradeCard[]
-  auctionCard   Auction?
+  auctions      Auction[]
 }
 
 model Trade {
@@ -174,19 +175,24 @@ model TradeCard {
 
 model Auction {
   id         String        @id @default(cuid())
-  cardId     String        @unique
+  cardId     String?
   sellerId   String
-  gameId     String
+  gameId     String?
+  studioId   String?
   startPrice Int
   currentBid Int
   endsAt     DateTime
   status     AuctionStatus @default(ACTIVE)
   createdAt  DateTime      @default(now())
 
-  card   Card      @relation(fields: [cardId],   references: [id])
+  card   Card?     @relation(fields: [cardId],   references: [id], onDelete: SetNull)
   seller User      @relation(fields: [sellerId], references: [id])
-  game   SteamGame @relation(fields: [gameId],   references: [id])
+  game   SteamGame? @relation(fields: [gameId], references: [id], onDelete: SetNull)
+  studio Studio?   @relation(fields: [studioId], references: [id], onDelete: SetNull)
   bids   Bid[]
+
+  @@index([status, endsAt])
+  @@index([cardId])
 }
 
 model Bid {

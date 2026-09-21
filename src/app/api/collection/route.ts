@@ -19,7 +19,10 @@ export async function GET() {
         where: { trade: { status: "PENDING" } },
         select: { id: true },
       },
-      auctionCard: { select: { id: true } },
+      auctions: {
+        where: { status: "ACTIVE" },
+        select: { id: true },
+      },
     },
     orderBy: { createdAt: "desc" },
   });
@@ -28,9 +31,9 @@ export async function GET() {
     cards.flatMap((c) => c.studio?.name ? [c.studio.name] : [])
   );
 
-  const out = cards.map(({ tradeCards, auctionCard, ...card }) => ({
+  const out = cards.map(({ tradeCards, auctions, ...card }) => ({
     ...card,
-    sellable: tradeCards.length === 0 && !auctionCard,
+    sellable: tradeCards.length === 0 && auctions.length === 0,
     studio: card.studio
       ? { ...card.studio, games: studioGamesMap.get(card.studio.name) ?? [] }
       : null,
