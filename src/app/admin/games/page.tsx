@@ -32,6 +32,9 @@ export default function AdminGamesPage() {
   const [searching, setSearching] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+  const [syncingStudios, setSyncingStudios] = useState(false);
+  const [syncProgress, setSyncProgress] = useState({ done: 0, total: 0, imported: 0, errors: 0 });
+  const [syncMessage, setSyncMessage] = useState("");
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   async function load() {
@@ -90,6 +93,52 @@ export default function AdminGamesPage() {
     setQuery("");
     setAppid("");
     setLoading(false);
+    load();
+  }
+
+  async function syncAllStudios() {
+    setSyncingStudios(true);
+    setSyncMessage("");
+    setSyncProgress({ done: 0, total: 0, imported: 0, errors: 0 });
+
+    const listRes = await fetch("/api/admin/studios/sync");
+    if (!listRes.ok) {
+      setSyncMessage("Impossible de charger la liste des studios.");
+      setSyncingStudios(false);
+      return;
+    }
+
+    const listData = await listRes.json();
+    const queue: string[] = Array.isArray(listData.studios) ? [...listData.studios] : [];
+    const known = new Set(queue);
+    let imported = 0;
+    let errors = 0;
+
+    for (let index = 0; index < queue.length; index += 1) {
+      setSyncMessage(`Synchronisation de ${queue[index]}…`);
+      const res = await fetch("/api/admin/studios/sync", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ name: queue[index] }),
+      });
+      if (res.ok) {
+        const data = await res.json();
+        imported += data.imported ?? 0;
+        errors += Array.isArray(data.errors) ? data.errors.length : 0;
+        for (const related of data.relatedStudios ?? []) {
+          if (!known.has(related)) {
+            known.add(related);
+            queue.push(related);
+          }
+        }
+      } else {
+        errors += 1;
+      }
+      setSyncProgress({ done: index + 1, total: queue.length, imported, errors });
+    }
+
+    setSyncMessage(`Terminé : ${imported} jeu(x) Steam ajouté(s), ${errors} erreur(s).`);
+    setSyncingStudios(false);
     load();
   }
 
@@ -152,6 +201,41 @@ export default function AdminGamesPage() {
         </button>
       </form>
       {error && <p className="text-red-400 text-sm mb-4">{error}</p>}
+
+      <div className="bg-gray-900 border border-gray-800 rounded-xl p-4 mb-8 max-w-2xl">
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <div>
+            <h2 className="text-white font-semibold">Catalogue complet des studios</h2>
+            <p className="text-gray-500 text-xs mt-1">
+              Recherche tous leurs jeux officiels Steam et crée les fiches Jeu manquantes.
+            </p>
+          </div>
+          <button
+            type="button"
+            onClick={syncAllStudios}
+            disabled={syncingStudios}
+            className="bg-blue-600 hover:bg-blue-500 text-white font-semibold rounded-lg px-4 py-2 disabled:opacity-50"
+          >
+            {syncingStudios ? "Synchronisation…" : "Synchroniser tous les studios"}
+          </button>
+        </div>
+        {(syncingStudios || syncMessage) && (
+          <div className="mt-3">
+            <div className="h-2 rounded-full bg-gray-800 overflow-hidden">
+              <div
+                className="h-full bg-red-700 transition-all"
+                style={{ width: `${syncProgress.total > 0 ? (syncProgress.done / syncProgress.total) * 100 : 0}%` }}
+              />
+            </div>
+            <p className="text-gray-400 text-xs mt-2">{syncMessage}</p>
+            {syncProgress.total > 0 && (
+              <p className="text-gray-600 text-[11px] mt-1">
+                {syncProgress.done}/{syncProgress.total} studios · {syncProgress.imported} jeux ajoutés · {syncProgress.errors} erreurs
+              </p>
+            )}
+          </div>
+        )}
+      </div>
 
       <div className="flex flex-wrap gap-6">
         {games.map((g) => (

@@ -8,9 +8,9 @@ export type StudioGameLink = {
 };
 
 // Résout un lot de noms de jeux (Studio.games: String[], noms réels SteamGame.name)
-// vers leur appid + si une Card existe déjà dessus, en UNE requête pour tous les
-// studios appelants (pas de N+1). appid=null / hasCard=false => jeu pas encore en
-// base ou sans carte créée : affiché en texte simple, pas en lien, côté UI.
+// vers leur appid + si la carte Jeu existe dans le catalogue, en UNE requête pour
+// tous les studios appelants (pas de N+1). Une SteamGame est la fiche catalogue ;
+// les Card sont uniquement les exemplaires possédés par les joueurs.
 export async function buildGameLinkMap(
   allNames: string[]
 ): Promise<Map<string, { appid: string; hasCard: boolean; headerImage: string }>> {
@@ -18,11 +18,10 @@ export async function buildGameLinkMap(
   if (unique.length === 0) return new Map();
   const games = await prisma.steamGame.findMany({
     where: { name: { in: unique } },
-    include: { cards: { select: { id: true } } },
   });
   return new Map(games.map((g) => [g.name, {
     appid: g.id,
-    hasCard: g.cards.length > 0,
+    hasCard: true,
     headerImage: g.headerImage,
   }]));
 }
@@ -54,7 +53,6 @@ export async function buildStudioGamesByDeveloper(
 
   const games = await prisma.steamGame.findMany({
     where: { developers: { hasSome: uniqueNames } },
-    include: { cards: { select: { id: true } } },
     orderBy: { name: "asc" },
   });
 
@@ -65,7 +63,7 @@ export async function buildStudioGamesByDeveloper(
       studioGames.push({
         name: game.name,
         appid: game.id,
-        hasCard: game.cards.length > 0,
+        hasCard: true,
         headerImage: game.headerImage,
       });
     }

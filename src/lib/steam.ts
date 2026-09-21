@@ -24,6 +24,12 @@ export interface SteamGameData {
   isFree: boolean;            // source: appdetails.is_free (Steam officiel)
 }
 
+export interface SteamDeveloperGame {
+  appid: string;
+  name: string;
+  headerImage: string;
+}
+
 async function fetchAppDetails(appid: number) {
   const res = await fetch(
     `https://store.steampowered.com/api/appdetails?appids=${appid}&cc=fr&l=french`,
@@ -96,7 +102,7 @@ export async function getSteamGameData(appid: number): Promise<SteamGameData> {
     reviewScore,
     peakCcu,
     ownerEstimate,
-    tags: details.genres?.map((g: any) => g.description) ?? [],
+    tags: details.genres?.map((genre: { description: string }) => genre.description) ?? [],
     developers: details.developers ?? [],
     priceCents: details.price_overview?.final ?? null,
     isFree: !!details.is_free,
@@ -104,6 +110,63 @@ export async function getSteamGameData(appid: number): Promise<SteamGameData> {
 
   await redis.set(cacheKey, JSON.stringify(data), "EX", CACHE_TTL);
   return data;
+}
+
+// Catalogue officiel d'un développeur sur Steam. Chargé à la demande par les
+// cartes Studio visibles et caché 30 min dans Redis pour éviter tout balayage
+// massif du catalogue. Les DLC, bandes-son et outils sont exclus.
+export async function getSteamDeveloperGames(developerName: string): Promise<SteamDeveloperGame[]> {
+  const normalizedName = developerName.trim().toLocaleLowerCase("fr");
+  const cacheKey = `steam:developer-games:${normalizedName}`;
+  const cached = await redis.get(cacheKey);
+  if (cached) return JSON.parse(cached);
+
+  const appids: number[] = [];
+  const pageSize = 50;
+  let start = 0;
+  let total = 1;
+
+  while (start < total && start < 500) {
+    const searchRes = await fetch(
+      `https://store.steampowered.com/search/results/?query&start=${start}&count=${pageSize}` +
+        `&dynamic_data=&sort_by=_ASC&developer=${encodeURIComponent(developerName)}` +
+        `&ndl=1&infinite=1&ignore_preferences=1`,
+      { cache: "no-store", headers: { "User-Agent": "SteamMasters/1.0" } }
+    );
+    if (!searchRes.ok) throw new Error(`Steam developer search HTTP ${searchRes.status}`);
+
+    const payload = await searchRes.json();
+    total = Number(payload.total_count) || 0;
+    const pageIds = Array.from(
+      String(payload.results_html ?? "").matchAll(/data-ds-appid="(\d+)"/g),
+      (match) => Number(match[1])
+    );
+    for (const appid of pageIds) {
+      if (!appids.includes(appid)) appids.push(appid);
+    }
+    if (pageIds.length === 0) break;
+    start += pageSize;
+  }
+
+  const games: SteamDeveloperGame[] = [];
+  for (let index = 0; index < appids.length; index += 20) {
+    const chunk = appids.slice(index, index + 20);
+    const settled = await Promise.allSettled(
+      chunk.map(async (appid) => ({ appid, details: await fetchAppDetails(appid) }))
+    );
+    for (const result of settled) {
+      if (result.status !== "fulfilled") continue;
+      const { appid, details } = result.value;
+      const belongsToDeveloper = (details.developers ?? []).some(
+        (developer: string) => developer.trim().toLocaleLowerCase("fr") === normalizedName
+      );
+      if (details.type !== "game" || !belongsToDeveloper || !details.header_image) continue;
+      games.push({ appid: String(appid), name: details.name, headerImage: details.header_image });
+    }
+  }
+
+  await redis.set(cacheKey, JSON.stringify(games), "EX", CACHE_TTL);
+  return games;
 }
 
 export function computeRarity(ownerEstimate: number): "COMMON" | "UNCOMMON" | "RARE" | "EPIC" | "LEGENDARY" {
