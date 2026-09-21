@@ -1,10 +1,11 @@
 "use client";
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 
 type Rarity = "COMMON" | "UNCOMMON" | "RARE" | "EPIC" | "LEGENDARY";
 
 type Joueur = { id: string; username: string };
-type CardOption = { id: string; label: string; headerImage: string | null; rarity: Rarity | null; type: "GAME" | "STUDIO" };
+type CardOption = { id: string; label: string; headerImage: string | null; rarity: Rarity; type: "GAME" | "STUDIO" };
+type CardSort = "name" | "rarity" | "type";
 
 type TradeCard = {
   side: "OFFER" | "WANT";
@@ -31,11 +32,125 @@ function cardLabel(tc: TradeCard) {
   return tc.card.game?.name ?? tc.card.studio?.name ?? "?";
 }
 
+const RARITY_ORDER: Record<Rarity, number> = {
+  LEGENDARY: 0,
+  EPIC: 1,
+  RARE: 2,
+  UNCOMMON: 3,
+  COMMON: 4,
+};
+
+const RARITY_BORDER: Record<Rarity, string> = {
+  LEGENDARY: "border-l-orange-500",
+  EPIC: "border-l-purple-500",
+  RARE: "border-l-blue-500",
+  UNCOMMON: "border-l-green-500",
+  COMMON: "border-l-gray-300",
+};
+
+function normalizeSearch(value: string) {
+  return value.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLocaleLowerCase("fr");
+}
+
+function CardSelector({
+  cards,
+  selectedIds,
+  onToggle,
+  unavailableMessage,
+}: {
+  cards: CardOption[];
+  selectedIds: string[];
+  onToggle: (id: string) => void;
+  unavailableMessage?: string;
+}) {
+  const [search, setSearch] = useState("");
+  const [sort, setSort] = useState<CardSort>("name");
+
+  const visibleCards = useMemo(() => {
+    const query = normalizeSearch(search.trim());
+    return cards
+      .filter((card) => !query || normalizeSearch(card.label).includes(query))
+      .sort((a, b) => {
+        if (sort === "rarity") {
+          return RARITY_ORDER[a.rarity] - RARITY_ORDER[b.rarity] || a.label.localeCompare(b.label, "fr");
+        }
+        if (sort === "type") {
+          return a.type.localeCompare(b.type) || a.label.localeCompare(b.label, "fr");
+        }
+        return a.label.localeCompare(b.label, "fr");
+      });
+  }, [cards, search, sort]);
+
+  return (
+    <div className="steam-trade-selector">
+      <div className="grid grid-cols-1 sm:grid-cols-[1fr_auto] gap-2 mb-2">
+        <input
+          type="search"
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+          placeholder="Rechercher une carte…"
+          className="bg-gray-800 border border-gray-700 text-white rounded-lg px-3 py-2 text-sm outline-none min-w-0"
+        />
+        <select
+          value={sort}
+          onChange={(e) => setSort(e.target.value as CardSort)}
+          className="bg-gray-800 border border-gray-700 text-white rounded-lg px-3 py-2 text-sm outline-none"
+        >
+          <option value="name">Nom A → Z</option>
+          <option value="rarity">Rareté</option>
+          <option value="type">Jeux / Studios</option>
+        </select>
+      </div>
+
+      <div className="flex items-center justify-between text-[11px] text-gray-500 mb-2 px-1">
+        <span>{visibleCards.length} résultat{visibleCards.length > 1 ? "s" : ""}</span>
+        <span className="text-amber-500">{selectedIds.length} sélectionnée{selectedIds.length > 1 ? "s" : ""}</span>
+      </div>
+
+      <div className="grid grid-cols-1 xl:grid-cols-2 gap-2 max-h-80 overflow-y-auto pr-1">
+        {visibleCards.map((card) => {
+          const selected = selectedIds.includes(card.id);
+          return (
+            <button
+              type="button"
+              key={card.id}
+              aria-pressed={selected}
+              onClick={() => onToggle(card.id)}
+              className={`steam-trade-card-choice border-l-4 ${RARITY_BORDER[card.rarity]} ${
+                selected ? "steam-trade-card-selected" : ""
+              }`}
+            >
+              {card.headerImage ? (
+                <img src={card.headerImage} alt="" className="w-16 h-9 rounded object-cover shrink-0" />
+              ) : (
+                <span className="steam-trade-studio-icon">🏭</span>
+              )}
+              <span className="min-w-0 flex-1 text-left">
+                <span className="block text-sm text-white truncate">{card.label}</span>
+                <span className="block text-[10px] uppercase tracking-wide text-gray-500">
+                  {card.type === "GAME" ? "Jeu" : "Studio"}
+                </span>
+              </span>
+              <span className="steam-trade-select-mark" aria-hidden="true">{selected ? "✓" : "+"}</span>
+            </button>
+          );
+        })}
+        {unavailableMessage && <p className="text-gray-600 text-xs p-3">{unavailableMessage}</p>}
+        {!unavailableMessage && cards.length === 0 && <p className="text-gray-600 text-xs p-3">Aucune carte.</p>}
+        {!unavailableMessage && cards.length > 0 && visibleCards.length === 0 && (
+          <p className="text-gray-600 text-xs p-3">Aucune carte ne correspond à la recherche.</p>
+        )}
+      </div>
+    </div>
+  );
+}
+
 export function EchangesClient({ myUserId }: { myUserId: string }) {
   const [joueurs, setJoueurs] = useState<Joueur[]>([]);
   const [myCollection, setMyCollection] = useState<CardOption[]>([]);
   const [targetId, setTargetId] = useState("");
   const [targetCollection, setTargetCollection] = useState<CardOption[]>([]);
+  const [targetLoading, setTargetLoading] = useState(false);
   const [offerCardIds, setOfferCardIds] = useState<string[]>([]);
   const [wantCardIds, setWantCardIds] = useState<string[]>([]);
   const [offerCoins, setOfferCoins] = useState(0);
@@ -59,7 +174,7 @@ export function EchangesClient({ myUserId }: { myUserId: string }) {
             id: c.id,
             label: c.game?.name ?? c.studio?.name ?? "?",
             headerImage: c.game?.headerImage ?? null,
-            rarity: c.game?.rarity ?? c.studio?.rarity ?? null,
+            rarity: c.rarity,
             type: c.game ? "GAME" : "STUDIO",
           }))
         )
@@ -70,11 +185,15 @@ export function EchangesClient({ myUserId }: { myUserId: string }) {
   useEffect(() => {
     if (!targetId) {
       setTargetCollection([]);
+      setTargetLoading(false);
       return;
     }
+    setTargetLoading(true);
+    setTargetCollection([]);
     fetch(`/api/joueurs/${targetId}/collection`)
       .then((r) => (r.ok ? r.json() : []))
-      .then(setTargetCollection);
+      .then(setTargetCollection)
+      .finally(() => setTargetLoading(false));
     setWantCardIds([]);
   }, [targetId]);
 
@@ -135,20 +254,12 @@ export function EchangesClient({ myUserId }: { myUserId: string }) {
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <div>
             <p className="text-gray-400 text-xs uppercase mb-2">Tu offres (tes cartes)</p>
-            <div className="flex flex-col gap-1 max-h-48 overflow-y-auto bg-gray-800 rounded-lg p-2">
-              {myCollection.map((c) => (
-                <label key={c.id} className="flex items-center gap-2 text-sm text-gray-300">
-                  <input
-                    type="checkbox"
-                    checked={offerCardIds.includes(c.id)}
-                    onChange={() => toggle(offerCardIds, setOfferCardIds, c.id)}
-                  />
-                  {c.label}
-                </label>
-              ))}
-              {myCollection.length === 0 && <p className="text-gray-600 text-xs">Aucune carte.</p>}
-            </div>
-            <label className="text-gray-400 text-xs uppercase mt-2 block">+ jetons offerts</label>
+            <CardSelector
+              cards={myCollection}
+              selectedIds={offerCardIds}
+              onToggle={(id) => toggle(offerCardIds, setOfferCardIds, id)}
+            />
+            <label className="text-gray-400 text-xs uppercase mt-2 block">Ajoutez des pièces</label>
             <input
               type="number"
               min={0}
@@ -160,21 +271,14 @@ export function EchangesClient({ myUserId }: { myUserId: string }) {
 
           <div>
             <p className="text-gray-400 text-xs uppercase mb-2">Tu demandes (ses cartes)</p>
-            <div className="flex flex-col gap-1 max-h-48 overflow-y-auto bg-gray-800 rounded-lg p-2">
-              {targetCollection.map((c) => (
-                <label key={c.id} className="flex items-center gap-2 text-sm text-gray-300">
-                  <input
-                    type="checkbox"
-                    checked={wantCardIds.includes(c.id)}
-                    onChange={() => toggle(wantCardIds, setWantCardIds, c.id)}
-                  />
-                  {c.label}
-                </label>
-              ))}
-              {!targetId && <p className="text-gray-600 text-xs">Choisis d'abord un joueur.</p>}
-              {targetId && targetCollection.length === 0 && <p className="text-gray-600 text-xs">Aucune carte.</p>}
-            </div>
-            <label className="text-gray-400 text-xs uppercase mt-2 block">+ jetons demandés</label>
+            <CardSelector
+              key={targetId || "no-target"}
+              cards={targetCollection}
+              selectedIds={wantCardIds}
+              onToggle={(id) => toggle(wantCardIds, setWantCardIds, id)}
+              unavailableMessage={!targetId ? "Choisis d'abord un joueur." : targetLoading ? "Chargement de sa collection…" : undefined}
+            />
+            <label className="text-gray-400 text-xs uppercase mt-2 block">Demandez des pièces</label>
             <input
               type="number"
               min={0}

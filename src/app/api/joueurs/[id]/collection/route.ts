@@ -22,7 +22,8 @@ export async function GET(_req: Request, { params }: { params: Promise<{ id: str
     id: c.id,
     label: c.game?.name ?? c.studio?.name ?? "?",
     headerImage: c.game?.headerImage ?? null,
-    rarity: c.game?.rarity ?? c.studio?.rarity ?? null,
+    // Rareté propre à cet exemplaire, pas celle du jeu/studio catalogue.
+    rarity: c.rarity,
     type: c.game ? ("GAME" as const) : ("STUDIO" as const),
   }));
 

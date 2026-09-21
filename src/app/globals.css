@@ -344,6 +344,82 @@ a.bg-purple-600 {
   border-radius: 0.35rem;
 }
 
+.steam-trade-selector {
+  border: 1px solid #513a27;
+  border-radius: 0.75rem;
+  padding: 0.65rem;
+  background:
+    radial-gradient(circle at 100% 0%, rgba(180,135,67,0.08), transparent 45%),
+    linear-gradient(145deg, #211a15, #15110e);
+  box-shadow: inset 0 1px 0 rgba(235,181,98,0.05), inset 0 0 18px rgba(0,0,0,0.35);
+}
+
+.steam-trade-card-choice {
+  display: flex;
+  align-items: center;
+  gap: 0.65rem;
+  width: 100%;
+  min-width: 0;
+  padding: 0.5rem;
+  border-top: 1px solid #453324;
+  border-right: 1px solid #453324;
+  border-bottom: 1px solid #453324;
+  border-radius: 0.45rem;
+  background: linear-gradient(135deg, rgba(255,255,255,0.025), transparent 42%), #1d1713;
+  box-shadow: inset 0 1px 0 rgba(255,255,255,0.025), 0 2px 5px rgba(0,0,0,0.22);
+  transition: border-color 140ms ease, background-color 140ms ease, transform 140ms ease;
+}
+
+.steam-trade-card-choice:hover {
+  transform: translateY(-1px);
+  border-top-color: #87603a;
+  border-right-color: #87603a;
+  border-bottom-color: #87603a;
+  background-color: #2a2018;
+}
+
+.steam-trade-card-selected {
+  border-top-color: #c15a3f;
+  border-right-color: #c15a3f;
+  border-bottom-color: #c15a3f;
+  background:
+    radial-gradient(circle at 100% 50%, rgba(208,65,48,0.18), transparent 42%),
+    linear-gradient(135deg, #342018, #1d1511);
+  box-shadow: inset 0 0 0 1px rgba(210,126,73,0.12), 0 0 10px rgba(169,31,31,0.18);
+}
+
+.steam-trade-studio-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 4rem;
+  height: 2.25rem;
+  flex: 0 0 auto;
+  border: 1px solid #5c422b;
+  border-radius: 0.25rem;
+  background: linear-gradient(145deg, #3b2d21, #17130f);
+}
+
+.steam-trade-select-mark {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.55rem;
+  height: 1.55rem;
+  flex: 0 0 auto;
+  border: 1px solid #67472b;
+  border-radius: 999px;
+  color: #d9aa69;
+  background: #17120e;
+  font-weight: 700;
+}
+
+.steam-trade-card-selected .steam-trade-select-mark {
+  border-color: #d16b4d;
+  color: white;
+  background: #a52220;
+}
+
 * {
   scrollbar-color: #78502d #17120e;
 }
