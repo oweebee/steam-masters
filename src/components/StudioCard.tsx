@@ -3,7 +3,7 @@ import Link from "next/link";
 import { FlipCard } from "./FlipCard";
 import { RARITY_STYLES, type Rarity } from "@/lib/rarityStyles";
 
-type GameLink = { name: string; appid: string | null; hasCard: boolean };
+type GameLink = { name: string; appid: string | null; hasCard: boolean; headerImage?: string | null };
 
 export function StudioCard({
   name,
@@ -14,6 +14,7 @@ export function StudioCard({
   games = [],
   about,
   avatarUrl,
+  coverImage,
 }: {
   name: string;
   gameCount: number;
@@ -23,17 +24,21 @@ export function StudioCard({
   games?: GameLink[];
   about?: string | null;
   avatarUrl?: string | null;
+  coverImage?: string | null;
 }) {
   const style = RARITY_STYLES[rarity];
   const canFlip = games.length > 0 || !!about;
+  // Logo vérifié saisi par l'admin en priorité ; sinon image officielle Steam
+  // d'un jeu importé de ce studio. Aucun visuel n'est inventé.
+  const displayImage = avatarUrl ?? coverImage ?? games.find((game) => game.headerImage)?.headerImage ?? null;
 
   const front = (
     <div
       className={`steam-card-shell w-full h-full rounded-2xl border-2 ${style.border} ${style.glow} bg-gray-900 overflow-hidden flex flex-col`}
     >
       <div className="steam-card-visual w-full h-36 bg-gradient-to-br from-gray-800 to-gray-900 flex items-center justify-center overflow-hidden">
-        {avatarUrl ? (
-          <img src={avatarUrl} alt={name} className="w-full h-full object-cover" />
+        {displayImage ? (
+          <img src={displayImage} alt={name} className="w-full h-full object-cover" />
         ) : (
           <span className="text-4xl">🏢</span>
         )}

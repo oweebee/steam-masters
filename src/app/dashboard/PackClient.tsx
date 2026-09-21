@@ -29,6 +29,8 @@ type Studio = {
   atk: number;
   def: number;
   rarity: Rarity;
+  avatarUrl: string | null;
+  coverImage: string | null;
 };
 
 function formatDuration(ms: number) {
@@ -154,6 +156,8 @@ export function PackClient() {
               atk={lastOpenedStudio.atk}
               def={lastOpenedStudio.def}
               rarity={lastOpenedStudio.rarity}
+              avatarUrl={lastOpenedStudio.avatarUrl}
+              coverImage={lastOpenedStudio.coverImage}
             />
           )}
         </div>
