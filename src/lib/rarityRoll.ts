@@ -21,3 +21,29 @@ export function rollCardRarity(): Rarity {
   }
   return "COMMON";
 }
+
+// Plafond d'exemplaires en circulation PAR jeu/studio ET par palier, tous joueurs
+// confondus (pas par joueur). Orange = unique sur toute la partie (1 seul
+// exemplaire, quel que soit qui le possède). Blanc = illimité. Catégorie "gris"
+// supprimée (jamais implémentée).
+export const RARITY_CAP: Record<Rarity, number> = {
+  LEGENDARY: 1,
+  EPIC: 5,
+  RARE: 10,
+  UNCOMMON: 20,
+  COMMON: Infinity,
+};
+
+// Ordre de repli quand le palier tiré est déjà plafonné pour CE jeu/studio précis :
+// on redescend d'un cran (jamais on ne change de jeu/studio ni on ne remonte).
+const DOWNGRADE: Record<Rarity, Rarity | null> = {
+  LEGENDARY: "EPIC",
+  EPIC: "RARE",
+  RARE: "UNCOMMON",
+  UNCOMMON: "COMMON",
+  COMMON: null,
+};
+
+export function nextLowerRarity(r: Rarity): Rarity | null {
+  return DOWNGRADE[r];
+}

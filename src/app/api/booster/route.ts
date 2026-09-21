@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { auth } from "@/auth";
 import { prisma } from "@/lib/prisma";
-import { rollCardRarity } from "@/lib/rarityRoll";
+import { rollCardRarity, RARITY_CAP, nextLowerRarity, type Rarity } from "@/lib/rarityRoll";
 
 const BOOSTER_INTERVAL_MS = 60 * 60 * 1000; // 1 heure
 
@@ -34,10 +34,9 @@ export async function POST() {
     return NextResponse.json({ error: "Booster pas encore disponible", remainingMs: remaining }, { status: 429 });
   }
 
-  // Les cartes ne sont plus uniques : un même jeu/studio peut être tiré plusieurs
-  // fois par plusieurs joueurs (ou le même). Le tirage pioche uniformément dans
-  // TOUT le catalogue (jeux + studios), puis roule une rareté indépendante pour
-  // cet exemplaire via la loot table fixe (voir lib/rarityRoll.ts).
+  // Les cartes ne sont plus uniques par défaut : un même jeu/studio peut être tiré
+  // plusieurs fois par plusieurs joueurs. Le tirage pioche uniformément dans TOUT
+  // le catalogue (jeux + studios), puis roule une rareté indépendante (loot table).
   const [gamePoolSize, studioPoolSize] = await Promise.all([
     prisma.steamGame.count(),
     prisma.studio.count(),
@@ -49,26 +48,47 @@ export async function POST() {
   }
 
   const idx = Math.floor(Math.random() * totalPool);
-  const rarity = rollCardRarity();
 
-  let cardData: { userId: string; gameId?: string; studioId?: string; rarity: ReturnType<typeof rollCardRarity> };
-  let responseGame = null as any;
-  let responseStudio = null as any;
+  let gameId: string | undefined;
+  let studioId: string | undefined;
+  let responseGame: any = null;
+  let responseStudio: any = null;
 
   if (idx < gamePoolSize) {
     const [game] = await prisma.steamGame.findMany({ take: 1, skip: idx });
-    cardData = { userId, gameId: game.id, rarity };
-    responseGame = { ...game, rarity };
+    gameId = game.id;
+    responseGame = game;
   } else {
     const [studio] = await prisma.studio.findMany({ take: 1, skip: idx - gamePoolSize });
-    cardData = { userId, studioId: studio.id, rarity };
-    responseStudio = { ...studio, rarity };
+    studioId = studio.id;
+    responseStudio = studio;
   }
 
-  const [card] = await prisma.$transaction([
-    prisma.card.create({ data: cardData }),
-    prisma.user.update({ where: { id: userId }, data: { lastBoosterAt: new Date() } }),
-  ]);
+  const result = await prisma.$transaction(async (tx) => {
+    // Plafond PAR jeu/studio ET par palier, tous joueurs confondus (voir
+    // RARITY_CAP) : Orange=1 (unique sur toute la partie), Violet=5, Bleu=10,
+    // Vert=20, Blanc=illimité. Si le palier tiré est déjà plafonné pour ce jeu/
+    // studio précis, on redescend d'un cran (jamais on ne change de jeu/studio).
+    let rarity: Rarity = rollCardRarity();
+    for (;;) {
+      const cap = RARITY_CAP[rarity];
+      if (cap === Infinity) break;
+      const existing = await tx.card.count({
+        where: gameId ? { gameId, rarity } : { studioId, rarity },
+      });
+      if (existing < cap) break;
+      const lower = nextLowerRarity(rarity);
+      if (!lower) break; // COMMON, jamais plafonné
+      rarity = lower;
+    }
 
-  return NextResponse.json({ card, game: responseGame, studio: responseStudio });
+    const card = await tx.card.create({ data: { userId, gameId, studioId, rarity } });
+    await tx.user.update({ where: { id: userId }, data: { lastBoosterAt: new Date() } });
+    return card;
+  });
+
+  if (responseGame) responseGame = { ...responseGame, rarity: result.rarity };
+  if (responseStudio) responseStudio = { ...responseStudio, rarity: result.rarity };
+
+  return NextResponse.json({ card: result, game: responseGame, studio: responseStudio });
 }
