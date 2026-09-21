@@ -49,8 +49,8 @@ export function StudioCard({
         <div className="steam-card-nameplate">
           <h3 className="steam-card-title text-white font-bold text-lg leading-tight">{name}</h3>
         </div>
-        <p className="text-gray-400 text-xs leading-snug flex-1">
-          {gameCount} jeu{gameCount > 1 ? "x" : ""} en base
+        <p className="text-gray-400 text-xs leading-snug flex-1 line-clamp-3">
+          {games.length > 0 ? games.map((game) => game.name).join(" • ") : "Aucun jeu associé"}
         </p>
 
         <div className="steam-statbar flex justify-between items-center pt-2 border-t border-gray-800 mt-2">

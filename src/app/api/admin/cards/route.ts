@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { auth } from "@/auth";
 import { prisma } from "@/lib/prisma";
-import { buildGameLinkMap, toStudioGameLinks } from "@/lib/studioGames";
+import { buildStudioGamesByDeveloper } from "@/lib/studioGames";
 
 async function requireAdmin() {
   const session = await auth();
@@ -22,7 +22,7 @@ export async function GET() {
     }),
   ]);
 
-  const gameLinkMap = await buildGameLinkMap(studios.flatMap((s) => s.games));
+  const studioGamesMap = await buildStudioGamesByDeveloper(studios.map((s) => s.name));
 
   const items = [
     ...games.map((g) => ({
@@ -60,7 +60,7 @@ export async function GET() {
       tags: [] as string[],
       developers: [] as string[],
       gameCount: s.gameCount,
-      games: toStudioGameLinks(s.games, gameLinkMap),
+      games: studioGamesMap.get(s.name) ?? [],
       about: s.about,
       avatarUrl: s.avatarUrl,
       copies: s.cards.length,

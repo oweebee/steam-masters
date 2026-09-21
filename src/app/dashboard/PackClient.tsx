@@ -31,6 +31,7 @@ type Studio = {
   rarity: Rarity;
   avatarUrl: string | null;
   coverImage: string | null;
+  games: { name: string; appid: string | null; hasCard: boolean; headerImage: string | null }[];
 };
 
 function formatDuration(ms: number) {
@@ -158,6 +159,7 @@ export function PackClient() {
               rarity={lastOpenedStudio.rarity}
               avatarUrl={lastOpenedStudio.avatarUrl}
               coverImage={lastOpenedStudio.coverImage}
+              games={lastOpenedStudio.games}
             />
           )}
         </div>

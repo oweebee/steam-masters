@@ -41,3 +41,35 @@ export function toStudioGameLinks(
     };
   });
 }
+
+// Source de vérité robuste pour les studios historiques dont Studio.games peut
+// être vide : reconstruit directement la relation depuis SteamGame.developers,
+// champ officiel Steam déjà stocké en base. Une seule requête pour tout le lot.
+export async function buildStudioGamesByDeveloper(
+  studioNames: string[]
+): Promise<Map<string, StudioGameLink[]>> {
+  const uniqueNames = Array.from(new Set(studioNames.filter(Boolean)));
+  const out = new Map(uniqueNames.map((name) => [name, [] as StudioGameLink[]]));
+  if (uniqueNames.length === 0) return out;
+
+  const games = await prisma.steamGame.findMany({
+    where: { developers: { hasSome: uniqueNames } },
+    include: { cards: { select: { id: true } } },
+    orderBy: { name: "asc" },
+  });
+
+  for (const game of games) {
+    for (const developer of game.developers) {
+      const studioGames = out.get(developer);
+      if (!studioGames) continue;
+      studioGames.push({
+        name: game.name,
+        appid: game.id,
+        hasCard: game.cards.length > 0,
+        headerImage: game.headerImage,
+      });
+    }
+  }
+
+  return out;
+}

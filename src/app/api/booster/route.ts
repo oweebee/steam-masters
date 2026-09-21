@@ -61,13 +61,21 @@ export async function POST() {
   } else {
     const [studio] = await prisma.studio.findMany({ take: 1, skip: idx - gamePoolSize });
     studioId = studio.id;
-    const representativeGame = studio.games[0]
-      ? await prisma.steamGame.findFirst({
-          where: { name: studio.games[0] },
-          select: { headerImage: true },
-        })
-      : null;
-    responseStudio = { ...studio, coverImage: representativeGame?.headerImage ?? null };
+    const studioGames = await prisma.steamGame.findMany({
+      where: { developers: { has: studio.name } },
+      include: { cards: { select: { id: true } } },
+      orderBy: { name: "asc" },
+    });
+    responseStudio = {
+      ...studio,
+      coverImage: studioGames[0]?.headerImage ?? null,
+      games: studioGames.map((game) => ({
+        name: game.name,
+        appid: game.id,
+        hasCard: game.cards.length > 0,
+        headerImage: game.headerImage,
+      })),
+    };
   }
 
   const result = await prisma.$transaction(async (tx) => {

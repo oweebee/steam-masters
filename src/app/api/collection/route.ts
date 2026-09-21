@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { auth } from "@/auth";
 import { prisma } from "@/lib/prisma";
-import { buildGameLinkMap, toStudioGameLinks } from "@/lib/studioGames";
+import { buildStudioGamesByDeveloper } from "@/lib/studioGames";
 
 export async function GET() {
   const session = await auth();
@@ -13,14 +13,14 @@ export async function GET() {
     orderBy: { createdAt: "desc" },
   });
 
-  const gameLinkMap = await buildGameLinkMap(
-    cards.flatMap((c) => c.studio?.games ?? [])
+  const studioGamesMap = await buildStudioGamesByDeveloper(
+    cards.flatMap((c) => c.studio?.name ? [c.studio.name] : [])
   );
 
   const out = cards.map((c) => ({
     ...c,
     studio: c.studio
-      ? { ...c.studio, games: toStudioGameLinks(c.studio.games, gameLinkMap) }
+      ? { ...c.studio, games: studioGamesMap.get(c.studio.name) ?? [] }
       : null,
   }));
 
