@@ -3,20 +3,22 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useEffect, useState } from "react";
 
+// active:false = page stub ("À venir"), voir CONTEXT.md § mécaniques pas encore implémentées.
+// Affichées barrées dans le menu tant qu'elles ne sont pas développées.
 const NAV = [
-  { href: "/dashboard", label: "Paquets", icon: "📦" },
-  { href: "/collection", label: "Collection", icon: "🗂️" },
-  { href: "/echanges", label: "Échanges", icon: "🔁" },
-  { href: "/marche", label: "Marché", icon: "💰" },
-  { href: "/profil", label: "Profil", icon: "👤" },
-  { href: "/toutes-les-cartes", label: "Toutes les cartes", icon: "🃏" },
-  { href: "/guilde", label: "Guilde", icon: "🏰" },
-  { href: "/joueurs", label: "Joueurs", icon: "🧑‍🤝‍🧑" },
-  { href: "/messages", label: "Messages", icon: "💬" },
-  { href: "/bataille", label: "Bataille", icon: "⚔️" },
-  { href: "/succes", label: "Succès", icon: "🏆" },
-  { href: "/classement", label: "Classement", icon: "📊" },
-  { href: "/parametres", label: "Paramètres", icon: "⚙️" },
+  { href: "/dashboard", label: "Paquets", icon: "📦", active: true },
+  { href: "/collection", label: "Collection", icon: "🗂️", active: true },
+  { href: "/echanges", label: "Échanges", icon: "🔁", active: true },
+  { href: "/marche", label: "Marché", icon: "💰", active: false },
+  { href: "/profil", label: "Profil", icon: "👤", active: false },
+  { href: "/toutes-les-cartes", label: "Toutes les cartes", icon: "🃏", active: true },
+  { href: "/guilde", label: "Guilde", icon: "🏰", active: false },
+  { href: "/joueurs", label: "Joueurs", icon: "🧑‍🤝‍🧑", active: true },
+  { href: "/messages", label: "Messages", icon: "💬", active: false },
+  { href: "/bataille", label: "Bataille", icon: "⚔️", active: false },
+  { href: "/succes", label: "Succès", icon: "🏆", active: false },
+  { href: "/classement", label: "Classement", icon: "📊", active: false },
+  { href: "/parametres", label: "Paramètres", icon: "⚙️", active: false },
 ];
 
 const STORAGE_KEY = "sm_sidebar_collapsed";
@@ -75,13 +77,17 @@ export function Sidebar({ isAdmin, username, coins }: { isAdmin: boolean; userna
             <Link
               key={item.href}
               href={item.href}
-              title={collapsed ? item.label : undefined}
+              title={collapsed ? `${item.label}${item.active ? "" : " (bientôt)"}` : undefined}
               className={`flex items-center gap-2 px-2.5 py-2 rounded-lg text-sm transition ${
                 collapsed ? "justify-center" : ""
-              } ${active ? "bg-blue-600 text-white border-red-500/60" : "text-gray-400 hover:bg-gray-800 hover:text-white"}`}
+              } ${!item.active ? "opacity-40" : ""} ${
+                active ? "bg-blue-600 text-white border-red-500/60" : "text-gray-400 hover:bg-gray-800 hover:text-white"
+              }`}
             >
               <span className="steam-nav-icon shrink-0">{item.icon}</span>
-              {!collapsed && <span className="truncate">{item.label}</span>}
+              {!collapsed && (
+                <span className={`truncate ${!item.active ? "line-through" : ""}`}>{item.label}</span>
+              )}
             </Link>
           );
         })}
