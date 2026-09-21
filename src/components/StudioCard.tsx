@@ -31,13 +31,7 @@ export function StudioCard({
     <div
       className={`steam-card-shell w-full h-full rounded-2xl border-2 ${style.border} ${style.glow} bg-gray-900 overflow-hidden flex flex-col`}
     >
-      <span
-        className={`absolute top-2 right-2 z-10 ${style.label} text-white text-xs font-bold px-2 py-1 rounded-full`}
-      >
-        {style.text}
-      </span>
-
-      <div className="w-full h-36 bg-gradient-to-br from-gray-800 to-gray-900 flex items-center justify-center overflow-hidden">
+      <div className="steam-card-visual w-full h-36 bg-gradient-to-br from-gray-800 to-gray-900 flex items-center justify-center overflow-hidden">
         {avatarUrl ? (
           <img src={avatarUrl} alt={name} className="w-full h-full object-cover" />
         ) : (
@@ -45,19 +39,21 @@ export function StudioCard({
         )}
       </div>
 
-      <div className="p-4 flex flex-col gap-2 flex-1">
+      <div className="steam-card-content p-4 flex flex-col gap-2 flex-1">
         <span className="text-[10px] uppercase tracking-wide text-gray-500">Studio</span>
-        <h3 className="steam-card-title text-white font-bold text-lg leading-tight">{name}</h3>
+        <div className="steam-card-nameplate">
+          <h3 className="steam-card-title text-white font-bold text-lg leading-tight">{name}</h3>
+        </div>
         <p className="text-gray-400 text-xs leading-snug flex-1">
           {gameCount} jeu{gameCount > 1 ? "x" : ""} en base
         </p>
 
         <div className="steam-statbar flex justify-between items-center pt-2 border-t border-gray-800 mt-2">
-          <div className="flex items-center gap-1 text-red-400 font-bold">
+          <div className="steam-stat steam-stat-atk flex items-center gap-1 text-red-400 font-bold">
             <span className="text-xs">ATK</span>
             <span>{atk}</span>
           </div>
-          <div className="flex items-center gap-1 text-blue-400 font-bold">
+          <div className="steam-stat steam-stat-def flex items-center gap-1 text-blue-400 font-bold">
             <span className="text-xs">DEF</span>
             <span>{def}</span>
           </div>
@@ -73,7 +69,9 @@ export function StudioCard({
     <div
       className={`steam-card-shell w-full h-full rounded-2xl border-2 ${style.border} ${style.glow} bg-gray-900 flex flex-col p-4 gap-2`}
     >
-      <h3 className="steam-card-title text-white font-bold text-base leading-tight truncate">{name}</h3>
+      <div className="steam-card-nameplate">
+        <h3 className="steam-card-title text-white font-bold text-base leading-tight truncate">{name}</h3>
+      </div>
       {about && (
         <p className="text-gray-400 text-xs leading-snug line-clamp-3 border-b border-gray-800 pb-2">{about}</p>
       )}
@@ -85,12 +83,12 @@ export function StudioCard({
               key={g.name}
               href={`/toutes-les-cartes#card-GAME-${g.appid}`}
               onClick={(e) => e.stopPropagation()}
-              className="bg-gray-800 text-blue-400 hover:text-blue-300 hover:underline text-xs rounded-lg px-2 py-1.5 truncate"
+              className="steam-info-panel bg-gray-800 text-blue-400 hover:text-blue-300 hover:underline text-xs rounded-lg px-2 py-1.5 truncate"
             >
               {g.name}
             </Link>
           ) : (
-            <div key={g.name} className="bg-gray-800 text-gray-300 text-xs rounded-lg px-2 py-1.5 truncate">
+            <div key={g.name} className="steam-info-panel bg-gray-800 text-gray-300 text-xs rounded-lg px-2 py-1.5 truncate">
               {g.name}
             </div>
           )

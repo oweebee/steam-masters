@@ -34,7 +34,7 @@ export function FlipCard({
 
   return (
     <div
-      className="relative w-72 h-[26rem] [perspective:1200px]"
+      className="steam-card-wrap relative w-72 h-[26rem] [perspective:1200px]"
       onClick={() => canFlip && setFlipped((f) => !f)}
     >
       <div

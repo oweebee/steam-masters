@@ -80,7 +80,7 @@ export function Sidebar({ isAdmin, username, coins }: { isAdmin: boolean; userna
                 collapsed ? "justify-center" : ""
               } ${active ? "bg-blue-600 text-white border-red-500/60" : "text-gray-400 hover:bg-gray-800 hover:text-white"}`}
             >
-              <span className="shrink-0">{item.icon}</span>
+              <span className="steam-nav-icon shrink-0">{item.icon}</span>
               {!collapsed && <span className="truncate">{item.label}</span>}
             </Link>
           );
@@ -93,7 +93,7 @@ export function Sidebar({ isAdmin, username, coins }: { isAdmin: boolean; userna
               collapsed ? "justify-center" : ""
             } ${pathname === "/admin/games" ? "bg-purple-600 text-white" : "text-purple-400 hover:bg-gray-800"}`}
           >
-            <span className="shrink-0">🛡️</span>
+            <span className="steam-nav-icon shrink-0">🛡️</span>
             {!collapsed && <span className="truncate">Console Admin</span>}
           </Link>
         )}

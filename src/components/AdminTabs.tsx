@@ -27,7 +27,7 @@ export function AdminTabs() {
                   : "border-transparent text-gray-400 hover:text-white hover:border-gray-700"
               }`}
             >
-              <span>{tab.icon}</span>
+              <span className="steam-tab-icon">{tab.icon}</span>
               {tab.label}
             </Link>
           );
