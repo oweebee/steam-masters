@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { auth } from "@/auth";
 import { prisma } from "@/lib/prisma";
-import { rollCardRarity, RARITY_CAP, nextLowerRarity, type Rarity } from "@/lib/rarityRoll";
+import { rollCardRarity, RARITY_CAP, nextLowerRarity, rollAtkForRarity, type Rarity } from "@/lib/rarityRoll";
 
 const BOOSTER_INTERVAL_MS = 60 * 60 * 1000; // 1 heure
 
@@ -82,13 +82,18 @@ export async function POST() {
       rarity = lower;
     }
 
-    const card = await tx.card.create({ data: { userId, gameId, studioId, rarity } });
+    // ATK propre à l'exemplaire, roulé dans la bande % de la rareté finale
+    // (même principe que la rareté : fixé au tirage, modifiable ensuite
+    // seulement par un admin). Voir rollAtkForRarity dans rarityRoll.ts.
+    const atk = rollAtkForRarity(rarity);
+
+    const card = await tx.card.create({ data: { userId, gameId, studioId, rarity, atk } });
     await tx.user.update({ where: { id: userId }, data: { lastBoosterAt: new Date() } });
     return card;
   });
 
-  if (responseGame) responseGame = { ...responseGame, rarity: result.rarity };
-  if (responseStudio) responseStudio = { ...responseStudio, rarity: result.rarity };
+  if (responseGame) responseGame = { ...responseGame, rarity: result.rarity, atk: result.atk };
+  if (responseStudio) responseStudio = { ...responseStudio, rarity: result.rarity, atk: result.atk };
 
   return NextResponse.json({ card: result, game: responseGame, studio: responseStudio });
 }

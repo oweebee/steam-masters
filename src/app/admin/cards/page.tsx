@@ -5,7 +5,7 @@ import { StudioCard } from "@/components/StudioCard";
 
 type Rarity = "COMMON" | "UNCOMMON" | "RARE" | "EPIC" | "LEGENDARY";
 
-type Instance = { id: string; username: string; rarity: Rarity };
+type Instance = { id: string; username: string; rarity: Rarity; atk: number };
 
 type Item = {
   type: "GAME" | "STUDIO";
@@ -112,16 +112,38 @@ export default function AdminCardsPage() {
 
   async function setInstanceRarity(itemId: string, instanceId: string, rarity: Rarity) {
     setSavingInstanceId(instanceId);
+    // Changer la rareté re-roule automatiquement l'ATK dans la nouvelle bande
+    // (voir /api/admin/instances/[id]) — on récupère les deux dans la réponse.
     const res = await fetch(`/api/admin/instances/${instanceId}`, {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ rarity }),
     });
     if (res.ok) {
+      const updated = await res.json();
       setItems((prev) =>
         prev.map((it) =>
           it.id === itemId
-            ? { ...it, instances: it.instances.map((i) => (i.id === instanceId ? { ...i, rarity } : i)) }
+            ? { ...it, instances: it.instances.map((i) => (i.id === instanceId ? { ...i, rarity: updated.rarity, atk: updated.atk } : i)) }
+            : it
+        )
+      );
+    }
+    setSavingInstanceId(null);
+  }
+
+  async function setInstanceAtk(itemId: string, instanceId: string, atk: number) {
+    setSavingInstanceId(instanceId);
+    const res = await fetch(`/api/admin/instances/${instanceId}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ atk }),
+    });
+    if (res.ok) {
+      setItems((prev) =>
+        prev.map((it) =>
+          it.id === itemId
+            ? { ...it, instances: it.instances.map((i) => (i.id === instanceId ? { ...i, atk } : i)) }
             : it
         )
       );
@@ -313,6 +335,19 @@ export default function AdminCardsPage() {
                                   <option key={r} value={r}>{RARITY_LABEL[r]}</option>
                                 ))}
                               </select>
+                              <input
+                                type="number"
+                                min={0}
+                                max={100}
+                                defaultValue={inst.atk}
+                                disabled={savingInstanceId === inst.id}
+                                onBlur={(e) => {
+                                  const v = Number(e.target.value);
+                                  if (v !== inst.atk && v >= 0 && v <= 100) setInstanceAtk(it.id, inst.id, v);
+                                }}
+                                className="bg-gray-800 border border-gray-700 rounded-lg px-2 py-1 text-xs text-red-400 w-16 outline-none"
+                                title="ATK de cet exemplaire (0-100)"
+                              />
                             </div>
                           ))}
                         </div>

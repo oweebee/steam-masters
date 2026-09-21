@@ -10,6 +10,9 @@ type Card = {
   // Rareté propre à CET exemplaire (loot table booster), indépendante de la
   // rareté intrinsèque du jeu/studio (ownerEstimate) — c'est elle qu'on affiche.
   rarity: Rarity;
+  // ATK propre à CET exemplaire, roulé dans la bande de sa rareté — remplace
+  // l'ATK catalogue (game.atk/studio.atk) sur l'affichage de cette carte.
+  atk: number;
   game: {
     id: string;
     name: string;
@@ -63,7 +66,7 @@ export function CollectionClient() {
               name={c.game.name}
               headerImage={c.game.headerImage}
               description={c.game.description}
-              atk={c.game.atk}
+              atk={c.atk}
               def={c.game.def}
               rarity={c.rarity}
               tags={c.game.tags}
@@ -79,7 +82,7 @@ export function CollectionClient() {
               key={c.id}
               name={c.studio.name}
               gameCount={c.studio.gameCount}
-              atk={c.studio.atk}
+              atk={c.atk}
               def={c.studio.def}
               rarity={c.rarity}
               games={c.studio.games}

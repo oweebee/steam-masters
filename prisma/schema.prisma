@@ -130,6 +130,13 @@ model Card {
   // globale) avec une rareté différente à chaque exemplaire. Modifiable ensuite
   // UNIQUEMENT par un admin (voir /api/admin/instances/[id]).
   rarity    Rarity    @default(COMMON)
+  // ATK PROPRE à cet exemplaire, roulé dans la bande % de sa rareté au moment du
+  // pull (même logique de tirage/fixation que `rarity`), remplace l'ATK
+  // catalogue (SteamGame.atk/Studio, inchangé) sur l'affichage de CETTE carte.
+  // Bandes (sur l'échelle ATK 0-100 existante) : LEGENDARY 98-100 / EPIC 96-97 /
+  // RARE 91-95 / UNCOMMON 85-90 / COMMON 0-84. Modifiable ensuite UNIQUEMENT par
+  // un admin (voir /api/admin/instances/[id]).
+  atk       Int       @default(0)
   createdAt DateTime  @default(now())
   isPinned  Boolean   @default(false)
 

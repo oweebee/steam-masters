@@ -35,6 +35,10 @@ Deux notions de "rareté" bien distinctes, ne pas les confondre :
    - Catégorie "gris" mentionnée une fois par l'user puis explicitement abandonnée — ne jamais l'ajouter.
    - **Les cartes ne sont PLUS uniques par défaut** (contrainte `@@unique([gameId])`/`@@unique([studioId])` supprimée, migration 0008) : un même jeu/studio peut être tiré par plusieurs joueurs (ou plusieurs fois par le même), sous réserve des plafonds ci-dessus.
 
+3. **ATK de l'exemplaire (`Card.atk`, migration 0011)** — NE touche PAS la logique/les taux/plafonds de tirage de `Card.rarity` ci-dessus (inchangés). Une fois la rareté obtenue, l'ATK est roulé dans une bande liée à ce palier, figé pareil, modifiable ensuite SEULEMENT par un admin (`rollAtkForRarity` dans `src/lib/rarityRoll.ts`) :
+   - 🟠 LEGENDARY → ATK 98-100 / 🟣 EPIC → 96-97 / 🔵 RARE → 91-95 / 🟢 UNCOMMON → 85-90 / ⚪ COMMON → 0-84
+   - Remplace l'ATK catalogue (`SteamGame.atk`/`Studio`, inchangé) sur l'affichage de CETTE carte (collection, résultat de pull). Les vues catalogue (`/toutes-les-cartes`, `/admin/cards`) continuent d'afficher l'ATK catalogue au niveau jeu/studio ; l'ATK par exemplaire est visible/éditable dans le panneau « Exemplaires » de `/admin/cards`.
+
 - Source données jeu/studio : Steam Store API (`appdetails`, `appreviews`) + `GetNumberOfCurrentPlayers` + SteamSpy (`owners`, tiers/non-officiel) — toujours ces sources, jamais de champ inventé.
 
 ## Règles anti-casse

@@ -44,7 +44,7 @@ export async function GET() {
       // Plus d'unicité : un jeu peut avoir 0, 1 ou N exemplaires tirés (par le même
       // joueur ou des joueurs différents), chacun avec sa propre rareté.
       copies: g.cards.length,
-      instances: g.cards.map((c) => ({ id: c.id, username: c.user.username, rarity: c.rarity })),
+      instances: g.cards.map((c) => ({ id: c.id, username: c.user.username, rarity: c.rarity, atk: c.atk })),
       updatedAt: g.updatedAt,
     })),
     ...studios.map((s) => ({
@@ -64,7 +64,7 @@ export async function GET() {
       about: s.about,
       avatarUrl: s.avatarUrl,
       copies: s.cards.length,
-      instances: s.cards.map((c) => ({ id: c.id, username: c.user.username, rarity: c.rarity })),
+      instances: s.cards.map((c) => ({ id: c.id, username: c.user.username, rarity: c.rarity, atk: c.atk })),
       updatedAt: s.updatedAt,
     })),
   ];

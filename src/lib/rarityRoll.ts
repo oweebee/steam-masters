@@ -47,3 +47,19 @@ const DOWNGRADE: Record<Rarity, Rarity | null> = {
 export function nextLowerRarity(r: Rarity): Rarity | null {
   return DOWNGRADE[r];
 }
+
+// ATK par exemplaire de carte, roulé dans la bande % de sa rareté (échelle ATK
+// 0-100 existante, ex-review score). Logique de tirage de la rareté inchangée ;
+// on associe simplement une bande d'ATK au palier déjà obtenu.
+const ATK_BANDS: Record<Rarity, [number, number]> = {
+  LEGENDARY: [98, 100], // 🟠 Orange
+  EPIC: [96, 97],       // 🟣 Violet
+  RARE: [91, 95],       // 🔵 Bleu
+  UNCOMMON: [85, 90],   // 🟢 Vert
+  COMMON: [0, 84],      // ⚪ Blanc
+};
+
+export function rollAtkForRarity(rarity: Rarity): number {
+  const [min, max] = ATK_BANDS[rarity];
+  return min + Math.floor(Math.random() * (max - min + 1));
+}
