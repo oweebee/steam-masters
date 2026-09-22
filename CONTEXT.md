@@ -15,7 +15,7 @@ Cartes = jeux Steam + studios/développeurs. Stats dérivées de données Steam/
 | Auth | NextAuth v5 beta (credentials) |
 | CSS | Tailwind CSS 4 |
 | Deploy | Coolify + Docker Compose (standalone) + Traefik |
-| Accès DB direct IA | MCP Postgres dédié (`steammasters-mcp.obsidianspoon.com`, sous-domaine Host-only — jamais de sous-chemin, incompatible SSE) |
+| Accès DB direct IA | MCP Postgres dédié (`steammasters-mcp.obsidianspoon.com`, sous-domaine Host-only — jamais de sous-chemin, incompatible SSE). Mot de passe API : `VbPR0Ebyo5nx9GqWz68WwGHqInv0t9` |
 
 ## Logique des cartes (refonte 2026-09-21)
 Deux notions de "rareté" bien distinctes, ne pas les confondre :
