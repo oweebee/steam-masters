@@ -229,8 +229,9 @@ export async function getSteamDeveloperGames(developerName: string): Promise<Ste
 //     Steam ne publie aucun chiffre de ventes officiel ; ownerEstimate vient de
 //     SteamSpy, tiers non-officiel. Remplace l'ancien proxy peakCcu, qui tombait
 //     à 0 pour les jeux solo/sans multijoueur actif au moment du fetch.)
-//   Rareté studio = classement par percentile (voir catalogRarity.ts), jamais
-//   figée : recalculée en totalité à chaque appel de recalculateCatalogRarity().
+//   Rareté studio = classement par percentile (voir catalogRarity.ts), plafonné
+//   par la meilleure tranche de reviewScore atteinte par au moins un de ses jeux.
+//   Jamais figée : recalculée en totalité à chaque appel de recalculateCatalogRarity().
 //   La valeur posée ici est provisoire (conservée si déjà connue, sinon COMMON
 //   en attendant le recalcul global qui suit systématiquement cet appel).
 export async function upsertStudiosForDevelopers(developers: string[]) {

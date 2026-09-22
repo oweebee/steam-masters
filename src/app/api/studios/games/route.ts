@@ -32,6 +32,9 @@ export async function GET(req: NextRequest) {
     const steamGames = await getSteamDeveloperGames(name);
     const merged = new Map(steamGames.map((game) => [game.appid, {
       ...game,
+      // Une fiche distante sans carte locale ne doit jamais exposer directement
+      // l'URL Steam : seules les images enregistrées sur notre serveur sont servies.
+      headerImage: localById.get(game.appid)?.headerImage ?? null,
       hasCard: localById.has(game.appid),
     }]));
     localGames.forEach((game) => merged.set(game.id, {

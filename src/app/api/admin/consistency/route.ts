@@ -13,8 +13,9 @@ async function requireAdmin() {
 // Studio à partir des SteamGame réels en base (couvre le cas d'un développeur
 // présent dans des jeux mais sans fiche Studio), purge les Studio orphelins
 // (0 jeu et 0 carte possédée par un joueur, donc sans impact sur l'historique
-// figé), puis recalcule la rareté catalogue de TOUT le classement (barrière
-// stricte 0.5%/5%/10%/20%/64.5%, voir catalogRarity.ts).
+// figé), puis recalcule la rareté catalogue de TOUT le classement (cibles
+// 0.5%/5%/10%/20%/64.5%). La rareté Studio est ensuite plafonnée par la
+// meilleure tranche réellement atteinte par l'un de ses jeux.
 export async function POST() {
   try { await requireAdmin(); } catch { return NextResponse.json({ error: "Unauthorized" }, { status: 401 }); }
 

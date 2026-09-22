@@ -80,6 +80,15 @@ model AppSetting {
   updatedAt DateTime @updatedAt
 }
 
+model StoredImage {
+  key       String   @id
+  data      Bytes?
+  mimeType  String?
+  sourceUrl String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
 model SteamGame {
   id            String   @id
   name          String

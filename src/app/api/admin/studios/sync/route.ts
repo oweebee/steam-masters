@@ -8,6 +8,7 @@ import {
   sleep,
 } from "@/lib/steam";
 import { recalculateCatalogRarity } from "@/lib/catalogRarity";
+import { persistRemoteImage } from "@/lib/storedImages";
 
 async function requireAdmin() {
   const session = await auth();
@@ -50,12 +51,13 @@ export async function POST(req: NextRequest) {
     try {
       const data = await getSteamGameData(Number(officialGame.appid));
       if (data.ownerEstimate <= 0) throw new Error("Jeu refusé : DEF doit être supérieur à 0");
+      const headerImage = await persistRemoteImage("game", String(data.appid), data.headerImage);
       await prisma.steamGame.create({
         data: {
           id: String(data.appid),
           name: data.name,
           description: data.description,
-          headerImage: data.headerImage,
+          headerImage,
           reviewScore: data.reviewScore,
           peakCcu: data.peakCcu,
           ownerEstimate: data.ownerEstimate,

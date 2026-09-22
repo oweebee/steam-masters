@@ -3,10 +3,11 @@ import { auth } from "@/auth";
 import { prisma } from "@/lib/prisma";
 import { getSteamGameData, upsertStudiosForDevelopers } from "@/lib/steam";
 import { recalculateCatalogRarity } from "@/lib/catalogRarity";
+import { persistRemoteImage } from "@/lib/storedImages";
 
 async function requireAdmin() {
   const session = await auth();
-  if (!session || (session.user as any)?.role !== "ADMIN") throw new Error("Unauthorized");
+  if (!session || (session.user as { role?: string })?.role !== "ADMIN") throw new Error("Unauthorized");
 }
 
 export async function GET() {
@@ -22,11 +23,20 @@ export async function POST(req: NextRequest) {
   let data;
   try {
     data = await getSteamGameData(Number(appid));
-  } catch (e: any) {
-    return NextResponse.json({ error: e.message }, { status: 400 });
+  } catch (error) {
+    const message = error instanceof Error ? error.message : "Import Steam impossible";
+    return NextResponse.json({ error: message }, { status: 400 });
   }
   if (data.ownerEstimate <= 0) {
     return NextResponse.json({ error: "Jeu refusé : DEF doit être supérieur à 0" }, { status: 422 });
+  }
+
+  let headerImage: string;
+  try {
+    headerImage = await persistRemoteImage("game", String(data.appid), data.headerImage);
+  } catch (error) {
+    const message = error instanceof Error ? error.message : "Image du jeu impossible à enregistrer";
+    return NextResponse.json({ error: message }, { status: 422 });
   }
 
   const existing = await prisma.steamGame.findUnique({
@@ -45,7 +55,7 @@ export async function POST(req: NextRequest) {
     update: {
       name: data.name,
       description: data.description,
-      headerImage: data.headerImage,
+      headerImage,
       reviewScore: data.reviewScore,
       peakCcu: data.peakCcu,
       ownerEstimate: data.ownerEstimate,
@@ -61,7 +71,7 @@ export async function POST(req: NextRequest) {
       id: String(data.appid),
       name: data.name,
       description: data.description,
-      headerImage: data.headerImage,
+      headerImage,
       reviewScore: data.reviewScore,
       peakCcu: data.peakCcu,
       ownerEstimate: data.ownerEstimate,
