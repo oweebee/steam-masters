@@ -7,6 +7,7 @@ const TABS = [
   { href: "/admin/users", label: "Utilisateurs", icon: "👥" },
   { href: "/admin/cards", label: "Toutes les cartes", icon: "🃏" },
   { href: "/admin/games", label: "Import de jeux", icon: "📥" },
+  { href: "/admin/logs", label: "Journal", icon: "📜" },
   { href: "/admin/settings", label: "Configuration", icon: "⚙️" },
 ];
 

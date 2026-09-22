@@ -41,6 +41,7 @@ async function downloadImage(rawUrl: string, redirectsLeft = 3): Promise<{ data:
   const response = await fetch(url, {
     cache: "no-store",
     redirect: "manual",
+    signal: AbortSignal.timeout(12_000),
     headers: { "User-Agent": "SteamMasters/1.0 image-cache", Accept: "image/avif,image/webp,image/png,image/jpeg,image/gif" },
   });
   if (response.status >= 300 && response.status < 400) {

@@ -22,6 +22,18 @@ type Game = {
 type Suggestion = { appid: number; name: string; tinyImage: string };
 type StudioMatch = { id: string; name: string; gameCount: number };
 
+function createRunId(prefix: string) {
+  return `${prefix}-${crypto.randomUUID()}`;
+}
+
+async function resilientFetch(input: RequestInfo | URL, init?: RequestInit) {
+  try {
+    return await fetch(input, init);
+  } catch {
+    return null;
+  }
+}
+
 export default function AdminGamesPage() {
   const [games, setGames] = useState<Game[]>([]);
   const [query, setQuery] = useState("");
@@ -88,11 +100,12 @@ export default function AdminGamesPage() {
     if (!appid) { setError("Choisis un jeu dans la liste de suggestions."); return; }
     setLoading(true);
     setError("");
-    const res = await fetch("/api/admin/games", {
+    const res = await resilientFetch("/api/admin/games", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ appid }),
+      body: JSON.stringify({ appid, runId: createRunId("manual-import") }),
     });
+    if (!res) { setError("Connexion interrompue pendant l’import. Consulte le Journal."); setLoading(false); return; }
     const data = await res.json();
     if (!res.ok) { setError(data.error); setLoading(false); return; }
     setQuery("");
@@ -101,13 +114,14 @@ export default function AdminGamesPage() {
     load();
   }
 
-  async function syncAllStudios() {
+  async function syncAllStudios(sharedRunId?: string) {
+    const runId = sharedRunId ?? createRunId("studio-sync");
     setSyncingStudios(true);
     setSyncMessage("");
     setSyncProgress({ done: 0, total: 0, imported: 0, errors: 0 });
 
-    const listRes = await fetch("/api/admin/studios/sync");
-    if (!listRes.ok) {
+    const listRes = await resilientFetch("/api/admin/studios/sync");
+    if (!listRes?.ok) {
       setSyncMessage("Impossible de charger la liste des studios.");
       setSyncingStudios(false);
       return;
@@ -121,12 +135,12 @@ export default function AdminGamesPage() {
 
     for (let index = 0; index < queue.length; index += 1) {
       setSyncMessage(`Synchronisation de ${queue[index]}…`);
-      const res = await fetch("/api/admin/studios/sync", {
+      const res = await resilientFetch("/api/admin/studios/sync", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ name: queue[index] }),
+        body: JSON.stringify({ name: queue[index], runId }),
       });
-      if (res.ok) {
+      if (res?.ok) {
         const data = await res.json();
         imported += data.imported ?? 0;
         errors += Array.isArray(data.errors) ? data.errors.length : 0;
@@ -138,6 +152,7 @@ export default function AdminGamesPage() {
         }
       } else {
         errors += 1;
+        setSyncMessage(`${queue[index]} interrompu ou en erreur, passage au studio suivant…`);
       }
       setSyncProgress({ done: index + 1, total: queue.length, imported, errors });
       if (index < queue.length - 1) await new Promise((r) => setTimeout(r, 400));
@@ -149,10 +164,15 @@ export default function AdminGamesPage() {
   }
 
   async function fullRepairScan() {
+    const runId = createRunId("full-repair");
     setRepairing(true);
     setRepairMessage("Réparation locale (rareté, fiches studio, orphelins)…");
-    const res = await fetch("/api/admin/consistency", { method: "POST" });
-    if (!res.ok) {
+    const res = await resilientFetch("/api/admin/consistency", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ runId }),
+    });
+    if (!res?.ok) {
       setRepairMessage("Échec de la réparation locale.");
       setRepairing(false);
       return;
@@ -163,23 +183,24 @@ export default function AdminGamesPage() {
       `${data.orphanStudiosRemoved} orphelin(s) supprimé(s). Recherche des jeux manquants sur Steam (peut prendre plusieurs minutes)…`
     );
     load();
-    await syncAllStudios();
+    await syncAllStudios(runId);
     setRepairMessage((m) => m.replace("Recherche des jeux manquants sur Steam (peut prendre plusieurs minutes)…", "Terminé."));
     setRepairing(false);
   }
 
   async function addTwentyNewGames() {
+    const runId = createRunId("catalog-extension");
     setSeeding(true);
     setSeedMessage("Recherche de jeux absents du catalogue…");
     setSeedProgress({ base: 0, studiosDone: 0, studiosTotal: 0, errors: 0 });
 
     const [beforeGamesRes, beforeStudiosRes, discoveryRes] = await Promise.all([
-      fetch("/api/admin/games"),
-      fetch("/api/admin/studios/sync"),
-      fetch("/api/admin/games/discover"),
+      resilientFetch("/api/admin/games"),
+      resilientFetch("/api/admin/studios/sync"),
+      resilientFetch(`/api/admin/games/discover?runId=${encodeURIComponent(runId)}`),
     ]);
-    if (!beforeGamesRes.ok || !beforeStudiosRes.ok || !discoveryRes.ok) {
-      const errorData = await discoveryRes.json().catch(() => ({}));
+    if (!beforeGamesRes?.ok || !beforeStudiosRes?.ok || !discoveryRes?.ok) {
+      const errorData = await discoveryRes?.json().catch(() => ({})) ?? {};
       setSeedMessage(errorData.error ?? "Impossible de préparer l’import automatique.");
       setSeeding(false);
       return;
@@ -197,12 +218,12 @@ export default function AdminGamesPage() {
     for (const candidate of candidates) {
       if (base >= 20) break;
       setSeedMessage(`Import du jeu inédit ${base + 1}/20…`);
-      const response = await fetch("/api/admin/games", {
+      const response = await resilientFetch("/api/admin/games", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ appid: candidate }),
+        body: JSON.stringify({ appid: candidate, runId }),
       });
-      if (!response.ok) {
+      if (!response?.ok) {
         errors += 1;
         setSeedProgress((current) => ({ ...current, errors }));
         continue;
@@ -227,12 +248,12 @@ export default function AdminGamesPage() {
 
     for (let index = 0; index < studioQueue.length; index += 1) {
       setSeedMessage(`Complétion du studio ${studioQueue[index]}…`);
-      const response = await fetch("/api/admin/studios/sync", {
+      const response = await resilientFetch("/api/admin/studios/sync", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ name: studioQueue[index] }),
+        body: JSON.stringify({ name: studioQueue[index], runId }),
       });
-      if (response.ok) {
+      if (response?.ok) {
         const data = await response.json();
         errors += Array.isArray(data.errors) ? data.errors.length : 0;
         for (const related of data.relatedStudios ?? []) {
@@ -248,10 +269,10 @@ export default function AdminGamesPage() {
     }
 
     const [afterGamesRes, afterStudiosRes] = await Promise.all([
-      fetch("/api/admin/games"),
-      fetch("/api/admin/studios/sync"),
+      resilientFetch("/api/admin/games"),
+      resilientFetch("/api/admin/studios/sync"),
     ]);
-    if (!afterGamesRes.ok || !afterStudiosRes.ok) {
+    if (!afterGamesRes?.ok || !afterStudiosRes?.ok) {
       setSeedMessage(`Import terminé, mais le décompte final n’a pas pu être chargé. ${errors} erreur(s).`);
       setSeeding(false);
       load();
@@ -392,7 +413,7 @@ export default function AdminGamesPage() {
           </div>
           <button
             type="button"
-            onClick={syncAllStudios}
+            onClick={() => void syncAllStudios()}
             disabled={syncingStudios || seeding}
             className="bg-blue-600 hover:bg-blue-500 text-white font-semibold rounded-lg px-4 py-2 disabled:opacity-50"
           >

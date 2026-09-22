@@ -3,6 +3,7 @@ import { auth } from "@/auth";
 import { prisma } from "@/lib/prisma";
 import { upsertStudiosForDevelopers } from "@/lib/steam";
 import { recalculateCatalogRarity } from "@/lib/catalogRarity";
+import { writeAppLog } from "@/lib/appLog";
 
 async function requireAdmin() {
   const session = await auth();
@@ -16,8 +17,11 @@ async function requireAdmin() {
 // figé), puis recalcule la rareté catalogue de TOUT le classement (cibles
 // 0.5%/5%/10%/20%/64.5%). La rareté Studio est ensuite plafonnée par la
 // meilleure tranche réellement atteinte par l'un de ses jeux.
-export async function POST() {
+export async function POST(req: Request) {
   try { await requireAdmin(); } catch { return NextResponse.json({ error: "Unauthorized" }, { status: 401 }); }
+  const body = await req.json().catch(() => null);
+  const runId = typeof body?.runId === "string" ? body.runId : null;
+  await writeAppLog({ runId, category: "REPAIR", message: "Scan de cohérence locale démarré" });
 
   const games = await prisma.steamGame.findMany({ select: { developers: true } });
   const developers = Array.from(new Set(games.flatMap((game) => game.developers).filter(Boolean)));
@@ -33,6 +37,14 @@ export async function POST() {
   }
 
   const rarityResult = await recalculateCatalogRarity();
+
+  await writeAppLog({
+    runId,
+    category: "REPAIR",
+    level: "SUCCESS",
+    message: `Scan terminé : ${developers.length} studio(s), ${removable.length} orphelin(s) supprimé(s)`,
+    details: { gamesScanned: rarityResult?.entriesScanned ?? 0, gamesFixed: rarityResult?.gamesFixed ?? 0, studiosFixed: rarityResult?.studiosFixed ?? 0, orphanStudiosRemoved: removable.length },
+  });
 
   return NextResponse.json({
     gamesScanned: rarityResult?.entriesScanned ?? 0,

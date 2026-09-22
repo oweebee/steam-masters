@@ -89,6 +89,20 @@ model StoredImage {
   updatedAt DateTime @updatedAt
 }
 
+model AppLog {
+  id        String   @id @default(cuid())
+  runId     String?
+  category  String
+  level     String
+  message   String
+  details   Json?
+  createdAt DateTime @default(now())
+
+  @@index([createdAt])
+  @@index([runId, createdAt])
+  @@index([category, createdAt])
+}
+
 model SteamGame {
   id            String   @id
   name          String

@@ -4,6 +4,7 @@ import { prisma } from "@/lib/prisma";
 import { getSteamGameData, upsertStudiosForDevelopers } from "@/lib/steam";
 import { recalculateCatalogRarity } from "@/lib/catalogRarity";
 import { persistRemoteImage } from "@/lib/storedImages";
+import { writeAppLog } from "@/lib/appLog";
 
 async function requireAdmin() {
   const session = await auth();
@@ -17,17 +18,20 @@ export async function GET() {
 
 export async function POST(req: NextRequest) {
   try { await requireAdmin(); } catch { return NextResponse.json({ error: "Unauthorized" }, { status: 401 }); }
-  const { appid } = await req.json();
+  const { appid, runId } = await req.json();
   if (!appid) return NextResponse.json({ error: "appid requis" }, { status: 400 });
+  await writeAppLog({ runId, category: "IMPORT", message: `Import Steam démarré pour l’AppID ${appid}`, details: { appid: String(appid) } });
 
   let data;
   try {
     data = await getSteamGameData(Number(appid));
   } catch (error) {
     const message = error instanceof Error ? error.message : "Import Steam impossible";
+    await writeAppLog({ runId, category: "IMPORT", level: "ERROR", message: `Import ${appid} refusé : ${message}`, details: { appid: String(appid) } });
     return NextResponse.json({ error: message }, { status: 400 });
   }
   if (data.ownerEstimate <= 0) {
+    await writeAppLog({ runId, category: "IMPORT", level: "WARNING", message: `${data.name} refusé : DEF nul`, details: { appid: String(data.appid), def: data.ownerEstimate } });
     return NextResponse.json({ error: "Jeu refusé : DEF doit être supérieur à 0" }, { status: 422 });
   }
 
@@ -36,6 +40,7 @@ export async function POST(req: NextRequest) {
     headerImage = await persistRemoteImage("game", String(data.appid), data.headerImage);
   } catch (error) {
     const message = error instanceof Error ? error.message : "Image du jeu impossible à enregistrer";
+    await writeAppLog({ runId, category: "IMAGE", level: "ERROR", message: `Image de ${data.name} non enregistrée : ${message}`, details: { appid: String(data.appid) } });
     return NextResponse.json({ error: message }, { status: 422 });
   }
 
@@ -89,5 +94,12 @@ export async function POST(req: NextRequest) {
   await recalculateCatalogRarity();
 
   const finalGame = await prisma.steamGame.findUnique({ where: { id: game.id } });
+  await writeAppLog({
+    runId,
+    category: "IMPORT",
+    level: "SUCCESS",
+    message: `${data.name} importé avec ${data.developers.length} studio(s) lié(s)`,
+    details: { appid: String(data.appid), developers: data.developers, def: data.ownerEstimate, reviewScore: data.reviewScore },
+  });
   return NextResponse.json(finalGame ?? game);
 }

@@ -12,17 +12,30 @@ export function sleep(ms: number) {
 
 const STEAM_REQUEST_DELAY_MS = 900;
 const STEAM_MAX_RETRIES = 4;
+const STEAM_REQUEST_TIMEOUT_MS = 12_000;
+const STEAM_NETWORK_MAX_RETRIES = 1;
 
 async function fetchWithRetry(url: string, init?: RequestInit): Promise<Response> {
   for (let attempt = 0; attempt <= STEAM_MAX_RETRIES; attempt += 1) {
-    const res = await fetch(url, init);
-    if (res.status !== 429) return res;
-    const retryAfter = Number(res.headers.get("retry-after"));
-    const backoffMs = Number.isFinite(retryAfter) && retryAfter > 0
-      ? retryAfter * 1000
-      : 2000 * 2 ** attempt;
-    if (attempt === STEAM_MAX_RETRIES) return res;
-    await sleep(backoffMs);
+    try {
+      const timeoutSignal = AbortSignal.timeout(STEAM_REQUEST_TIMEOUT_MS);
+      const signal = init?.signal ? AbortSignal.any([init.signal, timeoutSignal]) : timeoutSignal;
+      const res = await fetch(url, { ...init, signal });
+      if (res.status !== 429) return res;
+      const retryAfter = Number(res.headers.get("retry-after"));
+      const requestedBackoffMs = Number.isFinite(retryAfter) && retryAfter > 0
+        ? retryAfter * 1000
+        : 2000 * 2 ** attempt;
+      const backoffMs = Math.min(requestedBackoffMs, 15_000);
+      if (attempt === STEAM_MAX_RETRIES) return res;
+      await sleep(backoffMs);
+    } catch (error) {
+      if (attempt >= STEAM_NETWORK_MAX_RETRIES) {
+        const reason = error instanceof Error ? error.message : "délai dépassé";
+        throw new Error(`Steam indisponible après ${STEAM_NETWORK_MAX_RETRIES + 1} tentatives : ${reason}`);
+      }
+      await sleep(1000 * 2 ** attempt);
+    }
   }
   // Inatteignable (boucle retourne toujours dans les cas ci-dessus), mais TS veut un retour.
   return fetch(url, init);
@@ -164,7 +177,10 @@ export async function getSteamGameData(appid: number): Promise<SteamGameData> {
 // Catalogue officiel d'un développeur sur Steam. Chargé à la demande par les
 // cartes Studio visibles et caché 30 min dans Redis pour éviter tout balayage
 // massif du catalogue. Les DLC, bandes-son et outils sont exclus.
-export async function getSteamDeveloperGames(developerName: string): Promise<SteamDeveloperGame[]> {
+export async function getSteamDeveloperGames(
+  developerName: string,
+  onProgress?: (message: string, details?: Record<string, number>) => void | Promise<void>
+): Promise<SteamDeveloperGame[]> {
   const normalizedName = developerName.trim().toLocaleLowerCase("fr");
   const cacheKey = `steam:developer-games:${normalizedName}`;
   const cached = await redis.get(cacheKey);
@@ -193,6 +209,7 @@ export async function getSteamDeveloperGames(developerName: string): Promise<Ste
     for (const appid of pageIds) {
       if (!appids.includes(appid)) appids.push(appid);
     }
+    await onProgress?.(`${developerName} : ${appids.length}/${total} AppID Steam analysés`, { discovered: appids.length, total });
     if (pageIds.length === 0) break;
     start += pageSize;
   }
@@ -214,6 +231,9 @@ export async function getSteamDeveloperGames(developerName: string): Promise<Ste
       if (details.type !== "game" || !belongsToDeveloper || !details.header_image) continue;
       games.push({ appid: String(appid), name: details.name, headerImage: details.header_image });
     }
+    await onProgress?.(`${developerName} : fiches ${Math.min(index + CHUNK_SIZE, appids.length)}/${appids.length} vérifiées`, {
+      checked: Math.min(index + CHUNK_SIZE, appids.length), total: appids.length, eligible: games.length,
+    });
   }
 
   await redis.set(cacheKey, JSON.stringify(games), "EX", CACHE_TTL);

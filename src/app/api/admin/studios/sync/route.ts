@@ -9,6 +9,7 @@ import {
 } from "@/lib/steam";
 import { recalculateCatalogRarity } from "@/lib/catalogRarity";
 import { persistRemoteImage } from "@/lib/storedImages";
+import { writeAppLog } from "@/lib/appLog";
 
 async function requireAdmin() {
   const session = await auth();
@@ -28,12 +29,24 @@ export async function POST(req: NextRequest) {
   try { await requireAdmin(); } catch { return NextResponse.json({ error: "Unauthorized" }, { status: 401 }); }
   const body = await req.json().catch(() => null);
   const name = typeof body?.name === "string" ? body.name.trim() : "";
+  const runId = typeof body?.runId === "string" ? body.runId : null;
   if (!name) return NextResponse.json({ error: "Nom de studio requis" }, { status: 400 });
 
   const studio = await prisma.studio.findUnique({ where: { name }, select: { id: true } });
   if (!studio) return NextResponse.json({ error: "Studio introuvable" }, { status: 404 });
 
-  const officialGames = await getSteamDeveloperGames(name);
+  await writeAppLog({ runId, category: "SYNC", message: `Synchronisation du studio ${name} démarrée` });
+  let officialGames: Awaited<ReturnType<typeof getSteamDeveloperGames>>;
+  try {
+    officialGames = await getSteamDeveloperGames(name, (message, details) =>
+      writeAppLog({ runId, category: "SYNC", message, details })
+    );
+    await writeAppLog({ runId, category: "SYNC", message: `${name} : ${officialGames.length} jeu(x) officiel(s) trouvé(s)` });
+  } catch (error) {
+    const message = error instanceof Error ? error.message : "Catalogue Steam indisponible";
+    await writeAppLog({ runId, category: "SYNC", level: "ERROR", message: `${name} : recherche Steam échouée — ${message}` });
+    return NextResponse.json({ error: message }, { status: 502 });
+  }
   const existing = new Set((await prisma.steamGame.findMany({
     where: { id: { in: officialGames.map((game) => game.appid) } },
     select: { id: true },
@@ -72,16 +85,32 @@ export async function POST(req: NextRequest) {
       });
       data.developers.forEach((developer) => affectedDevelopers.add(developer));
       imported += 1;
+      await writeAppLog({
+        runId,
+        category: "SYNC",
+        level: "SUCCESS",
+        message: `${name} : ${data.name} importé (${processed}/${officialGames.length})`,
+        details: { appid: String(data.appid), studio: name, developers: data.developers },
+      });
     } catch (error) {
+      const message = error instanceof Error ? error.message : "Import impossible";
       errors.push({
         appid: officialGame.appid,
-        error: error instanceof Error ? error.message : "Import impossible",
+        error: message,
       });
+      await writeAppLog({ runId, category: "SYNC", level: "ERROR", message: `${name} : AppID ${officialGame.appid} en erreur — ${message}`, details: { appid: officialGame.appid, studio: name } });
     }
   }
 
   await upsertStudiosForDevelopers(Array.from(affectedDevelopers));
   await recalculateCatalogRarity();
+  await writeAppLog({
+    runId,
+    category: "SYNC",
+    level: errors.length > 0 ? "WARNING" : "SUCCESS",
+    message: `${name} terminé : ${imported} ajouté(s), ${errors.length} erreur(s), ${officialGames.length - imported - errors.length} déjà présent(s)`,
+    details: { studio: name, official: officialGames.length, imported, errors: errors.length, relatedStudios: Array.from(affectedDevelopers) },
+  });
   return NextResponse.json({
     studio: name,
     official: officialGames.length,
