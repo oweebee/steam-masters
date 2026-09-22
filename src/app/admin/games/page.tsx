@@ -44,6 +44,7 @@ const RARITY_NAME: Record<string, string> = {
   EPIC: "Épique",
   LEGENDARY: "Légendaire",
 };
+const IMPORT_TARGET = 50;
 
 export default function AdminGamesPage() {
   const [games, setGames] = useState<Game[]>([]);
@@ -69,18 +70,21 @@ export default function AdminGamesPage() {
     setGames(await res.json());
   }
 
-  useEffect(() => { load(); }, []);
+  useEffect(() => {
+    const timeout = window.setTimeout(load, 0);
+    return () => window.clearTimeout(timeout);
+  }, []);
 
   useEffect(() => {
     if (debounceRef.current) clearTimeout(debounceRef.current);
-    setAppid("");
-    if (query.trim().length < 2) {
-      setSuggestions([]);
-      setStudioMatches([]);
-      setShowSuggestions(false);
-      return;
-    }
     debounceRef.current = setTimeout(async () => {
+      setAppid("");
+      if (query.trim().length < 2) {
+        setSuggestions([]);
+        setStudioMatches([]);
+        setShowSuggestions(false);
+        return;
+      }
       setSearching(true);
       try {
         const [gamesRes, studiosRes] = await Promise.all([
@@ -95,7 +99,7 @@ export default function AdminGamesPage() {
       } finally {
         setSearching(false);
       }
-    }, 300);
+    }, query.trim().length < 2 ? 0 : 300);
     return () => { if (debounceRef.current) clearTimeout(debounceRef.current); };
   }, [query]);
 
@@ -200,8 +204,8 @@ export default function AdminGamesPage() {
     let errors = 0;
 
     for (const candidate of candidates) {
-      if (base >= 20) break;
-      setSeedMessage(`Import du jeu inédit ${base + 1}/20…`);
+      if (base >= IMPORT_TARGET) break;
+      setSeedMessage(`Import du jeu inédit ${base + 1}/${IMPORT_TARGET}…`);
       const response = await fetch("/api/admin/games", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -233,8 +237,8 @@ export default function AdminGamesPage() {
       setSeedProgress({ base, studiosDone: 0, studiosTotal: studioQueue.length, errors });
     }
 
-    if (base < 20) {
-      setSeedMessage(`Import incomplet : ${base}/20 jeux ajoutés. ${errors} candidat(s) refusé(s) par Steam.`);
+    if (base < IMPORT_TARGET) {
+      setSeedMessage(`Import incomplet : ${base}/${IMPORT_TARGET} jeux ajoutés. ${errors} candidat(s) refusé(s) par Steam.`);
       setSeedReport({ initialGames, associatedGames: [], createdStudios: [], totalCards: base, errors: errorDetails });
       setSeeding(false);
       load();
@@ -376,7 +380,7 @@ export default function AdminGamesPage() {
           <div>
             <h2 className="text-white font-semibold">Extension automatique du catalogue</h2>
             <p className="text-gray-500 text-xs mt-1">
-              Ajoute 20 jeux Steam absents, leurs studios, puis tous les jeux manquants de ces studios.
+              Ajoute 50 jeux Steam absents, leurs studios, puis tous les jeux manquants de ces studios.
             </p>
           </div>
           <button
@@ -385,14 +389,14 @@ export default function AdminGamesPage() {
             disabled={seeding || syncingStudios}
             className="bg-blue-600 hover:bg-blue-500 text-white font-semibold rounded-lg px-4 py-2 disabled:opacity-50"
           >
-            {seeding ? "Ajout en cours…" : "Ajouter 20 jeux inédits"}
+            {seeding ? "Ajout en cours…" : "Ajouter 50 jeux inédits"}
           </button>
         </div>
         {(seeding || seedMessage) && (
           <div className="mt-3 text-xs">
             <p className="text-gray-400">{seedMessage}</p>
             <p className="text-gray-600 mt-1">
-              Jeux initiaux : {seedProgress.base}/20 · Studios : {seedProgress.studiosDone}/{seedProgress.studiosTotal} · Erreurs : {seedProgress.errors}
+              Jeux initiaux : {seedProgress.base}/{IMPORT_TARGET} · Studios : {seedProgress.studiosDone}/{seedProgress.studiosTotal} · Erreurs : {seedProgress.errors}
             </p>
           </div>
         )}

@@ -23,6 +23,15 @@ const RARITIES: Array<{ value: Rarity | "ALL"; label: string }> = [
   { value: "UNCOMMON", label: "Peu commune" }, { value: "RARE", label: "Rare" },
   { value: "EPIC", label: "Épique" }, { value: "LEGENDARY", label: "Légendaire" },
 ];
+const RARITY_ORDER: Record<Rarity, number> = { LEGENDARY: 0, EPIC: 1, RARE: 2, UNCOMMON: 3, COMMON: 4 };
+const RARITY_BORDER: Record<Rarity, string> = {
+  LEGENDARY: "border-l-orange-500", EPIC: "border-l-purple-500", RARE: "border-l-blue-500",
+  UNCOMMON: "border-l-green-500", COMMON: "border-l-gray-300",
+};
+
+function normalizeSearch(value: string) {
+  return value.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLocaleLowerCase("fr");
+}
 
 function timeLeft(endsAt: string, now: number) {
   const seconds = Math.max(0, Math.ceil((new Date(endsAt).getTime() - now) / 1000));
@@ -57,6 +66,8 @@ export function MarcheClient({ userId }: { userId: string }) {
   const [sort, setSort] = useState<"ENDING" | "PRICE_ASC" | "PRICE_DESC" | "NEWEST">("ENDING");
   const [scope, setScope] = useState<"ALL" | "SELLING" | "BIDDING">("ALL");
   const [selectedCardId, setSelectedCardId] = useState("");
+  const [cardSearch, setCardSearch] = useState("");
+  const [cardSort, setCardSort] = useState<"name" | "rarity" | "type">("name");
   const [startPrice, setStartPrice] = useState("1");
   const [durationMinutes, setDurationMinutes] = useState("60");
   const [bidAmounts, setBidAmounts] = useState<Record<string, string>>({});
@@ -98,6 +109,16 @@ export function MarcheClient({ userId }: { userId: string }) {
   }, [auctions, load]);
 
   const sellableCards = useMemo(() => collection.filter((card) => card.sellable), [collection]);
+  const visibleSellableCards = useMemo(() => {
+    const needle = normalizeSearch(cardSearch.trim());
+    return [...sellableCards]
+      .filter((card) => !needle || normalizeSearch(cardName(card)).includes(needle))
+      .sort((a, b) => {
+        if (cardSort === "rarity") return RARITY_ORDER[a.rarity] - RARITY_ORDER[b.rarity] || cardName(a).localeCompare(cardName(b), "fr");
+        if (cardSort === "type") return Number(!!a.studio) - Number(!!b.studio) || cardName(a).localeCompare(cardName(b), "fr");
+        return cardName(a).localeCompare(cardName(b), "fr");
+      });
+  }, [cardSearch, cardSort, sellableCards]);
   const shownAuctions = useMemo(() => {
     const needle = query.trim().toLocaleLowerCase("fr");
     const result = auctions.filter((auction) => {
@@ -161,10 +182,33 @@ export function MarcheClient({ userId }: { userId: string }) {
       <section className="steam-market-sellbox">
         <div className="steam-market-section-title"><span className="steam-market-icon">⚒</span><div><h2>Mettre une carte aux enchères</h2><p>Annulation possible uniquement avant la première enchère.</p></div></div>
         <form onSubmit={createAuction} className="steam-market-sellform">
-          <label><span>Carte de ta collection</span><select value={selectedCardId} onChange={(event) => setSelectedCardId(event.target.value)} disabled={working || sellableCards.length === 0}>{sellableCards.map((card) => <option key={card.id} value={card.id}>{cardName(card)}</option>)}</select></label>
-          <label><span>Prix de départ</span><input type="number" min="1" max="1000000" required value={startPrice} onChange={(event) => setStartPrice(event.target.value)} /></label>
-          <label><span>Durée</span><select value={durationMinutes} onChange={(event) => setDurationMinutes(event.target.value)}><option value="10">10 minutes</option><option value="30">30 minutes</option><option value="60">1 heure</option><option value="360">6 heures</option><option value="1440">24 heures</option></select></label>
-          <button disabled={working || !selectedCardId}>{sellableCards.length ? "Ouvrir l’enchère" : "Aucune carte disponible"}</button>
+          <div className="steam-market-card-picker steam-trade-selector">
+            <div className="steam-market-picker-controls">
+              <input type="search" value={cardSearch} onChange={(event) => setCardSearch(event.target.value)} placeholder="Rechercher une carte…" />
+              <select value={cardSort} onChange={(event) => setCardSort(event.target.value as typeof cardSort)}>
+                <option value="name">Nom A → Z</option><option value="rarity">Rareté</option><option value="type">Jeux / Studios</option>
+              </select>
+            </div>
+            <div className="steam-market-picker-count"><span>{visibleSellableCards.length} résultat{visibleSellableCards.length > 1 ? "s" : ""}</span><span>{selectedCardId ? "1 sélectionnée" : "0 sélectionnée"}</span></div>
+            <div className="steam-market-picker-grid">
+              {visibleSellableCards.map((card) => {
+                const selected = selectedCardId === card.id;
+                const image = cardImage(card);
+                return <button type="button" key={card.id} aria-pressed={selected} onClick={() => setSelectedCardId(selected ? "" : card.id)} className={`steam-trade-card-choice border-l-4 ${RARITY_BORDER[card.rarity]} ${selected ? "steam-trade-card-selected" : ""}`}>
+                  {image ? <img src={image} alt="" className="w-16 h-9 rounded object-cover shrink-0" /> : <span className="steam-trade-studio-icon">🏭</span>}
+                  <span className="min-w-0 flex-1 text-left"><span className="block text-sm text-white truncate">{cardName(card)}</span><span className="block text-[10px] uppercase tracking-wide text-gray-500">{card.game ? "Jeu" : "Studio"}</span></span>
+                  <span className="steam-trade-select-mark" aria-hidden="true">{selected ? "✓" : "+"}</span>
+                </button>;
+              })}
+              {sellableCards.length === 0 && <p className="steam-market-picker-empty">Aucune carte disponible : les cartes déjà en vente ou engagées dans un échange sont exclues.</p>}
+              {sellableCards.length > 0 && visibleSellableCards.length === 0 && <p className="steam-market-picker-empty">Aucune carte ne correspond à la recherche.</p>}
+            </div>
+          </div>
+          <div className="steam-market-auction-settings">
+            <label><span>Prix de départ</span><input type="number" min="1" max="1000000" required value={startPrice} onChange={(event) => setStartPrice(event.target.value)} /></label>
+            <label><span>Durée</span><select value={durationMinutes} onChange={(event) => setDurationMinutes(event.target.value)}><option value="10">10 minutes</option><option value="30">30 minutes</option><option value="60">1 heure</option><option value="360">6 heures</option><option value="1440">24 heures</option></select></label>
+            <button disabled={working || !selectedCardId}>{sellableCards.length ? "Ouvrir l’enchère" : "Aucune carte disponible"}</button>
+          </div>
         </form>
       </section>
 
