@@ -1,8 +1,32 @@
 import { prisma } from "@/lib/prisma";
 import { redis } from "@/lib/redis";
-import { rarityFromScore } from "@/lib/rarityRoll";
 
 const CACHE_TTL = 60 * 30; // 30 min
+
+// Rate limiting Steam : au-delà d'un certain débit, Steam renvoie HTTP 429 sur
+// appdetails/appreviews/search. On espace les requêtes et on retente avec
+// backoff (Retry-After si fourni, sinon exponentiel) plutôt que d'abandonner.
+export function sleep(ms: number) {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+const STEAM_REQUEST_DELAY_MS = 900;
+const STEAM_MAX_RETRIES = 4;
+
+async function fetchWithRetry(url: string, init?: RequestInit): Promise<Response> {
+  for (let attempt = 0; attempt <= STEAM_MAX_RETRIES; attempt += 1) {
+    const res = await fetch(url, init);
+    if (res.status !== 429) return res;
+    const retryAfter = Number(res.headers.get("retry-after"));
+    const backoffMs = Number.isFinite(retryAfter) && retryAfter > 0
+      ? retryAfter * 1000
+      : 2000 * 2 ** attempt;
+    if (attempt === STEAM_MAX_RETRIES) return res;
+    await sleep(backoffMs);
+  }
+  // Inatteignable (boucle retourne toujours dans les cas ci-dessus), mais TS veut un retour.
+  return fetch(url, init);
+}
 
 async function getSteamApiKey(): Promise<string | null> {
   const row = await prisma.appSetting.findUnique({ where: { key: "STEAM_API_KEY" } });
@@ -36,7 +60,7 @@ export async function discoverSteamGameAppids(maxResults = 200): Promise<string[
   const pageSize = 50;
 
   for (let start = 0; start < maxResults; start += pageSize) {
-    const response = await fetch(
+    const response = await fetchWithRetry(
       `https://store.steampowered.com/search/results/?query&start=${start}&count=${pageSize}` +
         `&dynamic_data=&sort_by=Reviews_DESC&category1=998&ndl=1&infinite=1&ignore_preferences=1`,
       { cache: "no-store", headers: { "User-Agent": "SteamMasters/1.0" } }
@@ -55,7 +79,7 @@ export async function discoverSteamGameAppids(maxResults = 200): Promise<string[
 }
 
 async function fetchAppDetails(appid: number) {
-  const res = await fetch(
+  const res = await fetchWithRetry(
     `https://store.steampowered.com/api/appdetails?appids=${appid}&cc=fr&l=french`,
     { cache: "no-store" }
   );
@@ -67,7 +91,7 @@ async function fetchAppDetails(appid: number) {
 }
 
 async function fetchReviewScore(appid: number): Promise<number> {
-  const res = await fetch(
+  const res = await fetchWithRetry(
     `https://store.steampowered.com/appreviews/${appid}?json=1&language=all&purchase_type=all`,
     { cache: "no-store" }
   );
@@ -79,7 +103,7 @@ async function fetchReviewScore(appid: number): Promise<number> {
 }
 
 async function fetchCurrentPlayers(appid: number): Promise<number> {
-  const res = await fetch(
+  const res = await fetchWithRetry(
     `https://api.steampowered.com/ISteamUserStats/GetNumberOfCurrentPlayers/v1/?appid=${appid}`,
     { cache: "no-store" }
   );
@@ -90,7 +114,7 @@ async function fetchCurrentPlayers(appid: number): Promise<number> {
 
 async function fetchOwnerEstimate(appid: number): Promise<number> {
   // SteamSpy : tiers, non-officiel Steam. Retourne une fourchette "owners" (ex: "1,000,000 .. 2,000,000").
-  const res = await fetch(`https://steamspy.com/api.php?request=appdetails&appid=${appid}`, {
+  const res = await fetchWithRetry(`https://steamspy.com/api.php?request=appdetails&appid=${appid}`, {
     cache: "no-store",
   });
   if (!res.ok) return 0;
@@ -152,7 +176,7 @@ export async function getSteamDeveloperGames(developerName: string): Promise<Ste
   let total = 1;
 
   while (start < total && start < 500) {
-    const searchRes = await fetch(
+    const searchRes = await fetchWithRetry(
       `https://store.steampowered.com/search/results/?query&start=${start}&count=${pageSize}` +
         `&dynamic_data=&sort_by=_ASC&developer=${encodeURIComponent(developerName)}` +
         `&ndl=1&infinite=1&ignore_preferences=1`,
@@ -174,8 +198,10 @@ export async function getSteamDeveloperGames(developerName: string): Promise<Ste
   }
 
   const games: SteamDeveloperGame[] = [];
-  for (let index = 0; index < appids.length; index += 20) {
-    const chunk = appids.slice(index, index + 20);
+  const CHUNK_SIZE = 8;
+  for (let index = 0; index < appids.length; index += CHUNK_SIZE) {
+    if (index > 0) await sleep(STEAM_REQUEST_DELAY_MS);
+    const chunk = appids.slice(index, index + CHUNK_SIZE);
     const settled = await Promise.allSettled(
       chunk.map(async (appid) => ({ appid, details: await fetchAppDetails(appid) }))
     );
@@ -203,27 +229,31 @@ export async function getSteamDeveloperGames(developerName: string): Promise<Ste
 //     Steam ne publie aucun chiffre de ventes officiel ; ownerEstimate vient de
 //     SteamSpy, tiers non-officiel. Remplace l'ancien proxy peakCcu, qui tombait
 //     à 0 pour les jeux solo/sans multijoueur actif au moment du fetch.)
-//   Rareté studio = tirée une fois à sa création, puis figée.
+//   Rareté studio = classement par percentile (voir catalogRarity.ts), jamais
+//   figée : recalculée en totalité à chaque appel de recalculateCatalogRarity().
+//   La valeur posée ici est provisoire (conservée si déjà connue, sinon COMMON
+//   en attendant le recalcul global qui suit systématiquement cet appel).
 export async function upsertStudiosForDevelopers(developers: string[]) {
   for (const name of developers) {
     if (!name) continue;
     const games = await prisma.steamGame.findMany({ where: { developers: { has: name } } });
     if (games.length === 0) continue;
 
+    const existing = await prisma.studio.findUnique({ where: { name }, select: { rarity: true } });
     const gameCount = games.length;
     const avgReviewScore = Math.round(games.reduce((s, g) => s + g.reviewScore, 0) / gameCount);
     const totalOwnerEstimate = games.reduce((s, g) => s + g.ownerEstimate, 0);
     const gameNames = games.map((g) => g.name).sort();
     await prisma.studio.upsert({
       where: { name },
-      update: { gameCount, avgReviewScore, totalOwnerEstimate, games: gameNames, atk: avgReviewScore, def: totalOwnerEstimate, rarity: rarityFromScore(avgReviewScore) },
+      update: { gameCount, avgReviewScore, totalOwnerEstimate, games: gameNames, atk: avgReviewScore, def: totalOwnerEstimate },
       create: {
         name,
         gameCount,
         avgReviewScore,
         totalOwnerEstimate,
         games: gameNames,
-        rarity: rarityFromScore(avgReviewScore),
+        rarity: existing?.rarity ?? "COMMON",
         atk: avgReviewScore,
         def: totalOwnerEstimate,
       },

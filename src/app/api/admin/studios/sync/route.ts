@@ -5,8 +5,9 @@ import {
   getSteamDeveloperGames,
   getSteamGameData,
   upsertStudiosForDevelopers,
+  sleep,
 } from "@/lib/steam";
-import { rarityFromScore } from "@/lib/rarityRoll";
+import { recalculateCatalogRarity } from "@/lib/catalogRarity";
 
 async function requireAdmin() {
   const session = await auth();
@@ -41,12 +42,14 @@ export async function POST(req: NextRequest) {
   const errors: { appid: string; error: string }[] = [];
   const affectedDevelopers = new Set<string>([name]);
 
+  let processed = 0;
   for (const officialGame of officialGames) {
     if (existing.has(officialGame.appid)) continue;
+    if (processed > 0) await sleep(900);
+    processed += 1;
     try {
       const data = await getSteamGameData(Number(officialGame.appid));
       if (data.ownerEstimate <= 0) throw new Error("Jeu refusé : DEF doit être supérieur à 0");
-      const rarity = rarityFromScore(data.reviewScore);
       await prisma.steamGame.create({
         data: {
           id: String(data.appid),
@@ -56,7 +59,7 @@ export async function POST(req: NextRequest) {
           reviewScore: data.reviewScore,
           peakCcu: data.peakCcu,
           ownerEstimate: data.ownerEstimate,
-          rarity,
+          rarity: "COMMON", // provisoire, recalculée par recalculateCatalogRarity() ci-dessous
           atk: data.reviewScore,
           def: data.ownerEstimate,
           tags: data.tags,
@@ -76,6 +79,7 @@ export async function POST(req: NextRequest) {
   }
 
   await upsertStudiosForDevelopers(Array.from(affectedDevelopers));
+  await recalculateCatalogRarity();
   return NextResponse.json({
     studio: name,
     official: officialGames.length,

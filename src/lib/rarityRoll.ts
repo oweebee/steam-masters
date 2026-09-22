@@ -64,14 +64,7 @@ export function rollAtkForRarity(rarity: Rarity): number {
   return min + Math.floor(Math.random() * (max - min + 1));
 }
 
-// Rareté catalogue (SteamGame/Studio) déterminée par le reviewScore du jeu (ou
-// avgReviewScore du studio). Utilise les mêmes bandes que ATK_BANDS : un jeu à
-// 98 %+ d'avis positifs est Légendaire, etc. Remplace l'ancien tirage aléatoire
-// pour la rareté catalogue (la rareté d'exemplaire Card.rarity reste aléatoire).
-export function rarityFromScore(score: number): Rarity {
-  if (score >= 98) return "LEGENDARY";
-  if (score >= 96) return "EPIC";
-  if (score >= 91) return "RARE";
-  if (score >= 85) return "UNCOMMON";
-  return "COMMON";
-}
+// Rareté catalogue (SteamGame/Studio) : voir catalogRarity.ts. Un seuil fixe
+// sur le reviewScore (essayé puis abandonné) explose dès que le catalogue est
+// majoritairement composé de jeux bien notés (biais de sélection à l'import) —
+// remplacé par un classement PAR PERCENTILE sur l'ensemble du catalogue.
