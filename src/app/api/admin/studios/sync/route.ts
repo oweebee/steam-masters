@@ -6,7 +6,7 @@ import {
   getSteamGameData,
   upsertStudiosForDevelopers,
 } from "@/lib/steam";
-import { getNextCatalogRarity } from "@/lib/catalogRarity";
+import { rarityFromScore } from "@/lib/rarityRoll";
 
 async function requireAdmin() {
   const session = await auth();
@@ -31,21 +31,13 @@ export async function POST(req: NextRequest) {
   const studio = await prisma.studio.findUnique({ where: { name }, select: { id: true } });
   if (!studio) return NextResponse.json({ error: "Studio introuvable" }, { status: 404 });
 
-  let officialGames: Awaited<ReturnType<typeof getSteamDeveloperGames>>;
-  try {
-    officialGames = await getSteamDeveloperGames(name);
-  } catch (error) {
-    return NextResponse.json({
-      error: error instanceof Error ? error.message : "Catalogue du studio indisponible",
-    }, { status: 502 });
-  }
+  const officialGames = await getSteamDeveloperGames(name);
   const existing = new Set((await prisma.steamGame.findMany({
     where: { id: { in: officialGames.map((game) => game.appid) } },
     select: { id: true },
   })).map((game) => game.id));
 
   let imported = 0;
-  const importedGames: { id: string; name: string; headerImage: string; def: number; rarity: string }[] = [];
   const errors: { appid: string; error: string }[] = [];
   const affectedDevelopers = new Set<string>([name]);
 
@@ -54,7 +46,7 @@ export async function POST(req: NextRequest) {
     try {
       const data = await getSteamGameData(Number(officialGame.appid));
       if (data.ownerEstimate <= 0) throw new Error("Jeu refusé : DEF doit être supérieur à 0");
-      const rarity = await getNextCatalogRarity();
+      const rarity = rarityFromScore(data.reviewScore);
       await prisma.steamGame.create({
         data: {
           id: String(data.appid),
@@ -74,13 +66,6 @@ export async function POST(req: NextRequest) {
         },
       });
       data.developers.forEach((developer) => affectedDevelopers.add(developer));
-      importedGames.push({
-        id: String(data.appid),
-        name: data.name,
-        headerImage: data.headerImage,
-        def: data.ownerEstimate,
-        rarity,
-      });
       imported += 1;
     } catch (error) {
       errors.push({
@@ -95,7 +80,6 @@ export async function POST(req: NextRequest) {
     studio: name,
     official: officialGames.length,
     imported,
-    importedGames,
     existing: officialGames.length - imported - errors.length,
     errors,
     relatedStudios: Array.from(affectedDevelopers),

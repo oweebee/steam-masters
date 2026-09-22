@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/auth";
 import { prisma } from "@/lib/prisma";
 import { getSteamGameData, upsertStudiosForDevelopers } from "@/lib/steam";
-import { getNextCatalogRarity } from "@/lib/catalogRarity";
+import { rarityFromScore } from "@/lib/rarityRoll";
 
 async function requireAdmin() {
   const session = await auth();
@@ -35,7 +35,9 @@ export async function POST(req: NextRequest) {
   });
   // Rareté tirée une seule fois à la création. Un rafraîchissement Steam ne la
   // recalcule jamais et ne transforme donc plus les petits jeux en Légendaires.
-  const rarity = existing?.rarity ?? await getNextCatalogRarity();
+  // Rareté catalogue = déterminée par le reviewScore (bandes ATK_BANDS).
+  // Sur un rafraîchissement, on recalcule aussi (le score peut avoir changé).
+  const rarity = rarityFromScore(data.reviewScore);
 
   const game = await prisma.steamGame.upsert({
     where: { id: String(data.appid) },
@@ -46,6 +48,7 @@ export async function POST(req: NextRequest) {
       reviewScore: data.reviewScore,
       peakCcu: data.peakCcu,
       ownerEstimate: data.ownerEstimate,
+      rarity,
       atk: data.reviewScore,
       def: data.ownerEstimate,
       tags: data.tags,
