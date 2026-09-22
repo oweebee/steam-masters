@@ -79,7 +79,7 @@ services:
       - "traefik.http.routers.steammasters-mcp.tls.certresolver=letsencrypt"
       - "traefik.http.services.steammasters-mcp.loadbalancer.server.port=8000"
       - "traefik.http.routers.steammasters-mcp.middlewares=steammasters-mcp-auth"
-      - "traefik.http.middlewares.steammasters-mcp-auth.basicauth.users=mcp:$$apr1$$cSzjDy6d$$06tIRMvLcMnaFobpWd7zw0"
+      - "traefik.http.middlewares.steammasters-mcp-auth.basicauth.users=mcp:$$apr1$$9MWQcM4H$$Dv3gmZmhm7M0K2iHbKTtr."
       - "traefik.docker.network=traefik"
 
 

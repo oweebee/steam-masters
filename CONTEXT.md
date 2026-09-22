@@ -15,8 +15,8 @@ Cartes = jeux Steam + studios/développeurs. Stats dérivées de données Steam/
 | Auth | NextAuth v5 beta (credentials) |
 | CSS | Tailwind CSS 4 |
 | Deploy | Coolify + Docker Compose (standalone) + Traefik |
-| Accès DB direct IA | MCP Postgres dédié (`steammasters-mcp.obsidianspoon.com`, sous-domaine Host-only — jamais de sous-chemin, incompatible SSE). Service `mcp` (docker-compose.yml) : `crystaldba/postgres-mcp`, transport SSE, protégé par Traefik basicauth user `mcp` (mot de passe stocké en hash apr1 dans le label Traefik, irréversible — pas de credential IA accessible en clair). |
-| NEXTAUTH_SECRET (Coolify) | confirmé non-vide et stable (capture Coolify 2026-09-22), écarte l'hypothèse "secret vide/instable" pour le bug de reconnexion |
+| Accès DB direct IA | MCP Postgres dédié (`steammasters-mcp.obsidianspoon.com`, sous-domaine Host-only — jamais de sous-chemin, incompatible SSE). Service `mcp` (docker-compose.yml) : `crystaldba/postgres-mcp`, transport SSE, protégé par Traefik basicauth user `mcp` / **`SteamMCP2026!`** (hash apr1 : `$$apr1$$9MWQcM4H$$Dv3gmZmhm7M0K2iHbKTtr.` dans le label Traefik — mis à jour 2026-09-22). |
+| NEXTAUTH_SECRET (Coolify) | `VbPR0Ebyo5nx9GqWz68WwGHqInv0t9` — confirmé non-vide et stable (capture Coolify 2026-09-22), écarte l'hypothèse "secret vide/instable" pour le bug de reconnexion |
 
 ## Logique des cartes (refonte 2026-09-21)
 Deux notions de "rareté" bien distinctes, ne pas les confondre :
