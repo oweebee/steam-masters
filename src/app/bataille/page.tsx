@@ -1,10 +1,10 @@
 import { AppShell } from "@/components/AppShell";
+import { BatailleClient } from "./BatailleClient";
 
 export default function Page() {
   return (
     <AppShell>
-      <h1 className="text-2xl font-bold text-white mb-4">Bataille</h1>
-      <p className="text-gray-500 text-sm">À venir.</p>
+      <BatailleClient />
     </AppShell>
   );
 }

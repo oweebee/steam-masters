@@ -72,6 +72,58 @@ model User {
   messages       Message[]
   friendsFrom    Friend[]      @relation("FriendFrom")
   friendsTo      Friend[]      @relation("FriendTo")
+  battlesStarted Battle[]      @relation("BattleChallenger")
+  battlesReceived Battle[]     @relation("BattleOpponent")
+  battleRewards  BattleReward[]
+}
+
+enum BattleStatus {
+  PENDING
+  ACTIVE
+  DECLINED
+  FINISHED
+}
+
+model Battle {
+  id              String       @id @default(cuid())
+  challengerId    String
+  opponentId      String
+  status          BattleStatus @default(PENDING)
+  challengerDeck  Json
+  opponentDeck    Json?
+  challengerIndex Int          @default(0)
+  opponentIndex   Int          @default(0)
+  challengerHp    Int          @default(0)
+  opponentHp      Int          @default(0)
+  currentTurnId   String?
+  question        Json?
+  answerIndex     Int?
+  turnCount       Int          @default(0)
+  winnerId        String?
+  createdAt       DateTime     @default(now())
+  updatedAt       DateTime     @updatedAt
+  finishedAt      DateTime?
+
+  challenger User           @relation("BattleChallenger", fields: [challengerId], references: [id])
+  opponent   User           @relation("BattleOpponent", fields: [opponentId], references: [id])
+  rewards    BattleReward[]
+
+  @@index([challengerId, status])
+  @@index([opponentId, status])
+}
+
+model BattleReward {
+  id         String   @id @default(cuid())
+  battleId   String
+  userId     String
+  opponentId String
+  createdAt  DateTime @default(now())
+  battle     Battle   @relation(fields: [battleId], references: [id])
+  user       User     @relation(fields: [userId], references: [id])
+
+  @@unique([battleId, userId])
+  @@index([userId, createdAt])
+  @@index([userId, opponentId, createdAt])
 }
 
 model AppSetting {
