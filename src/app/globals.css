@@ -204,9 +204,6 @@ a.bg-purple-600 {
   --card-accent: #c4b49e;
   --card-accent-soft: rgba(196, 180, 158, 0.22);
   --rarity-halo: 7px;
-  --rarity-sparkle: 3.2s;
-  --rarity-flame-height: 1rem;
-  --rarity-flame-opacity: .72;
   position: relative;
   overflow: hidden;
   background:
@@ -218,10 +215,10 @@ a.bg-purple-600 {
     0 10px 24px rgba(0,0,0,0.42);
 }
 
-.steam-card-shell[data-rarity="UNCOMMON"] { --card-accent: #43b967; --card-accent-soft: rgba(67,185,103,0.28); --rarity-halo: 9px; --rarity-sparkle: 2.8s; --rarity-flame-height: 1.05rem; --rarity-flame-opacity: .8; }
-.steam-card-shell[data-rarity="RARE"] { --card-accent: #4b91dc; --card-accent-soft: rgba(75,145,220,0.38); --rarity-halo: 12px; --rarity-sparkle: 2.3s; --rarity-flame-height: 1.1rem; --rarity-flame-opacity: .88; }
-.steam-card-shell[data-rarity="EPIC"] { --card-accent: #a967dc; --card-accent-soft: rgba(169,103,220,0.48); --rarity-halo: 16px; --rarity-sparkle: 1.7s; --rarity-flame-height: 1.17rem; --rarity-flame-opacity: .95; }
-.steam-card-shell[data-rarity="LEGENDARY"] { --card-accent: #e58238; --card-accent-soft: rgba(229,130,56,0.62); --rarity-halo: 21px; --rarity-sparkle: 1.2s; --rarity-flame-height: 1.22rem; --rarity-flame-opacity: 1; }
+.steam-card-shell[data-rarity="UNCOMMON"] { --card-accent: #43b967; --card-accent-soft: rgba(67,185,103,0.28); --rarity-halo: 9px; }
+.steam-card-shell[data-rarity="RARE"] { --card-accent: #4b91dc; --card-accent-soft: rgba(75,145,220,0.38); --rarity-halo: 12px; }
+.steam-card-shell[data-rarity="EPIC"] { --card-accent: #a967dc; --card-accent-soft: rgba(169,103,220,0.48); --rarity-halo: 16px; }
+.steam-card-shell[data-rarity="LEGENDARY"] { --card-accent: #e58238; --card-accent-soft: rgba(229,130,56,0.62); --rarity-halo: 21px; }
 
 .steam-card-shell::after {
   content: "";
@@ -313,34 +310,21 @@ a.bg-purple-600 {
   position: absolute;
   right: 17px;
   bottom: 17px;
-  width: .85rem;
-  height: .85rem;
-  border: 2px solid #9d7041;
-  border-radius: 50%;
-  background: radial-gradient(circle at 36% 28%, #fff 0 5%, var(--card-accent) 28%, #281a13 84%);
-  box-shadow: inset 0 0 0 1px #21130e, 0 2px 4px #000, 0 0 3px var(--card-accent), 0 0 var(--rarity-halo) var(--card-accent-soft);
-  animation: rarity-sparkle var(--rarity-sparkle) ease-in-out infinite;
+  width: .92rem;
+  height: .92rem;
+  transform: rotate(45deg);
+  border: 1px solid #c19765;
+  border-radius: 2px;
+  background: linear-gradient(135deg, #fff8dc 0 8%, var(--card-accent) 24%, #392318 70%, #e9c18a 100%);
+  box-shadow: inset 0 0 0 1px #261710, 0 0 0 2px #1b110c, 0 0 var(--rarity-halo) var(--card-accent-soft);
 }
 
 .steam-card-rarity-gem::after {
   content: "";
   position: absolute;
-  inset: -7px;
-  border-radius: 50%;
-  background: radial-gradient(circle, var(--card-accent-soft) 0 20%, transparent 75%);
-  animation: rarity-led-pulse var(--rarity-sparkle) ease-out infinite;
-}
-
-@keyframes rarity-sparkle {
-  0%, 100% { filter: brightness(.8); box-shadow: inset 0 0 0 1px #21130e, 0 2px 4px #000, 0 0 3px var(--card-accent), 0 0 var(--rarity-halo) var(--card-accent-soft); }
-  35%, 52% { filter: brightness(2.1); box-shadow: inset 0 0 0 1px #21130e, 0 2px 4px #000, 0 0 9px var(--card-accent), 0 0 calc(var(--rarity-halo) * 2) var(--card-accent); }
-  43% { filter: brightness(.65); }
-  68% { filter: brightness(1.45); }
-}
-
-@keyframes rarity-led-pulse {
-  0% { transform: scale(.65); opacity: .75; }
-  70%, 100% { transform: scale(1.75); opacity: 0; }
+  inset: 2px;
+  clip-path: polygon(0 0, 100% 0, 0 100%);
+  background: linear-gradient(135deg, rgba(255,255,255,.92), rgba(255,255,255,.08));
 }
 
 .steam-card-clamp {
@@ -369,8 +353,7 @@ a.bg-purple-600 {
   border: 2px solid #9b6938;
   border-radius: 50%;
   background: radial-gradient(circle, #37271d 0 34%, #b17a43 36% 45%, #17110d 48%);
-  box-shadow: 0 2px 5px #000, 0 0 var(--rarity-halo) var(--card-accent-soft);
-  animation: rarity-dial-glow var(--rarity-sparkle) ease-in-out infinite;
+  box-shadow: 0 2px 5px #000, 0 0 var(--rarity-halo) var(--card-accent), 0 0 calc(var(--rarity-halo) * 2) var(--card-accent-soft);
 }
 
 .steam-card-image-dial::before {
@@ -379,29 +362,17 @@ a.bg-purple-600 {
   left: 50%;
   bottom: 2px;
   width: 1.4rem;
-  height: var(--rarity-flame-height);
-  opacity: var(--rarity-flame-opacity);
+  height: 1.23rem;
   transform-origin: 50% 90%;
-  clip-path: polygon(50% 0%, 66% 20%, 65% 37%, 82% 24%, 95% 55%, 91% 75%, 75% 92%, 50% 100%, 25% 92%, 9% 75%, 5% 55%, 30% 37%, 29% 20%);
-  background: radial-gradient(ellipse at 50% 86%, #fff9d8 0 13%, var(--card-accent) 33%, #a92c1d 84%);
-  filter: drop-shadow(0 0 7px var(--card-accent));
-  animation: rarity-flame calc(var(--rarity-sparkle) * .48) ease-in-out infinite alternate;
+  clip-path: polygon(52% 0, 66% 20%, 61% 39%, 80% 24%, 94% 57%, 87% 79%, 70% 96%, 50% 100%, 28% 96%, 9% 78%, 6% 56%, 31% 34%, 29% 20%);
+  background: radial-gradient(ellipse at 50% 83%, #fff9db 0 10%, #ffd676 21%, var(--card-accent) 49%, #a92c1d 82%);
+  animation: rarity-flame 1.55s ease-in-out infinite alternate;
 }
 
 @keyframes rarity-flame {
-  0% { transform: translateX(-50%) rotate(-13deg) scale(.8, .88); }
-  45% { transform: translateX(-50%) rotate(7deg) scale(1.04, 1.12); }
-  100% { transform: translateX(-50%) rotate(-4deg) scale(.9, 1.22); }
-}
-
-@keyframes rarity-dial-glow {
-  0%, 100% { filter: brightness(1); box-shadow: 0 2px 5px #000, 0 0 var(--rarity-halo) var(--card-accent-soft); }
-  50% { filter: brightness(1.35); box-shadow: 0 2px 5px #000, 0 0 calc(var(--rarity-halo) * 1.5) var(--card-accent-soft); }
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .steam-card-rarity-gem, .steam-card-rarity-gem::after,
-  .steam-card-image-dial, .steam-card-image-dial::before { animation-duration: 6s; }
+  0% { transform: translateX(-50%) rotate(-5deg) scale(.96, .9); clip-path: polygon(52% 0, 66% 20%, 61% 39%, 80% 24%, 94% 57%, 87% 79%, 70% 96%, 50% 100%, 28% 96%, 9% 78%, 6% 56%, 31% 34%, 29% 20%); }
+  48% { transform: translateX(-50%) rotate(6deg) scale(.9, 1.06); clip-path: polygon(39% 8%, 56% 27%, 57% 42%, 73% 13%, 94% 53%, 86% 80%, 68% 96%, 50% 100%, 27% 96%, 8% 79%, 13% 48%, 31% 41%, 24% 17%); }
+  100% { transform: translateX(-50%) rotate(-3deg) scale(1.03, .94); clip-path: polygon(58% 4%, 70% 25%, 61% 38%, 83% 30%, 94% 58%, 85% 83%, 67% 97%, 50% 100%, 28% 95%, 8% 77%, 10% 49%, 33% 31%, 31% 13%); }
 }
 
 .steam-card-image-dial i {
@@ -413,8 +384,18 @@ a.bg-purple-600 {
   height: .6rem;
   transform: translateX(-50%);
   clip-path: polygon(50% 0, 77% 35%, 100% 76%, 75% 100%, 25% 100%, 0 76%, 23% 35%);
-  background: #fff6cd;
-  box-shadow: 0 0 8px #fff6cd;
+  background: linear-gradient(#fffdf2, #ffe7a1);
+  animation: rarity-flame-core 1.13s ease-in-out infinite alternate;
+}
+
+@keyframes rarity-flame-core {
+  0% { transform: translateX(-50%) translateY(1px) rotate(5deg) scale(.92, .82); }
+  55% { transform: translateX(-50%) translateY(-2px) rotate(-9deg) scale(.84, 1.14); }
+  100% { transform: translateX(-50%) rotate(6deg) scale(1.06, .9); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .steam-card-image-dial::before, .steam-card-image-dial i { animation-duration: 4s; }
 }
 
 .steam-studio-visual { overflow: visible; }
