@@ -354,30 +354,23 @@ a.bg-purple-600 {
   box-shadow: 0 2px 5px #000, 0 0 var(--rarity-halo) var(--card-accent), 0 0 calc(var(--rarity-halo) * 2) var(--card-accent-soft);
 }
 
-.steam-card-flame-gif {
+.steam-card-flame-image {
   position: absolute;
   left: 50%;
   bottom: 0;
-  width: 112px;
+  width: 32px;
   height: auto;
   max-width: none;
-  transform: translateX(var(--sprite-shift));
-  clip-path: inset(0 var(--sprite-clip-right) 0 var(--sprite-clip-left));
-  mix-blend-mode: screen;
+  transform: translateX(-50%);
   image-rendering: pixelated;
   pointer-events: none;
 }
 
-.steam-card-image-dial[data-rarity="COMMON"] { --sprite-shift: -55px; --sprite-clip-left: 36.6%; --sprite-clip-right: 37.5%; }
-.steam-card-image-dial[data-rarity="COMMON"] .steam-card-flame-gif { filter: grayscale(1) brightness(1.35); }
-.steam-card-image-dial[data-rarity="UNCOMMON"] { --sprite-shift: -84px; --sprite-clip-left: 62.5%; --sprite-clip-right: 0%; }
-.steam-card-image-dial[data-rarity="UNCOMMON"] .steam-card-flame-gif { filter: none; }
-.steam-card-image-dial[data-rarity="RARE"] { --sprite-shift: -55px; --sprite-clip-left: 36.6%; --sprite-clip-right: 37.5%; }
-.steam-card-image-dial[data-rarity="RARE"] .steam-card-flame-gif { filter: none; }
-.steam-card-image-dial[data-rarity="EPIC"] { --sprite-shift: -55px; --sprite-clip-left: 36.6%; --sprite-clip-right: 37.5%; }
-.steam-card-image-dial[data-rarity="EPIC"] .steam-card-flame-gif { filter: hue-rotate(65deg) saturate(1.3); }
-.steam-card-image-dial[data-rarity="LEGENDARY"] { --sprite-shift: -28px; --sprite-clip-left: 0%; --sprite-clip-right: 63.4%; }
-.steam-card-image-dial[data-rarity="LEGENDARY"] .steam-card-flame-gif { filter: none; }
+.steam-card-image-dial[data-rarity="COMMON"] .steam-card-flame-image { filter: grayscale(1) brightness(1.35); }
+.steam-card-image-dial[data-rarity="UNCOMMON"] .steam-card-flame-image { filter: none; }
+.steam-card-image-dial[data-rarity="RARE"] .steam-card-flame-image { filter: none; }
+.steam-card-image-dial[data-rarity="EPIC"] .steam-card-flame-image { filter: hue-rotate(65deg) saturate(1.3); }
+.steam-card-image-dial[data-rarity="LEGENDARY"] .steam-card-flame-image { filter: none; }
 
 .steam-studio-visual { overflow: visible; }
 
