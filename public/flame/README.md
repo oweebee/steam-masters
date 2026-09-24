@@ -1,6 +1,4 @@
-The five `candle-*.webm` rarity-colored card flames are cropped from
-[White candle video.webm](https://commons.wikimedia.org/wiki/File:White_candle_video.webm)
-by Jahobr, released under [CC0](https://creativecommons.org/publicdomain/zero/1.0/).
-
-Changes: isolated the candle flame, resized it to 96 × 96, tinted it to the
-card rarities, and encoded short muted WebM loops.
+`pixel-flame.gif` is the original animated pixel-art flame supplied by the
+project owner (`picmix.com_2373546.gif`). Its frames are unchanged. The app
+scales it with nearest-neighbor rendering and tints it through CSS according
+to each card's rarity.

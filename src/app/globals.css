@@ -349,37 +349,28 @@ a.bg-purple-600 {
   transform: translateX(-50%);
   border: 2px solid #9b6938;
   border-radius: 50%;
-  overflow: hidden;
+  overflow: visible;
   background: radial-gradient(circle at 50% 74%, var(--card-accent-soft), #100d0b 67%);
   box-shadow: 0 2px 5px #000, 0 0 var(--rarity-halo) var(--card-accent), 0 0 calc(var(--rarity-halo) * 2) var(--card-accent-soft);
 }
 
-.steam-card-flame-video {
+.steam-card-flame-gif {
   position: absolute;
-  inset: 0;
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-  transform: scale(1.08) translateY(14%);
-  mix-blend-mode: screen;
-  opacity: 0;
-  transition: opacity .25s ease;
+  left: 50%;
+  bottom: -10px;
+  width: 48px;
+  height: auto;
+  max-width: none;
+  transform: translateX(-50%);
+  image-rendering: pixelated;
+  pointer-events: none;
 }
 
-.steam-card-image-dial[data-playing="true"] .steam-card-flame-video {
-  opacity: 1;
-}
-
-.steam-card-flame-fallback {
-  position: absolute;
-  inset: 0;
-  background: radial-gradient(ellipse at 50% 64%, var(--card-accent) 0 16%, var(--card-accent-soft) 32%, transparent 66%);
-  transition: opacity .25s ease;
-}
-
-.steam-card-image-dial[data-playing="true"] .steam-card-flame-fallback {
-  opacity: 0;
-}
+.steam-card-image-dial[data-rarity="COMMON"] .steam-card-flame-gif { filter: grayscale(1) brightness(1.7); }
+.steam-card-image-dial[data-rarity="UNCOMMON"] .steam-card-flame-gif { filter: hue-rotate(100deg) saturate(1.2); }
+.steam-card-image-dial[data-rarity="RARE"] .steam-card-flame-gif { filter: hue-rotate(180deg) saturate(1.3); }
+.steam-card-image-dial[data-rarity="EPIC"] .steam-card-flame-gif { filter: hue-rotate(260deg) saturate(1.35); }
+.steam-card-image-dial[data-rarity="LEGENDARY"] .steam-card-flame-gif { filter: saturate(1.1); }
 
 .steam-studio-visual { overflow: visible; }
 
