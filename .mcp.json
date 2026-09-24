@@ -1,0 +1,11 @@
+{
+  "mcpServers": {
+    "steammasters-db": {
+      "type": "http",
+      "url": "https://steammasters-mcp.obsidianspoon.com/sse",
+      "headers": {
+        "Authorization": "Basic ${STEAMMASTERS_MCP_BASIC_AUTH}"
+      }
+    }
+  }
+}
