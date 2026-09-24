@@ -25,7 +25,8 @@ export async function GET() {
     ] }, orderBy: [{ createdAt: "desc" }, { id: "desc" }], select: { content: true, createdAt: true, fromUserId: true } });
     return { userId: partnerId, username: names.get(partnerId) ?? "Joueur inconnu", unread: unreadByPartner.get(partnerId) ?? 0, last };
   }));
-  conversations.sort((a, b) => (b.last?.createdAt.getTime() ?? 0) - (a.last?.createdAt.getTime() ?? 0));
+  users.sort((a, b) => a.username.localeCompare(b.username, "fr", { sensitivity: "base" }) || a.id.localeCompare(b.id));
+  conversations.sort((a, b) => a.username.localeCompare(b.username, "fr", { sensitivity: "base" }) || a.userId.localeCompare(b.userId));
   return NextResponse.json({ selfId: userId, users, conversations });
 }
 

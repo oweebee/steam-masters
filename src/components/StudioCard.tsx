@@ -166,7 +166,7 @@ export function StudioCard({
           ) : (
             <span className="text-4xl">🏢</span>
           )}
-          <FlameDial />
+          <FlameDial rarity={rarity} />
         </div>
 
         <div className="steam-statbar flex justify-between items-center pt-2 border-t border-gray-800">

@@ -84,10 +84,19 @@ export function MarcheClient({ userId }: { userId: string }) {
       if (!collectionResponse.ok) throw new Error(collectionData.error ?? "Collection indisponible");
       setAuctions(Array.isArray(marketData) ? marketData : []);
       setCollection(Array.isArray(collectionData) ? collectionData : []);
+      const sellable: CollectionCard[] = collectionData.filter((card: CollectionCard) => card.sellable);
+      const requested = new URLSearchParams(window.location.search).get("cardId");
+      const requestedCard = sellable.find((card) => card.id === requested);
+      if (requestedCard) {
+        setCardSearch(cardName(requestedCard));
+        setSelectedCardId(requestedCard.id);
+        window.history.replaceState(window.history.state, "", window.location.pathname);
+      } else if (requested) {
+        setError("La carte demandée n’est plus disponible pour une enchère.");
+        window.history.replaceState(window.history.state, "", window.location.pathname);
+      }
       setSelectedCardId((current) => {
-        const sellable = collectionData.filter((card: CollectionCard) => card.sellable);
-        const requested = new URLSearchParams(window.location.search).get("cardId");
-        if (requested && sellable.some((card: CollectionCard) => card.id === requested)) return requested;
+        if (requestedCard) return requestedCard.id;
         return sellable.some((card: CollectionCard) => card.id === current) ? current : (sellable[0]?.id ?? "");
       });
     } catch (reason) {
@@ -111,6 +120,7 @@ export function MarcheClient({ userId }: { userId: string }) {
   }, [auctions, load]);
 
   const sellableCards = useMemo(() => collection.filter((card) => card.sellable), [collection]);
+  const selectedCard = sellableCards.find((card) => card.id === selectedCardId);
   const visibleSellableCards = useMemo(() => {
     const needle = normalizeSearch(cardSearch.trim());
     return [...sellableCards]
@@ -184,6 +194,9 @@ export function MarcheClient({ userId }: { userId: string }) {
       <section className="steam-market-sellbox">
         <div className="steam-market-section-title"><span className="steam-market-icon">⚒</span><div><h2>Mettre une carte aux enchères</h2><p>Annulation possible uniquement avant la première enchère.</p></div></div>
         <form onSubmit={createAuction} className="steam-market-sellform">
+          {selectedCard && <div className="steam-market-selected-card" aria-live="polite">
+            <span>Carte prête pour l’enchère</span><strong>{cardName(selectedCard)}</strong>
+          </div>}
           <div className="steam-market-card-picker steam-trade-selector">
             <div className="steam-market-picker-controls">
               <input type="search" value={cardSearch} onChange={(event) => setCardSearch(event.target.value)} placeholder="Rechercher une carte…" />

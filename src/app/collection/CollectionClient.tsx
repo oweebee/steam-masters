@@ -1,5 +1,5 @@
 "use client";
-import { useEffect, useState } from "react";
+import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { GameCard } from "@/components/GameCard";
 import { StudioCard } from "@/components/StudioCard";
@@ -130,6 +130,9 @@ export function CollectionClient() {
   const [saleMessage, setSaleMessage] = useState("");
   const [saleError, setSaleError] = useState("");
   const [flippedIds, setFlippedIds] = useState<string[]>([]);
+  const [returningId, setReturningId] = useState<string | null>(null);
+  const frameRefs = useRef(new Map<string, HTMLDivElement>());
+  const returnTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [players, setPlayers] = useState<Player[]>([]);
   const [deliveries, setDeliveries] = useState<Delivery[]>([]);
   const [workingOfferId, setWorkingOfferId] = useState<string | null>(null);
@@ -156,6 +159,47 @@ export function CollectionClient() {
     const timer = window.setTimeout(() => { void refreshAll(); }, 0);
     return () => window.clearTimeout(timer);
   }, []);
+
+  useLayoutEffect(() => {
+    const activeId = flippedIds[0];
+    if (!activeId) {
+      if (returningId) frameRefs.current.get(returningId)?.style.setProperty("transform", "translate(0px, 0px)");
+      return;
+    }
+    const frame = frameRefs.current.get(activeId);
+    if (!frame) return;
+    frame.style.transform = "translate(0px, 0px)";
+    const rect = frame.getBoundingClientRect();
+    const width = frame.scrollWidth;
+    const height = frame.scrollHeight;
+    const dx = (window.innerWidth - width) / 2 - rect.left;
+    const dy = Math.max(12, (window.innerHeight - height) / 2) - rect.top;
+    const animation = requestAnimationFrame(() => {
+      frame.style.transform = `translate(${dx}px, ${dy}px)`;
+    });
+    return () => cancelAnimationFrame(animation);
+  }, [flippedIds, returningId]);
+
+  useEffect(() => () => { if (returnTimer.current) clearTimeout(returnTimer.current); }, []);
+
+  useEffect(() => {
+    if (!flippedIds.length && !returningId) return;
+    const previous = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    return () => { document.body.style.overflow = previous; };
+  }, [flippedIds, returningId]);
+
+  function handleCardFlip(id: string, flipped: boolean) {
+    if (returnTimer.current) clearTimeout(returnTimer.current);
+    if (flipped) {
+      setReturningId(null);
+      setFlippedIds([id]);
+    } else {
+      setFlippedIds([]);
+      setReturningId(id);
+      returnTimer.current = setTimeout(() => setReturningId(null), 550);
+    }
+  }
 
   async function respondToOffer(id: string, action: "accept" | "decline") {
     setWorkingOfferId(id); setOfferError("");
@@ -213,6 +257,7 @@ export function CollectionClient() {
 
   return (
     <div>
+      {(flippedIds.length > 0 || returningId) && !saleMode && <div className="steam-owned-backdrop" aria-hidden="true" />}
       <div className="steam-collection-toolbar">
         <div>
           <h1 className="text-2xl font-bold text-white">Ma collection ({cards.length})</h1>
@@ -277,7 +322,8 @@ export function CollectionClient() {
         {cards.map((c) => {
           const selected = selectedIds.includes(c.id);
           return (
-            <div key={c.id} className={`steam-sale-card steam-owned-frame ${selected ? "steam-sale-card-selected" : ""} ${flippedIds.includes(c.id) && !saleMode ? "is-flipped" : ""}`}>
+            <div key={c.id} className="steam-owned-slot">
+              <div ref={(element) => { if (element) frameRefs.current.set(c.id, element); else frameRefs.current.delete(c.id); }} className={`steam-sale-card steam-owned-frame ${selected ? "steam-sale-card-selected" : ""} ${flippedIds.includes(c.id) && !saleMode ? "is-flipped" : ""} ${returningId === c.id ? "is-returning" : ""}`}>
               {c.game ? (
             <GameCard
               id={c.game.id}
@@ -294,7 +340,7 @@ export function CollectionClient() {
               ownerEstimate={c.game.ownerEstimate}
               priceCents={c.game.priceCents}
               isFree={c.game.isFree}
-              onFlipChange={(flipped) => setFlippedIds((current) => flipped ? [...current, c.id] : current.filter((id) => id !== c.id))}
+              onFlipChange={(flipped) => handleCardFlip(c.id, flipped)}
             />
           ) : c.studio ? (
             <StudioCard
@@ -306,7 +352,7 @@ export function CollectionClient() {
               games={c.studio.games}
               about={c.studio.about}
               avatarUrl={c.studio.avatarUrl}
-              onFlipChange={(flipped) => setFlippedIds((current) => flipped ? [...current, c.id] : current.filter((id) => id !== c.id))}
+              onFlipChange={(flipped) => handleCardFlip(c.id, flipped)}
             />
           ) : null}
               {flippedIds.includes(c.id) && !saleMode && <OwnedCardActions card={c} players={players} onChanged={() => { void refreshAll(); }} />}
@@ -322,6 +368,7 @@ export function CollectionClient() {
                   <span>{c.sellable ? (selected ? "✓" : "+") : "🔒"}</span>
                 </button>
               )}
+              </div>
             </div>
           );
         })}

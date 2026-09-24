@@ -1,5 +1,5 @@
 "use client";
-import { useState, type ReactNode } from "react";
+import { useEffect, useRef, useState, type ReactNode } from "react";
 
 // Wrapper unique pour toutes les cartes à effet flip 3D (GameCard, StudioCard...).
 // Bug corrigé ici une fois pour toutes : backface-visibility seul est insuffisant
@@ -33,9 +33,28 @@ export function FlipCard({
   onFlipChange?: (flipped: boolean) => void;
 }) {
   const [flipped, setFlipped] = useState(false);
+  const wrapRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!flipped) return;
+    const closeOutside = (event: PointerEvent) => {
+      const target = event.target;
+      if (!(target instanceof Node)) return;
+      const wrap = wrapRef.current;
+      if (wrap?.contains(target)) return;
+      // Dans la collection, le panneau d'actions fait partie de la carte ouverte.
+      const frame = wrap?.closest(".steam-owned-frame");
+      if (frame?.contains(target)) return;
+      setFlipped(false);
+      onFlipChange?.(false);
+    };
+    document.addEventListener("pointerdown", closeOutside);
+    return () => document.removeEventListener("pointerdown", closeOutside);
+  }, [flipped, onFlipChange]);
 
   return (
     <div
+      ref={wrapRef}
       className="steam-card-wrap relative w-72 h-[26rem] [perspective:1200px]"
       onClick={() => {
         if (!canFlip) return;

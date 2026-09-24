@@ -350,7 +350,7 @@ a.bg-purple-600 {
   border: 2px solid #9b6938;
   border-radius: 50%;
   overflow: hidden;
-  background: radial-gradient(circle at 50% 70%, #48190b, #120b08 70%);
+  background: radial-gradient(circle at 50% 74%, var(--card-accent-soft), #100d0b 67%);
   box-shadow: 0 2px 5px #000, 0 0 var(--rarity-halo) var(--card-accent), 0 0 calc(var(--rarity-halo) * 2) var(--card-accent-soft);
 }
 
@@ -360,10 +360,8 @@ a.bg-purple-600 {
   width: 100%;
   height: 100%;
   object-fit: cover;
-  transform: scale(2.1) translateY(-9%);
+  transform: scale(1.08) translateY(14%);
   mix-blend-mode: screen;
-  -webkit-mask-image: linear-gradient(#000 0 63%, transparent 98%);
-  mask-image: linear-gradient(#000 0 63%, transparent 98%);
   opacity: 0;
   transition: opacity .25s ease;
 }
@@ -375,7 +373,7 @@ a.bg-purple-600 {
 .steam-card-flame-fallback {
   position: absolute;
   inset: 0;
-  background: radial-gradient(ellipse at 50% 76%, #fff1bd 0 9%, #f89835 20%, #7a260f 43%, transparent 66%);
+  background: radial-gradient(ellipse at 50% 64%, var(--card-accent) 0 16%, var(--card-accent-soft) 32%, transparent 66%);
   transition: opacity .25s ease;
 }
 
@@ -816,8 +814,15 @@ a.bg-purple-600 {
 .steam-sale-card-target.is-locked { cursor: not-allowed; border-color: #51483e; background: rgba(0,0,0,0.55); }
 .steam-sale-card-target.is-locked > span { border-color: #655b50; color: #8b8174; filter: grayscale(1); }
 
-.steam-owned-frame { display: flex; align-items: stretch; gap: 0; }
+.steam-owned-slot { flex: 0 0 18rem; width: 18rem; height: 26rem; position: relative; }
+.steam-owned-frame { display: flex; align-items: stretch; gap: 0; width: 18rem; transition: transform .55s cubic-bezier(.2,.76,.2,1); }
+.steam-owned-backdrop { position: fixed; inset: 0; z-index: 49; background: rgba(5, 4, 3, .72); backdrop-filter: blur(2px); }
+.steam-owned-frame.is-flipped, .steam-owned-frame.is-returning {
+  position: relative;
+  z-index: 50;
+}
 .steam-owned-frame.is-flipped {
+  width: max-content;
   padding: 0.35rem;
   border: 1px solid #9b653c;
   background: linear-gradient(135deg, #4b2e1d, #1a120d 12%, #211711 86%, #6c3e23);
@@ -862,7 +867,7 @@ a.bg-purple-600 {
 .steam-delivery-row button { padding: 0 0.7rem; }
 
 @media (max-width: 760px), (display-mode: standalone) and (max-width: 900px) {
-  .steam-owned-frame.is-flipped { flex-direction: column; width: 18.7rem; }
+  .steam-owned-frame.is-flipped { flex-direction: column; width: 18.7rem; max-height: calc(100dvh - 24px); overflow-y: auto; }
   .steam-owned-frame.is-flipped .steam-card-wrap { flex: none; }
   .steam-owned-actions { width: 18rem; height: auto; max-height: none; border-left: 1px solid #6f4b2c; border-top: 3px double #c78a4c; border-radius: 0 0 0.7rem 0.7rem; }
   .steam-delivery-row { align-items: flex-start; flex-direction: column; }
@@ -1047,6 +1052,9 @@ a.bg-purple-600 {
 .steam-market-section-title p { color:#796957; font-size:.68rem; }
 .steam-market-icon { display:grid; width:2.3rem; height:2.3rem; place-items:center; border:1px solid #8c5e31; border-radius:50%; background:radial-gradient(circle at 35% 30%,#604326,#1a120d 70%); box-shadow:inset 0 0 0 3px #100c09; }
 .steam-market-sellform { display:grid; gap:.7rem; }
+.steam-market-selected-card { display:flex; align-items:center; gap:.5rem; padding:.55rem .75rem; border:1px solid #a56c3b; border-radius:.45rem; background:linear-gradient(90deg,#51301c,#211811); color:#e9d6b7; font-size:.76rem; }
+.steam-market-selected-card span { color:#c9a67e; }
+.steam-market-selected-card strong { color:#fff4df; }
 .steam-market-sellform label { min-width:0; }
 .steam-market-sellform label > span { display:block; margin:0 0 .25rem .15rem; color:#9a846b; font-size:.61rem; font-weight:800; letter-spacing:.08em; text-transform:uppercase; }
 .steam-market-sellform input,.steam-market-sellform select,.steam-market-controls input,.steam-market-controls select,.steam-market-bidbox input { width:100%; height:2.55rem; border:1px solid #594027; border-radius:.42rem; color:#e8dac8; background:#211914; padding:0 .7rem; font-size:.77rem; }

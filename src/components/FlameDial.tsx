@@ -1,8 +1,9 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import type { Rarity } from "@/lib/rarityStyles";
 
-export function FlameDial() {
+export function FlameDial({ rarity }: { rarity: Rarity }) {
   const dialRef = useRef<HTMLSpanElement>(null);
   const videoRef = useRef<HTMLVideoElement>(null);
   const [playing, setPlaying] = useState(false);
@@ -36,7 +37,7 @@ export function FlameDial() {
   }, []);
 
   return <span ref={dialRef} className="steam-card-image-dial" data-playing={playing} aria-hidden="true">
-    <video ref={videoRef} className="steam-card-flame-video" src="/flame/real-fire.webm" muted loop playsInline preload="none" disablePictureInPicture />
+    <video ref={videoRef} className="steam-card-flame-video" src={`/flame/candle-${rarity.toLowerCase()}.webm`} muted loop playsInline preload="none" disablePictureInPicture />
     <span className="steam-card-flame-fallback" />
   </span>;
 }

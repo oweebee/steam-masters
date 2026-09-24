@@ -10,7 +10,8 @@ export async function GET() {
   const session = await auth();
   if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
-  const selfId = (session.user as any).id as string;
+  const selfId = (session.user as { id?: string } | undefined)?.id;
+  if (!selfId) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
   const users = await prisma.user.findMany({
     where: { OR: [{ status: "ACTIVE" }, { id: selfId }] },
@@ -21,8 +22,10 @@ export async function GET() {
       createdAt: true,
       _count: { select: { cards: true } },
     },
-    orderBy: { xp: "desc" },
+    orderBy: { username: "asc" },
   });
+
+  users.sort((a, b) => a.username.localeCompare(b.username, "fr", { sensitivity: "base" }) || a.id.localeCompare(b.id));
 
   return NextResponse.json(
     users.map((u) => ({

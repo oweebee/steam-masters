@@ -1,7 +1,6 @@
-The `real-fire.webm` card flame is cropped and resized from
-[Fire looped 1.gif](https://commons.wikimedia.org/wiki/File:Fire_looped_1.gif),
-original footage by Frank Vincentz, loop by Jahobr.
+The five `candle-*.webm` rarity-colored card flames are cropped from
+[White candle video.webm](https://commons.wikimedia.org/wiki/File:White_candle_video.webm)
+by Jahobr, released under [CC0](https://creativecommons.org/publicdomain/zero/1.0/).
 
-This adapted media asset is licensed under
-[CC BY-SA 3.0](https://creativecommons.org/licenses/by-sa/3.0/).
-Changes: cropped the central flame, resized to 96 × 96, encoded as WebM.
+Changes: isolated the candle flame, resized it to 96 × 96, tinted it to the
+card rarities, and encoded short muted WebM loops.

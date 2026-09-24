@@ -60,7 +60,7 @@ export function GameCard({
       <CardOrnaments />
       <div className="steam-card-visual">
         <img src={headerImage} alt={name} className="w-full h-36 object-cover" />
-        <FlameDial />
+        <FlameDial rarity={rarity} />
       </div>
 
       <div className="steam-card-content p-4 flex flex-col gap-2 flex-1">

@@ -4,7 +4,7 @@ import { prisma } from "@/lib/prisma";
 
 async function requireAdmin() {
   const session = await auth();
-  if (!session || (session.user as any)?.role !== "ADMIN")
+  if (!session || (session.user as { role?: string } | undefined)?.role !== "ADMIN")
     throw new Error("Unauthorized");
 }
 
@@ -12,8 +12,9 @@ export async function GET() {
   try { await requireAdmin(); } catch { return NextResponse.json({ error: "Unauthorized" }, { status: 401 }); }
   const users = await prisma.user.findMany({
     select: { id: true, username: true, email: true, role: true, status: true, createdAt: true },
-    orderBy: { createdAt: "desc" },
+    orderBy: { username: "asc" },
   });
+  users.sort((a, b) => a.username.localeCompare(b.username, "fr", { sensitivity: "base" }) || a.id.localeCompare(b.id));
   return NextResponse.json(users);
 }
 
