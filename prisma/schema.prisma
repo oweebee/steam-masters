@@ -89,6 +89,7 @@ model Battle {
   challengerId    String
   opponentId      String
   status          BattleStatus @default(PENDING)
+  rulesVersion    Int          @default(2)
   challengerDeck  Json
   opponentDeck    Json?
   challengerIndex Int          @default(0)
@@ -99,6 +100,12 @@ model Battle {
   question        Json?
   answerIndex     Int?
   turnCount       Int          @default(0)
+  challengerScore Int          @default(0)
+  opponentScore   Int          @default(0)
+  challengerStakeCoins Int     @default(0)
+  opponentStakeCoins   Int     @default(0)
+  challengerStakeCardId String?
+  opponentStakeCardId   String?
   winnerId        String?
   createdAt       DateTime     @default(now())
   updatedAt       DateTime     @updatedAt
@@ -310,6 +317,10 @@ model Message {
   read       Boolean  @default(false)
 
   from User @relation(fields: [fromUserId], references: [id])
+
+  @@index([fromUserId, toUserId, createdAt])
+  @@index([toUserId, fromUserId, createdAt])
+  @@index([toUserId, read])
 }
 
 model Friend {

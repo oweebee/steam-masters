@@ -1,7 +1,8 @@
 "use client";
 import { useEffect, useState } from "react";
+import Link from "next/link";
 
-type Joueur = { id: string; username: string; xp: number; cardCount: number; createdAt: string };
+type Joueur = { id: string; username: string; isSelf: boolean; xp: number; cardCount: number; createdAt: string };
 type LibraryCard = {
   id: string;
   label: string;
@@ -75,7 +76,7 @@ export function JoueursClient() {
               <th className="px-4 py-3">XP</th>
               <th className="px-4 py-3">Cartes</th>
               <th className="px-4 py-3">Membre depuis</th>
-              <th className="px-4 py-3 text-right">Bibliothèque</th>
+              <th className="px-4 py-3 text-right">Actions</th>
             </tr>
           </thead>
           <tbody>
@@ -86,13 +87,14 @@ export function JoueursClient() {
                     <span className="steam-player-medallion" aria-hidden="true">
                       {j.username.slice(0, 1).toLocaleUpperCase("fr")}
                     </span>
-                    {j.username}
+                    {j.username}{j.isSelf && <small className="text-amber-400">(vous)</small>}
                   </span>
                 </td>
                 <td className="px-4 py-2 text-amber-400">{j.xp}</td>
                 <td className="px-4 py-2 text-blue-400">{j.cardCount}</td>
                 <td className="px-4 py-2 text-gray-500">{new Date(j.createdAt).toLocaleDateString("fr-FR")}</td>
                 <td className="px-4 py-2 text-right">
+                  {!j.isSelf && <Link href={`/messages?to=${encodeURIComponent(j.id)}`} className="mr-3 text-sm text-amber-400 hover:text-amber-200">Écrire</Link>}
                   <button type="button" onClick={() => openLibrary(j)} className="steam-library-button">
                     <span className="steam-library-wheel" aria-hidden="true"><span /></span>
                     <span>
@@ -106,7 +108,7 @@ export function JoueursClient() {
             {loaded && joueurs.length === 0 && (
               <tr>
                 <td colSpan={5} className="px-4 py-6 text-center text-gray-500">
-                  Aucun autre joueur pour l&apos;instant.
+                  Aucun joueur pour l&apos;instant.
                 </td>
               </tr>
             )}

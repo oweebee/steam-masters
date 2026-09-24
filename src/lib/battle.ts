@@ -1,5 +1,7 @@
 import { randomInt } from "node:crypto";
 import type { Prisma } from "@prisma/client";
+import { cardDefense } from "@/lib/cardDefense";
+import { stakedCardCount } from "@/lib/battleStake";
 
 export type BattleCard = {
   id: string;
@@ -23,21 +25,21 @@ export function publicBattleDeck(deck: BattleCard[]): PublicBattleCard[] {
   });
 }
 
-// Stats de combat uniquement : 2 à 3 bonnes réponses suffisent normalement
-// par carte. La DEF catalogue reste l'estimation SteamSpy non modifiée.
+// L'ATK de combat garde un minimum utile sans rendre les cartes à faible ATK
+// inutiles. La DEF 50..250 correspond exactement à la DEF affichée.
 export function combatAttack(atk: number) {
-  return 3500 + Math.max(0, Math.min(100, atk)) * 40;
+  return 35 + Math.round(Math.max(0, Math.min(100, atk)) * 0.45);
 }
 
 export function combatDefense(owners: number) {
-  return Math.max(8000, Math.min(10500, Math.round(8000 + 250 * Math.log10(Math.max(1, owners)))));
+  return cardDefense(owners);
 }
 
 export function deckFromJson(value: Prisma.JsonValue | null): BattleCard[] {
   return Array.isArray(value) ? value as unknown as BattleCard[] : [];
 }
 
-export async function loadBattleDeck(tx: Prisma.TransactionClient, userId: string, ids: unknown): Promise<BattleCard[]> {
+export async function loadBattleDeck(tx: Prisma.TransactionClient, userId: string, ids: unknown, rulesVersion = 2): Promise<BattleCard[]> {
   if (!Array.isArray(ids) || ids.length !== 5 || new Set(ids).size !== 5 || ids.some((id) => typeof id !== "string")) {
     throw new Error("Choisis exactement 5 cartes différentes");
   }
@@ -46,6 +48,7 @@ export async function loadBattleDeck(tx: Prisma.TransactionClient, userId: strin
     include: { game: true, studio: true },
   });
   if (cards.length !== 5) throw new Error("Une carte ne t'appartient plus");
+  if (await stakedCardCount(tx, ids as string[])) throw new Error("Une carte du deck est déjà misée dans un combat");
   const byId = new Map(cards.map((card) => [card.id, card]));
   return (ids as string[]).map((id) => {
     const card = byId.get(id)!;
@@ -60,8 +63,8 @@ export async function loadBattleDeck(tx: Prisma.TransactionClient, userId: strin
       image: card.game?.headerImage ?? card.studio?.avatarUrl ?? null,
       kind: card.game ? "GAME" as const : "STUDIO" as const,
       rarity: card.rarity,
-      attack: combatAttack(card.atk),
-      defense: combatDefense(owners),
+      attack: rulesVersion < 2 ? 1500 + Math.max(0, Math.min(100, card.atk)) * 70 : combatAttack(card.atk),
+      defense: rulesVersion < 2 ? Math.max(5000, Math.min(10500, Math.round(1000 * (1 + Math.log10(Math.max(1, owners)))))) : combatDefense(owners),
       developer: card.game?.developers[0] ?? null,
       games: card.studio?.games ?? [],
     };

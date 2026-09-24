@@ -5,6 +5,7 @@ import { getSteamGameData, upsertStudiosForDevelopers } from "@/lib/steam";
 import { recalculateCatalogRarity } from "@/lib/catalogRarity";
 import { persistRemoteImage } from "@/lib/storedImages";
 import { writeAppLog } from "@/lib/appLog";
+import { cardDefense } from "@/lib/cardDefense";
 
 async function requireAdmin() {
   const session = await auth();
@@ -66,7 +67,7 @@ export async function POST(req: NextRequest) {
       ownerEstimate: data.ownerEstimate,
       rarity,
       atk: data.reviewScore,
-      def: data.ownerEstimate,
+      def: cardDefense(data.ownerEstimate),
       tags: data.tags,
       developers: data.developers,
       priceCents: data.priceCents,
@@ -82,7 +83,7 @@ export async function POST(req: NextRequest) {
       ownerEstimate: data.ownerEstimate,
       rarity,
       atk: data.reviewScore,
-      def: data.ownerEstimate,
+      def: cardDefense(data.ownerEstimate),
       tags: data.tags,
       developers: data.developers,
       priceCents: data.priceCents,

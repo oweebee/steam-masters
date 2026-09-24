@@ -58,10 +58,14 @@ export async function POST(req: Request) {
 
   // Vérifie que les cartes offertes appartiennent bien à l'initiateur, et les
   // cartes demandées au destinataire (pas de triche en manipulant le payload).
-  const [offerOwned, wantOwned, fromUser] = await Promise.all([
+  const [offerOwned, wantOwned, fromUser, staked] = await Promise.all([
     prisma.card.count({ where: { id: { in: offerCardIds }, userId: fromUserId } }),
     prisma.card.count({ where: { id: { in: wantCardIds }, userId: toUserId } }),
     prisma.user.findUnique({ where: { id: fromUserId }, select: { coins: true } }),
+    prisma.battle.count({ where: { status: { in: ["PENDING", "ACTIVE"] }, OR: [
+      { challengerStakeCardId: { in: [...offerCardIds, ...wantCardIds] } },
+      { opponentStakeCardId: { in: [...offerCardIds, ...wantCardIds] } },
+    ] } }),
   ]);
   if (offerOwned !== offerCardIds.length) {
     return NextResponse.json({ error: "Une des cartes offertes ne t'appartient pas (plus)" }, { status: 400 });
@@ -72,6 +76,7 @@ export async function POST(req: Request) {
   if (!fromUser || fromUser.coins < offerCoins) {
     return NextResponse.json({ error: "Solde de jetons insuffisant" }, { status: 400 });
   }
+  if (staked > 0) return NextResponse.json({ error: "Une carte est misée dans un combat" }, { status: 400 });
 
   const trade = await prisma.trade.create({
     data: {

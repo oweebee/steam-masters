@@ -11,10 +11,9 @@ const NAV = [
   { href: "/echanges", label: "Échanges", icon: "🔁", active: true },
   { href: "/marche", label: "Marché", icon: "💰", active: true },
   { href: "/profil", label: "Profil", icon: "👤", active: false },
-  { href: "/toutes-les-cartes", label: "Toutes les cartes", icon: "🃏", active: true, adminOnly: true },
   { href: "/guilde", label: "Guilde", icon: "🏰", active: false },
   { href: "/joueurs", label: "Joueurs", icon: "🧑‍🤝‍🧑", active: true },
-  { href: "/messages", label: "Messages", icon: "💬", active: false },
+  { href: "/messages", label: "Messages", icon: "💬", active: true },
   { href: "/bataille", label: "Bataille", icon: "⚔️", active: true },
   { href: "/succes", label: "Succès", icon: "🏆", active: false },
   { href: "/classement", label: "Classement", icon: "📊", active: false },
@@ -82,7 +81,7 @@ export function Sidebar({ isAdmin, username, coins }: { isAdmin: boolean; userna
       {!collapsed && <div className="text-amber-400 text-xs px-2 mb-4">{coins} pièces</div>}
 
       <nav className="flex flex-col gap-1 flex-1 overflow-y-auto">
-        {NAV.filter((item) => !item.adminOnly || isAdmin).map((item) => {
+        {NAV.map((item) => {
           const active = pathname === item.href;
           return (
             <Link

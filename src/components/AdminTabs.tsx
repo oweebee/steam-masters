@@ -14,7 +14,6 @@ const TABS = [
 const SHORTCUTS = [
   { href: "/dashboard", label: "Paquets", icon: "📦" },
   { href: "/collection", label: "Collection", icon: "🗂️" },
-  { href: "/toutes-les-cartes", label: "Cartes", icon: "🃏" },
 ];
 
 export function AdminTabs() {

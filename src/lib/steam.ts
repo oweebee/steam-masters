@@ -1,5 +1,6 @@
 import { prisma } from "@/lib/prisma";
 import { redis } from "@/lib/redis";
+import { cardDefense } from "@/lib/cardDefense";
 
 const CACHE_TTL = 60 * 30; // 30 min
 
@@ -245,10 +246,8 @@ export async function getSteamDeveloperGames(
 // compteurs incrémentaux — toujours exact, pas de dérive possible).
 // Choix de design (non spécifiés par ailleurs, assumés) :
 //   ATK studio = moyenne des reviewScore de ses jeux en base
-//   DEF studio = somme des ownerEstimate de ses jeux en base (proxy "ventes" —
-//     Steam ne publie aucun chiffre de ventes officiel ; ownerEstimate vient de
-//     SteamSpy, tiers non-officiel. Remplace l'ancien proxy peakCcu, qui tombait
-//     à 0 pour les jeux solo/sans multijoueur actif au moment du fetch.)
+//   DEF studio = compression logarithmique 50..250 de la somme des estimations
+//     de possesseurs SteamSpy de ses jeux ; la somme brute est conservée à part.
 //   Rareté studio = classement par percentile (voir catalogRarity.ts), plafonné
 //   par la meilleure tranche de reviewScore atteinte par au moins un de ses jeux.
 //   Jamais figée : recalculée en totalité à chaque appel de recalculateCatalogRarity().
@@ -267,7 +266,7 @@ export async function upsertStudiosForDevelopers(developers: string[]) {
     const gameNames = games.map((g) => g.name).sort();
     await prisma.studio.upsert({
       where: { name },
-      update: { gameCount, avgReviewScore, totalOwnerEstimate, games: gameNames, atk: avgReviewScore, def: totalOwnerEstimate },
+      update: { gameCount, avgReviewScore, totalOwnerEstimate, games: gameNames, atk: avgReviewScore, def: cardDefense(totalOwnerEstimate) },
       create: {
         name,
         gameCount,
@@ -276,7 +275,7 @@ export async function upsertStudiosForDevelopers(developers: string[]) {
         games: gameNames,
         rarity: existing?.rarity ?? "COMMON",
         atk: avgReviewScore,
-        def: totalOwnerEstimate,
+        def: cardDefense(totalOwnerEstimate),
       },
     });
   }

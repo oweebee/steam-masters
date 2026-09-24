@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { auth } from "@/auth";
 import { prisma } from "@/lib/prisma";
 import { settleExpiredAuctions } from "@/lib/market";
+import { stakedCardCount } from "@/lib/battleStake";
 
 const DURATIONS = new Set([10, 30, 60, 360, 1440]);
 
@@ -84,12 +85,14 @@ export async function POST(request: Request) {
       if (!card || card.userId !== userId) throw new Error("Cette carte ne t’appartient plus");
       if (!card.gameId && !card.studioId) throw new Error("Carte incomplète, mise en vente impossible");
 
-      const [pendingTrade, activeAuction] = await Promise.all([
+      const [pendingTrade, activeAuction, staked] = await Promise.all([
         tx.tradeCard.count({ where: { cardId, trade: { status: "PENDING" } } }),
         tx.auction.count({ where: { cardId, status: "ACTIVE" } }),
+        stakedCardCount(tx, [cardId]),
       ]);
       if (pendingTrade > 0) throw new Error("Cette carte est engagée dans un échange");
       if (activeAuction > 0) throw new Error("Cette carte est déjà sur le marché");
+      if (staked > 0) throw new Error("Cette carte est misée dans un combat");
 
       return tx.auction.create({
         data: {

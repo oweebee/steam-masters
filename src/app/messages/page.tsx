@@ -1,10 +1,10 @@
 import { AppShell } from "@/components/AppShell";
+import { MessagesClient } from "./MessagesClient";
 
 export default function Page() {
   return (
     <AppShell>
-      <h1 className="text-2xl font-bold text-white mb-4">Messages</h1>
-      <p className="text-gray-500 text-sm">À venir.</p>
+      <MessagesClient />
     </AppShell>
   );
 }

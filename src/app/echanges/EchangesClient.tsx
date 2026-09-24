@@ -165,7 +165,7 @@ export function EchangesClient({ myUserId }: { myUserId: string }) {
   }
 
   useEffect(() => {
-    fetch("/api/joueurs").then((r) => (r.ok ? r.json() : [])).then(setJoueurs);
+    fetch("/api/joueurs").then((r) => (r.ok ? r.json() : [])).then((users: (Joueur & { isSelf?: boolean })[]) => setJoueurs(users.filter((user) => !user.isSelf)));
     fetch("/api/collection")
       .then((r) => (r.ok ? r.json() : []))
       .then((cards: any[]) =>

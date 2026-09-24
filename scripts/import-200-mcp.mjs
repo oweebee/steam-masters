@@ -7,6 +7,7 @@ import { randomUUID } from "node:crypto";
 const TARGET = Number(process.argv.find((arg) => arg.startsWith("--limit="))?.split("=")[1] ?? 200);
 if (!Number.isInteger(TARGET) || TARGET < 1 || TARGET > 200) throw new Error("--limit doit être entre 1 et 200");
 const EXECUTE = process.argv.includes("--execute");
+const cardDefense = (owners) => Math.max(50, Math.min(250, Math.round(50 + 25 * Math.log10(Math.max(1, owners)))));
 const MCP_URL = "https://steammasters-mcp.obsidianspoon.com";
 const context = readFileSync("CONTEXT.md", "utf8");
 const password = context.match(/SteamMCP[0-9]+!/)?.[0];
@@ -129,7 +130,7 @@ async function gameFromSteam(appid) {
 
 function importSql(games) {
   const images = games.map((game) => `(${literal(`game:${game.id}`)}, decode('${game.image.toString("base64")}', 'base64'), ${literal(game.mime)}, ${literal(game.imageUrl)}, now(), now())`).join(",\n");
-  const values = games.map((game) => `(${literal(game.id)},${literal(game.name)},${literal(game.description)},${literal(`/api/images/game/${game.id}`)},${game.score},${game.ccu},${game.owners},'COMMON'::"Rarity",${game.score},${game.owners},${array(game.tags)},${array(game.developers)},${game.price == null ? "NULL" : Number(game.price)},${game.free},now())`).join(",\n");
+  const values = games.map((game) => `(${literal(game.id)},${literal(game.name)},${literal(game.description)},${literal(`/api/images/game/${game.id}`)},${game.score},${game.ccu},${game.owners},'COMMON'::"Rarity",${game.score},${cardDefense(game.owners)},${array(game.tags)},${array(game.developers)},${game.price == null ? "NULL" : Number(game.price)},${game.free},now())`).join(",\n");
   const names = [...new Set(games.flatMap((game) => game.developers))];
   const studioNames = names.map((name) => `(${literal(name)})`).join(",");
   return `DO $import$ BEGIN
@@ -143,7 +144,7 @@ function importSql(games) {
       FROM names JOIN "SteamGame" game ON names.name=ANY(game.developers) GROUP BY names.name
     )
     INSERT INTO "Studio" (id,name,"gameCount","avgReviewScore","totalOwnerEstimate",games,rarity,atk,def,"updatedAt")
-      SELECT 'mcp-' || md5(random()::text || clock_timestamp()::text),name,game_count,avg_score,owners,games,'COMMON'::"Rarity",avg_score,owners,now() FROM agg
+      SELECT 'mcp-' || md5(random()::text || clock_timestamp()::text),name,game_count,avg_score,owners,games,'COMMON'::"Rarity",avg_score,LEAST(250,GREATEST(50,ROUND(50 + 25 * LOG(10, GREATEST(1, owners)))::integer)),now() FROM agg
       ON CONFLICT (name) DO UPDATE SET "gameCount"=EXCLUDED."gameCount","avgReviewScore"=EXCLUDED."avgReviewScore",
         "totalOwnerEstimate"=EXCLUDED."totalOwnerEstimate",games=EXCLUDED.games,atk=EXCLUDED.atk,def=EXCLUDED.def,"updatedAt"=now();
   END $import$;`;

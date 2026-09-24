@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { auth } from "@/auth";
 import { prisma } from "@/lib/prisma";
+import { stakedCardCount } from "@/lib/battleStake";
 
 // Acceptation par le destinataire : ré-vérifie tout (propriété des cartes,
 // soldes de jetons) au moment T, puis exécute le transfert de façon atomique.
@@ -36,6 +37,7 @@ export async function POST(_req: Request, { params }: { params: Promise<{ id: st
       if (wantOwned !== wantCardIds.length) throw new Error("Tu ne possèdes plus toutes les cartes demandées");
       if (!fromUser || fromUser.coins < trade.offerCoins) throw new Error("L'initiateur n'a plus assez de jetons");
       if (!toUser || toUser.coins < trade.wantCoins) throw new Error("Tu n'as plus assez de jetons");
+      if (await stakedCardCount(tx, [...offerCardIds, ...wantCardIds])) throw new Error("Une carte de cet échange est misée dans un combat");
 
       if (offerCardIds.length > 0) {
         await tx.card.updateMany({ where: { id: { in: offerCardIds } }, data: { userId: trade.toUserId } });

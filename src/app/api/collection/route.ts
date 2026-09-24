@@ -27,13 +27,23 @@ export async function GET() {
     orderBy: { createdAt: "desc" },
   });
 
+  const stakes = await prisma.battle.findMany({
+    where: { status: { in: ["PENDING", "ACTIVE"] }, OR: [
+      { challengerStakeCardId: { in: cards.map((card) => card.id) } },
+      { opponentStakeCardId: { in: cards.map((card) => card.id) } },
+    ] },
+    select: { challengerStakeCardId: true, opponentStakeCardId: true },
+  });
+  const stakedIds = new Set(stakes.flatMap((stake) => [stake.challengerStakeCardId, stake.opponentStakeCardId]).filter((id): id is string => !!id));
+
   const studioGamesMap = await buildStudioGamesByDeveloper(
     cards.flatMap((c) => c.studio?.name ? [c.studio.name] : [])
   );
 
   const out = cards.map(({ tradeCards, auctions, ...card }) => ({
     ...card,
-    sellable: tradeCards.length === 0 && auctions.length === 0,
+    sellable: tradeCards.length === 0 && auctions.length === 0 && !stakedIds.has(card.id),
+    staked: stakedIds.has(card.id),
     studio: card.studio
       ? { ...card.studio, games: studioGamesMap.get(card.studio.name) ?? [] }
       : null,

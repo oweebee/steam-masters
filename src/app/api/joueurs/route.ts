@@ -3,7 +3,7 @@ import { auth } from "@/auth";
 import { prisma } from "@/lib/prisma";
 
 // Liste publique des joueurs (tout user connecté) : pas de système de demande
-// d'ami — tous les joueurs voient tous les autres joueurs directement, comme
+// d'ami — tous les joueurs se voient directement, y compris leur propre compte,
 // s'ils étaient déjà amis. Remplace la page "Amis" (le modèle Friend du schema
 // reste en base mais n'est plus utilisé par cette vue).
 export async function GET() {
@@ -13,7 +13,7 @@ export async function GET() {
   const selfId = (session.user as any).id as string;
 
   const users = await prisma.user.findMany({
-    where: { id: { not: selfId }, status: "ACTIVE" },
+    where: { OR: [{ status: "ACTIVE" }, { id: selfId }] },
     select: {
       id: true,
       username: true,
@@ -27,6 +27,7 @@ export async function GET() {
   return NextResponse.json(
     users.map((u) => ({
       id: u.id,
+      isSelf: u.id === selfId,
       username: u.username,
       xp: u.xp,
       cardCount: u._count.cards,

@@ -1,11 +1,16 @@
 "use client";
-import Link from "next/link";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { FlipCard } from "./FlipCard";
+import { GameCard } from "./GameCard";
 import { CardOrnaments } from "./CardOrnaments";
 import { RARITY_STYLES, type Rarity } from "@/lib/rarityStyles";
 
 type GameLink = { name: string; appid: string | null; hasCard: boolean; headerImage?: string | null };
+type GamePreview = {
+  id: string; name: string; headerImage: string; description: string; atk: number; def: number;
+  rarity: Rarity; tags: string[]; developers: string[]; reviewScore: number; peakCcu: number;
+  ownerEstimate: number; priceCents: number | null; isFree: boolean;
+};
 
 export function StudioCard({
   name,
@@ -32,6 +37,9 @@ export function StudioCard({
   const [resolvedGames, setResolvedGames] = useState<GameLink[]>(games);
   const [loadState, setLoadState] = useState<"loading" | "ready" | "error">("loading");
   const [reloadKey, setReloadKey] = useState(0);
+  const [preview, setPreview] = useState<GamePreview | null>(null);
+  const [previewError, setPreviewError] = useState("");
+  const [openingGameId, setOpeningGameId] = useState<string | null>(null);
   const frontRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -87,6 +95,24 @@ export function StudioCard({
   // Logo vérifié saisi par l'admin en priorité ; sinon image officielle Steam
   // d'un jeu importé de ce studio. Aucun visuel n'est inventé.
   const displayImage = avatarUrl ?? coverImage ?? gameImages[0] ?? null;
+
+  useEffect(() => {
+    if (!preview) return;
+    const close = (event: KeyboardEvent) => { if (event.key === "Escape") setPreview(null); };
+    window.addEventListener("keydown", close);
+    return () => window.removeEventListener("keydown", close);
+  }, [preview]);
+
+  async function openGame(appid: string) {
+    setOpeningGameId(appid);
+    setPreviewError("");
+    try {
+      const response = await fetch(`/api/games/${encodeURIComponent(appid)}?studio=${encodeURIComponent(name)}`, { cache: "no-store" });
+      if (!response.ok) throw new Error("Carte indisponible");
+      setPreview(await response.json());
+    } catch { setPreviewError("Impossible d’ouvrir cette carte."); }
+    finally { setOpeningGameId(null); }
+  }
 
   const front = (
     <div
@@ -173,14 +199,15 @@ export function StudioCard({
       <div className="flex-1 overflow-y-auto flex flex-col gap-1">
         {resolvedGames.map((g) =>
           g.hasCard && g.appid ? (
-            <Link
+            <button
+              type="button"
               key={g.name}
-              href={`/toutes-les-cartes#card-GAME-${g.appid}`}
-              onClick={(e) => e.stopPropagation()}
+              onClick={(e) => { e.stopPropagation(); void openGame(g.appid!); }}
+              disabled={openingGameId === g.appid}
               className="steam-info-panel bg-gray-800 text-blue-400 hover:text-blue-300 hover:underline text-xs rounded-lg px-2 py-1.5 truncate"
             >
-              {g.name}
-            </Link>
+              {openingGameId === g.appid ? "Ouverture…" : g.name}
+            </button>
           ) : (
             <div key={g.name} className="steam-info-panel bg-gray-800 text-gray-300 text-xs rounded-lg px-2 py-1.5 truncate">
               {g.name}
@@ -188,9 +215,18 @@ export function StudioCard({
           )
         )}
       </div>
+      {previewError && <p role="alert" className="text-red-400 text-xs">{previewError}</p>}
       <p className="text-center text-gray-600 text-[10px]">Cliquer pour revenir</p>
     </div>
   );
 
-  return <FlipCard front={front} back={back} canFlip={canFlip} />;
+  return <>
+    <FlipCard front={front} back={back} canFlip={canFlip} />
+    {preview && <div className="battle-preview-overlay" role="presentation" onClick={() => setPreview(null)}>
+      <div className="battle-preview-dialog" role="dialog" aria-modal="true" aria-label={`Carte ${preview.name}`} onClick={(event) => event.stopPropagation()}>
+        <button type="button" className="battle-preview-close" onClick={() => setPreview(null)} aria-label="Fermer la carte">×</button>
+        <GameCard {...preview} />
+      </div>
+    </div>}
+  </>;
 }

@@ -152,9 +152,10 @@ export default function AdminCardsPage() {
   }
 
   const filtered = useMemo(() => {
-    const q = search.trim().toLowerCase();
+    const normalize = (value: string) => value.normalize("NFD").replace(/\p{Diacritic}/gu, "").toLocaleLowerCase("fr");
+    const q = normalize(search.trim());
     let out = items.filter((it) => {
-      if (q && !it.name.toLowerCase().includes(q) && !it.developers.some((d) => d.toLowerCase().includes(q))) return false;
+      if (q && ![it.name, it.id, ...it.developers, ...(it.games ?? []).map((game) => game.name)].some((value) => normalize(value).includes(q))) return false;
       if (typeFilter !== "ALL" && it.type !== typeFilter) return false;
       if (rarityFilter !== "ALL" && it.rarity !== rarityFilter) return false;
       if (claimFilter === "CLAIMED" && it.copies === 0) return false;
@@ -216,13 +217,13 @@ export default function AdminCardsPage() {
         {loading ? "Chargement…" : `${filtered.length} / ${items.length} carte(s)`}
       </p>
       <p className="text-gray-600 text-xs mb-6">
-        La rareté (couleur) affichée par défaut ici est celle du jeu/studio (basée sur les possesseurs estimés
-        réels). Chaque exemplaire tiré a sa PROPRE rareté (loot table), visible et modifiable via « Exemplaires ».
+        La DEF (50–250) est calculée depuis les possesseurs estimés SteamSpy ; l’estimation brute reste en base.
+        Chaque exemplaire tiré a sa propre rareté et sa propre ATK, visibles et modifiables via « Exemplaires ».
       </p>
 
       <div className="flex flex-wrap gap-3 mb-6">
         <input
-          placeholder="Rechercher (nom du jeu / studio)…"
+          placeholder="Rechercher un jeu, studio, AppID ou développeur…"
           value={search}
           onChange={(e) => setSearch(e.target.value)}
           className="bg-gray-900 border border-gray-800 text-white rounded-lg px-4 py-2 outline-none focus:ring-2 focus:ring-blue-500 min-w-[260px]"
@@ -275,7 +276,7 @@ export default function AdminCardsPage() {
                   ATK{sortIndicator("atk")}
                 </th>
                 <th className="px-4 py-3 cursor-pointer hover:text-white" onClick={() => toggleSort("def")}>
-                  DEF (possesseurs est.){sortIndicator("def")}
+                  DEF (50–250){sortIndicator("def")}
                 </th>
                 <th className="px-4 py-3 cursor-pointer hover:text-white" onClick={() => toggleSort("updatedAt")}>
                   Maj{sortIndicator("updatedAt")}

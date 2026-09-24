@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { auth } from "@/auth";
 import { prisma } from "@/lib/prisma";
+import { stakedCardCount } from "@/lib/battleStake";
 
 const MAX_CARDS_PER_SALE = 100;
 
@@ -30,11 +31,12 @@ export async function POST(req: Request) {
       if (cards.length !== cardIds.length) {
         throw new Error("Une carte sélectionnée ne t’appartient plus");
       }
-      const [pendingTrades, linkedAuctions] = await Promise.all([
+      const [pendingTrades, linkedAuctions, staked] = await Promise.all([
         tx.tradeCard.count({
           where: { cardId: { in: cardIds }, trade: { status: "PENDING" } },
         }),
         tx.auction.count({ where: { cardId: { in: cardIds }, status: "ACTIVE" } }),
+        stakedCardCount(tx, cardIds),
       ]);
       if (pendingTrades > 0) {
         throw new Error("Une carte sélectionnée est engagée dans un échange");
@@ -42,6 +44,7 @@ export async function POST(req: Request) {
       if (linkedAuctions > 0) {
         throw new Error("Une carte sélectionnée est liée au marché");
       }
+      if (staked > 0) throw new Error("Une carte sélectionnée est misée dans un combat");
 
       // Les liens d'échanges terminés ne doivent pas retenir physiquement un
       // exemplaire vendu. Le catalogue Jeu/Studio reste intact dans la pioche.
