@@ -5,6 +5,7 @@ export function CardOrnaments() {
       <span className="steam-card-pipe steam-card-pipe-side" />
       <span className="steam-card-cog steam-card-cog-left">⚙</span>
       <span className="steam-card-cog steam-card-cog-right">⚙</span>
+      <span className="steam-card-rarity-gem" />
       <span className="steam-card-clamp steam-card-clamp-left" />
       <span className="steam-card-clamp steam-card-clamp-right" />
     </div>

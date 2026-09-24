@@ -1,4 +1,4 @@
-const CACHE = "steammasters-v1";
+const CACHE = "steammasters-v2";
 const PRECACHE_URLS = [
   "/manifest.json",
   "/icons/icon-192.png",
@@ -30,6 +30,9 @@ self.addEventListener("fetch", (event) => {
   if (req.method !== "GET") return;
   const url = new URL(req.url);
   if (url.pathname.startsWith("/api/")) return;
+  // Ne jamais afficher une ancienne page d'accueil/connexion aux utilisateurs
+  // dont la session est encore valide.
+  if (req.mode === "navigate" && ["/", "/login", "/signup"].includes(url.pathname)) return;
 
   if (PRECACHE_URLS.some((p) => url.pathname === p)) {
     event.respondWith(

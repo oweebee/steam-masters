@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { auth } from "@/auth";
 import { prisma } from "@/lib/prisma";
-import { loadBattleDeck } from "@/lib/battle";
+import { deckFromJson, loadBattleDeck, publicBattleDeck } from "@/lib/battle";
 
 async function playerId() {
   const session = await auth();
@@ -25,6 +25,8 @@ export async function GET() {
     void answerIndex;
     return {
       ...battle,
+      challengerDeck: battle.status === "PENDING" && battle.challengerId !== userId ? [] : publicBattleDeck(deckFromJson(battle.challengerDeck)),
+      opponentDeck: battle.opponentDeck ? (battle.status === "PENDING" && battle.opponentId !== userId ? [] : publicBattleDeck(deckFromJson(battle.opponentDeck))) : null,
       question: battle.currentTurnId === userId ? question : null,
       rewards: battle.rewards.map((reward) => reward.userId),
     };

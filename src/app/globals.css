@@ -305,6 +305,18 @@ a.bg-purple-600 {
 .steam-card-cog-left { left: 7px; bottom: 6px; transform: rotate(-12deg); }
 .steam-card-cog-right { right: 7px; top: 7px; font-size: 1.05rem; transform: rotate(18deg); }
 
+.steam-card-rarity-gem {
+  position: absolute;
+  right: 15px;
+  bottom: 15px;
+  width: 1.15rem;
+  height: 1.15rem;
+  border: 2px solid #755033;
+  border-radius: 50%;
+  background: radial-gradient(circle, var(--card-accent) 0 2px, #221710 3px 48%, #865a34 50% 62%, #15100d 64%);
+  box-shadow: 0 2px 4px #000, 0 0 6px var(--card-accent-soft);
+}
+
 .steam-card-clamp {
   position: absolute;
   top: 46%;
@@ -478,20 +490,6 @@ a.bg-purple-600 {
   margin-right: -0.35rem;
   padding-left: 0.35rem;
   padding-right: 0.35rem;
-}
-
-.steam-statbar::before {
-  content: "";
-  position: absolute;
-  left: 50%;
-  top: 50%;
-  width: 1.15rem;
-  height: 1.15rem;
-  transform: translate(-50%, -35%);
-  border: 2px solid #755033;
-  border-radius: 50%;
-  background: radial-gradient(circle, var(--card-accent) 0 2px, #221710 3px 48%, #865a34 50% 62%, #15100d 64%);
-  box-shadow: 0 2px 4px #000, 0 0 6px var(--card-accent-soft);
 }
 
 .steam-stat {
@@ -1029,4 +1027,5 @@ a.bg-purple-600 {
 .battle-label{display:grid;gap:6px;color:#d7bea3;margin-bottom:14px}.battle-label select,.battle-picker-controls input,.battle-picker-controls select{min-height:44px;border-radius:8px;border:1px solid #735438;background:#16120f;color:#f5e9d9;padding:8px 10px;min-width:0}.battle-panel>h3{margin:10px 0}.battle-picker-controls{display:grid;grid-template-columns:minmax(0,1fr) 120px;gap:8px}.battle-picker-list{display:grid;grid-template-columns:repeat(auto-fill,minmax(210px,1fr));gap:7px;max-height:335px;overflow:auto;padding:2px;margin-bottom:12px}.battle-pick{min-height:60px;border:1px solid #59442f;border-radius:9px;background:#241d17;color:#f3e6d7;display:flex;align-items:center;text-align:left;gap:8px;padding:5px 8px}.battle-pick:hover,.battle-picked{border-color:#d29a59;background:#3b291d}.battle-pick img{height:43px;width:58px;object-fit:cover;border-radius:4px}.battle-pick>span:nth-child(2){min-width:0;flex:1}.battle-pick strong,.battle-pick small{display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.battle-pick strong{font-size:.82rem}.battle-pick small{font-size:.69rem;color:#bba48b}.battle-pick b{color:#f1ae69}
 .battle-duel-head{display:flex;justify-content:space-between;gap:10px;align-items:center;margin-bottom:13px}.battle-duel-head h3{font:700 1.2rem Georgia,serif}.battle-duel-head h3 span{color:#a98a69;font-size:.78rem}.battle-duel-head>span{color:#e7ae69;font-size:.8rem}.battle-arena{display:grid;grid-template-columns:minmax(0,1fr) 44px minmax(0,1fr);align-items:center;gap:8px}.battle-arena>div>p{color:#c6aa8d;font-size:.76rem;margin:0 0 6px}.battle-versus{text-align:center;color:#d17a45;font:700 1.1rem Georgia,serif}.battle-card-mini{display:flex;min-height:125px;overflow:hidden;border:1px solid #705137;border-radius:10px;background:linear-gradient(#33251a,#1e1a17)}.battle-card-live{border-color:#d68d4e;box-shadow:0 0 0 1px #d68d4e55}.battle-card-mini img,.battle-image-fallback{width:41%;object-fit:cover;flex:none}.battle-image-fallback{display:grid;place-items:center;font-size:2rem;background:#252f35}.battle-card-copy{display:flex;flex-direction:column;min-width:0;flex:1;padding:10px;gap:5px}.battle-kind{color:#d39b67;text-transform:uppercase;font-size:.62rem;letter-spacing:.06em}.battle-card-copy strong{font:700 1rem Georgia,serif;overflow:hidden;text-overflow:ellipsis}.battle-numbers{font-size:.78rem;color:#e9bd86}.battle-hp{height:7px;background:#111;border:1px solid #785a40;border-radius:6px;margin-top:auto;overflow:hidden}.battle-hp span{display:block;height:100%;background:linear-gradient(90deg,#c22d25,#ec9150)}.battle-card-empty{padding:25px;border:1px dashed #60452e;color:#ab9985}
 .battle-question{border-top:1px solid #5a4230;margin-top:17px;padding-top:16px}.battle-question h4{font-weight:700;margin-bottom:12px}.battle-options{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}.battle-options button{min-height:48px;padding:9px;border-radius:8px;background:#362519;border:1px solid #805633;color:#f4e9dd;text-align:left}.battle-options button:hover:not(:disabled){background:#633922;border-color:#da9856}.battle-options button:disabled{opacity:.5}.battle-pending{display:flex;flex-wrap:wrap;justify-content:space-between;align-items:center;gap:10px}.battle-actions{display:flex;flex-wrap:wrap;gap:8px}.battle-accept{flex-basis:100%;border-top:1px solid #60452e;padding-top:12px}.battle-result{display:flex;align-items:center;gap:12px;flex-wrap:wrap;border-bottom:1px solid #493727;padding:10px 3px;font-size:.85rem}.battle-result strong{color:#e3a46f}.battle-result small{color:#a99480;margin-left:auto}
+.battle-pick-image{flex:none;display:grid;place-items:center;min-width:58px;min-height:48px;border:1px solid #7d5a3c;border-radius:5px;background:#17130f;color:#d6a36d;overflow:hidden}.battle-pick-image:hover{border-color:#e9aa63}.battle-pick-select{display:flex;align-items:center;justify-content:space-between;gap:8px;flex:1;min-width:0;min-height:48px;text-align:left;color:inherit}.battle-pick-select span{min-width:0;flex:1}.battle-pick-select b{flex:none;color:#f1ae69}.battle-preview-overlay{position:fixed;inset:0;z-index:100;display:grid;place-items:center;overflow:auto;padding:20px;background:#070504db;backdrop-filter:blur(5px)}.battle-preview-dialog{position:relative;width:max-content;max-width:100%;padding:20px 4px 4px}.battle-preview-close{position:absolute;z-index:1;right:2px;top:0;width:42px;height:42px;border:1px solid #b98854;border-radius:50%;background:#342016;color:white;font-size:1.7rem;line-height:1}.battle-preview-dialog .steam-card-wrap{max-width:calc(100vw - 28px)}
 @media(max-width:640px){.battle-page{padding:9px 8px 40px}.battle-hero{display:block;padding:16px}.battle-hero h1{font-size:1.65rem}.battle-hero .battle-primary{width:100%;margin-top:14px}.battle-panel{padding:12px}.battle-duel-head{display:block}.battle-duel-head>span{display:block;margin-top:5px}.battle-arena{grid-template-columns:minmax(0,1fr) 24px minmax(0,1fr);gap:4px}.battle-versus{font-size:.8rem}.battle-card-mini{display:block;min-height:0}.battle-card-mini img,.battle-image-fallback{width:100%;height:75px}.battle-card-copy{padding:7px;min-height:105px}.battle-card-copy strong{font-size:.83rem;line-height:1.1}.battle-kind{font-size:.55rem}.battle-numbers{font-size:.67rem}.battle-options{grid-template-columns:1fr}.battle-picker-list{grid-template-columns:1fr;max-height:300px}.battle-pending .battle-actions,.battle-pending .battle-actions button{width:100%}.battle-result small{margin-left:0;width:100%}}

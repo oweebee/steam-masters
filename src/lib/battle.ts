@@ -13,17 +13,24 @@ export type BattleCard = {
   games: string[];
 };
 
-export type BattleQuestion = { text: string; options: string[] };
+export type PublicBattleCard = Omit<BattleCard, "developer" | "games">;
+export type BattleQuestion = { text: string; options: string[]; source: "OPPONENT" | "CATALOG" };
 
-// ATK 0..100 devient 1 500..8 500 dégâts ; la DEF est comprimée depuis
-// l'estimation SteamSpy (tiers) sur 5 000..10 500 PV. Une bonne réponse
-// élimine donc normalement une carte en 1 à 4 coups.
+export function publicBattleDeck(deck: BattleCard[]): PublicBattleCard[] {
+  return deck.map(({ developer, games, ...card }) => {
+    void developer; void games;
+    return card;
+  });
+}
+
+// Stats de combat uniquement : 2 à 3 bonnes réponses suffisent normalement
+// par carte. La DEF catalogue reste l'estimation SteamSpy non modifiée.
 export function combatAttack(atk: number) {
-  return 1500 + Math.max(0, Math.min(100, atk)) * 70;
+  return 3500 + Math.max(0, Math.min(100, atk)) * 40;
 }
 
 export function combatDefense(owners: number) {
-  return Math.max(5000, Math.min(10500, Math.round(1000 * (1 + Math.log10(Math.max(1, owners))))));
+  return Math.max(8000, Math.min(10500, Math.round(8000 + 250 * Math.log10(Math.max(1, owners)))));
 }
 
 export function deckFromJson(value: Prisma.JsonValue | null): BattleCard[] {
@@ -70,7 +77,25 @@ function shuffle<T>(values: T[]): T[] {
   return copy;
 }
 
-export async function nextBattleQuestion(tx: Prisma.TransactionClient, card: BattleCard): Promise<{ question: BattleQuestion; answerIndex: number }> {
+async function randomCatalogCard(tx: Prisma.TransactionClient): Promise<BattleCard> {
+  const [gameCount, studioCount] = await Promise.all([
+    tx.steamGame.count({ where: { developers: { isEmpty: false } } }),
+    tx.studio.count({ where: { games: { isEmpty: false } } }),
+  ]);
+  if (!gameCount && !studioCount) throw new Error("Catalogue insuffisant pour créer une question");
+  if (gameCount && (!studioCount || randomInt(2) === 0)) {
+    const card = await tx.steamGame.findFirst({ where: { developers: { isEmpty: false } }, select: { name: true, developers: true }, skip: randomInt(gameCount), orderBy: { id: "asc" } });
+    if (card) return { id: "", name: card.name, image: null, kind: "GAME", rarity: "", attack: 0, defense: 0, developer: card.developers[0], games: [] };
+  }
+  if (studioCount) {
+    const card = await tx.studio.findFirst({ where: { games: { isEmpty: false } }, select: { name: true, games: true }, skip: randomInt(studioCount), orderBy: { id: "asc" } });
+    if (card) return { id: "", name: card.name, image: null, kind: "STUDIO", rarity: "", attack: 0, defense: 0, developer: null, games: card.games };
+  }
+  throw new Error("Catalogue insuffisant pour créer une question");
+}
+
+export async function nextBattleQuestion(tx: Prisma.TransactionClient, opponentDeck: BattleCard[], source: BattleQuestion["source"]): Promise<{ question: BattleQuestion; answerIndex: number }> {
+  const card = source === "OPPONENT" ? opponentDeck[randomInt(opponentDeck.length)] : await randomCatalogCard(tx);
   let answer: string;
   let distractors: string[];
   let text: string;
@@ -89,7 +114,7 @@ export async function nextBattleQuestion(tx: Prisma.TransactionClient, card: Bat
   }
   const options = shuffle([answer, ...shuffle([...new Set(distractors)]).slice(0, 3)]);
   if (options.length !== 4) throw new Error("Pas assez de données Steam pour créer une question");
-  return { question: { text, options }, answerIndex: options.indexOf(answer) };
+  return { question: { text, options, source }, answerIndex: options.indexOf(answer) };
 }
 
 export async function awardBattle(tx: Prisma.TransactionClient, battleId: string, winnerId: string, loserId: string, at: Date) {

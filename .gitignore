@@ -23,3 +23,7 @@ yarn-error.log*
 
 # docker
 docker-compose.override.yml
+
+# Notes IA locales : jamais dans le depot
+CONTEXT.md
+Suivi_IA_logs.md

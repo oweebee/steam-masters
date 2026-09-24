@@ -2,7 +2,8 @@ import { NextResponse } from "next/server";
 import { auth } from "@/auth";
 import { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
-import { awardBattle, deckFromJson, loadBattleDeck, nextBattleQuestion } from "@/lib/battle";
+import { randomInt } from "node:crypto";
+import { awardBattle, deckFromJson, loadBattleDeck, nextBattleQuestion, type BattleQuestion } from "@/lib/battle";
 
 export async function POST(req: Request, context: { params: Promise<{ id: string }> }) {
   const session = await auth();
@@ -28,7 +29,8 @@ export async function POST(req: Request, context: { params: Promise<{ id: string
         if (battle.status !== "PENDING" || battle.opponentId !== userId) throw new Error("Défi indisponible");
         const opponentDeck = await loadBattleDeck(tx, userId, body.cardIds);
         const challengerDeck = deckFromJson(battle.challengerDeck);
-        const { question, answerIndex } = await nextBattleQuestion(tx, challengerDeck[0]);
+        const firstSource = randomInt(2) === 0 ? "OPPONENT" : "CATALOG";
+        const { question, answerIndex } = await nextBattleQuestion(tx, opponentDeck, firstSource);
         await tx.battle.update({ where: { id }, data: {
           status: "ACTIVE", opponentDeck, challengerHp: challengerDeck[0].defense,
           opponentHp: opponentDeck[0].defense, currentTurnId: battle.challengerId,
@@ -68,8 +70,10 @@ export async function POST(req: Request, context: { params: Promise<{ id: string
       const finished = challengerIndex >= 5 || opponentIndex >= 5;
       const winnerId = finished ? userId : null;
       const nextTurnId = finished ? null : attackerIsChallenger ? battle.opponentId : battle.challengerId;
-      const nextCard = finished ? null : attackerIsChallenger ? opponentDeck[opponentIndex] : challengerDeck[challengerIndex];
-      const nextQuestion = nextCard ? await nextBattleQuestion(tx, nextCard) : null;
+      const nextOpponentDeck = attackerIsChallenger ? challengerDeck : opponentDeck;
+      const previousSource = (battle.question as BattleQuestion | null)?.source;
+      const nextSource = previousSource === "OPPONENT" ? "CATALOG" : "OPPONENT";
+      const nextQuestion = finished ? null : await nextBattleQuestion(tx, nextOpponentDeck, nextSource);
       const now = new Date();
       await tx.battle.update({ where: { id }, data: {
         status: finished ? "FINISHED" : "ACTIVE", challengerIndex, opponentIndex,
