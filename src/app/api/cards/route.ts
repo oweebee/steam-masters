@@ -13,11 +13,11 @@ export async function GET() {
 
   const [games, studios] = await Promise.all([
     prisma.steamGame.findMany({
-      include: { cards: { include: { user: { select: { username: true } } } } },
+      include: { _count: { select: { cards: true } } },
       orderBy: { updatedAt: "desc" },
     }),
     prisma.studio.findMany({
-      include: { cards: { include: { user: { select: { username: true } } } } },
+      include: { _count: { select: { cards: true } } },
       orderBy: { updatedAt: "desc" },
     }),
   ]);
@@ -41,7 +41,7 @@ export async function GET() {
       isFree: g.isFree,
       tags: g.tags,
       developers: g.developers,
-      copies: g.cards.length,
+      copies: g._count.cards,
       updatedAt: g.updatedAt,
     })),
     ...studios.map((s) => ({
@@ -60,7 +60,7 @@ export async function GET() {
       games: studioGamesMap.get(s.name) ?? [],
       about: s.about,
       avatarUrl: s.avatarUrl,
-      copies: s.cards.length,
+      copies: s._count.cards,
       updatedAt: s.updatedAt,
     })),
   ];

@@ -318,7 +318,7 @@ export function CollectionClient() {
         })}
         {offerError && <p role="alert" className="steam-owned-error">{offerError}</p>}
       </section>}
-      <div className="flex flex-wrap gap-6">
+      <div className="grid grid-cols-2 gap-3 sm:flex sm:flex-wrap sm:gap-6">
         {cards.map((c) => {
           const selected = selectedIds.includes(c.id);
           return (

@@ -221,7 +221,7 @@ export default function AdminGamesPage() {
       const response = await resilientFetch("/api/admin/games", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ appid: candidate, runId }),
+        body: JSON.stringify({ appid: candidate, runId, skipRecalc: true }),
       });
       if (!response?.ok) {
         errors += 1;
@@ -245,6 +245,13 @@ export default function AdminGamesPage() {
       load();
       return;
     }
+
+    setSeedMessage("Recalcul de la rareté du catalogue…");
+    await resilientFetch("/api/admin/consistency", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ runId }),
+    });
 
     for (let index = 0; index < studioQueue.length; index += 1) {
       setSeedMessage(`Complétion du studio ${studioQueue[index]}…`);

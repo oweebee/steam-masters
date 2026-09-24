@@ -99,9 +99,16 @@ export async function recalculateCatalogRarity() {
   });
 
   if (gameUpdates.length + studioUpdates.length > 0) {
+    // Regroupement par rareté cible : au plus 5 updateMany par table au lieu
+    // d'un UPDATE par ligne (un réimport peut décaler des centaines de rangs).
+    const groupIds = (updates: { id: string; rarity: Rarity }[]) => {
+      const byRarity = new Map<Rarity, string[]>();
+      for (const u of updates) byRarity.set(u.rarity, [...(byRarity.get(u.rarity) ?? []), u.id]);
+      return Array.from(byRarity);
+    };
     await prisma.$transaction([
-      ...gameUpdates.map((u) => prisma.steamGame.update({ where: { id: u.id }, data: { rarity: u.rarity } })),
-      ...studioUpdates.map((u) => prisma.studio.update({ where: { id: u.id }, data: { rarity: u.rarity } })),
+      ...groupIds(gameUpdates).map(([rarity, ids]) => prisma.steamGame.updateMany({ where: { id: { in: ids } }, data: { rarity } })),
+      ...groupIds(studioUpdates).map(([rarity, ids]) => prisma.studio.updateMany({ where: { id: { in: ids } }, data: { rarity } })),
     ]);
   }
 

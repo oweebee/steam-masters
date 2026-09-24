@@ -63,11 +63,13 @@ export async function POST() {
   let responseStudio: StudioResponse | null = null;
 
   if (idx < gamePoolSize) {
-    const [game] = await prisma.steamGame.findMany({ take: 1, skip: idx });
+    const [game] = await prisma.steamGame.findMany({ take: 1, skip: idx, orderBy: { id: "asc" } });
+    if (!game) return NextResponse.json({ error: "Catalogue modifié entre-temps, réessaie" }, { status: 409 });
     gameId = game.id;
     responseGame = game;
   } else {
-    const [studio] = await prisma.studio.findMany({ take: 1, skip: idx - gamePoolSize });
+    const [studio] = await prisma.studio.findMany({ take: 1, skip: idx - gamePoolSize, orderBy: { id: "asc" } });
+    if (!studio) return NextResponse.json({ error: "Catalogue modifié entre-temps, réessaie" }, { status: 409 });
     studioId = studio.id;
     const studioGames = await prisma.steamGame.findMany({
       where: {
@@ -91,6 +93,18 @@ export async function POST() {
   }
 
   const result = await prisma.$transaction(async (tx) => {
+    // Réservation atomique du cooldown : deux POST simultanés (double-clic,
+    // script) passaient tous deux le contrôle ci-dessus → 2 boosters. Seule la
+    // première mise à jour conditionnelle aboutit, l'autre voit count = 0.
+    const claimed = await tx.user.updateMany({
+      where: {
+        id: userId,
+        OR: [{ lastBoosterAt: null }, { lastBoosterAt: { lte: new Date(Date.now() - BOOSTER_INTERVAL_MS) } }],
+      },
+      data: { lastBoosterAt: new Date() },
+    });
+    if (claimed.count !== 1) return null;
+
     // Plafond PAR jeu/studio ET par palier, tous joueurs confondus (voir
     // RARITY_CAP) : Orange=1 (unique sur toute la partie), Violet=5, Bleu=10,
     // Vert=20, Blanc=illimité. Si le palier tiré est déjà plafonné pour ce jeu/
@@ -113,10 +127,12 @@ export async function POST() {
     // seulement par un admin). Voir rollAtkForRarity dans rarityRoll.ts.
     const atk = rollAtkForRarity(rarity);
 
-    const card = await tx.card.create({ data: { userId, gameId, studioId, rarity, atk } });
-    await tx.user.update({ where: { id: userId }, data: { lastBoosterAt: new Date() } });
-    return card;
+    return tx.card.create({ data: { userId, gameId, studioId, rarity, atk } });
   });
+
+  if (!result) {
+    return NextResponse.json({ error: "Booster pas encore disponible" }, { status: 429 });
+  }
 
   if (responseGame) responseGame = { ...responseGame, rarity: result.rarity, atk: result.atk };
   if (responseStudio) responseStudio = { ...responseStudio, rarity: result.rarity, atk: result.atk };

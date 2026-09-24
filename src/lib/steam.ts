@@ -254,29 +254,38 @@ export async function getSteamDeveloperGames(
 //   La valeur posée ici est provisoire (conservée si déjà connue, sinon COMMON
 //   en attendant le recalcul global qui suit systématiquement cet appel).
 export async function upsertStudiosForDevelopers(developers: string[]) {
-  for (const name of developers) {
-    if (!name) continue;
-    const games = await prisma.steamGame.findMany({ where: { developers: { has: name } } });
-    if (games.length === 0) continue;
+  const names = new Set(developers.filter(Boolean));
+  if (names.size === 0) return;
 
-    const existing = await prisma.studio.findUnique({ where: { name }, select: { rarity: true } });
-    const gameCount = games.length;
-    const avgReviewScore = Math.round(games.reduce((s, g) => s + g.reviewScore, 0) / gameCount);
-    const totalOwnerEstimate = games.reduce((s, g) => s + g.ownerEstimate, 0);
-    const gameNames = games.map((g) => g.name).sort();
-    await prisma.studio.upsert({
+  // Une seule lecture pour tout le lot (avant : 2 requêtes + 1 upsert par studio).
+  const games = await prisma.steamGame.findMany({
+    where: { developers: { hasSome: Array.from(names) } },
+    select: { name: true, reviewScore: true, ownerEstimate: true, developers: true },
+  });
+  const gamesByDeveloper = new Map<string, typeof games>();
+  for (const game of games) {
+    for (const developer of new Set(game.developers)) {
+      if (!names.has(developer)) continue;
+      const list = gamesByDeveloper.get(developer);
+      if (list) list.push(game);
+      else gamesByDeveloper.set(developer, [game]);
+    }
+  }
+
+  const upserts = Array.from(gamesByDeveloper, ([name, studioGames]) => {
+    const gameCount = studioGames.length;
+    const avgReviewScore = Math.round(studioGames.reduce((s, g) => s + g.reviewScore, 0) / gameCount);
+    const totalOwnerEstimate = studioGames.reduce((s, g) => s + g.ownerEstimate, 0);
+    const gameNames = studioGames.map((g) => g.name).sort();
+    const stats = { gameCount, avgReviewScore, totalOwnerEstimate, games: gameNames, atk: avgReviewScore, def: cardDefense(totalOwnerEstimate) };
+    return prisma.studio.upsert({
       where: { name },
-      update: { gameCount, avgReviewScore, totalOwnerEstimate, games: gameNames, atk: avgReviewScore, def: cardDefense(totalOwnerEstimate) },
-      create: {
-        name,
-        gameCount,
-        avgReviewScore,
-        totalOwnerEstimate,
-        games: gameNames,
-        rarity: existing?.rarity ?? "COMMON",
-        atk: avgReviewScore,
-        def: cardDefense(totalOwnerEstimate),
-      },
+      update: stats,
+      // Rareté provisoire : fixée par recalculateCatalogRarity() qui suit toujours.
+      create: { name, ...stats, rarity: "COMMON" },
     });
+  });
+  for (let i = 0; i < upserts.length; i += 200) {
+    await prisma.$transaction(upserts.slice(i, i + 200));
   }
 }

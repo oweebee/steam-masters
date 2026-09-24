@@ -13,13 +13,15 @@ async function requireAdmin() {
 }
 
 export async function GET() {
+  // Catalogue complet réservé à l'admin (route auparavant ouverte sans session).
+  try { await requireAdmin(); } catch { return NextResponse.json({ error: "Unauthorized" }, { status: 401 }); }
   const games = await prisma.steamGame.findMany({ orderBy: { updatedAt: "desc" } });
   return NextResponse.json(games);
 }
 
 export async function POST(req: NextRequest) {
   try { await requireAdmin(); } catch { return NextResponse.json({ error: "Unauthorized" }, { status: 401 }); }
-  const { appid, runId } = await req.json();
+  const { appid, runId, skipRecalc } = await req.json();
   if (!appid) return NextResponse.json({ error: "appid requis" }, { status: 400 });
   await writeAppLog({ runId, category: "IMPORT", message: `Import Steam démarré pour l’AppID ${appid}`, details: { appid: String(appid) } });
 
@@ -92,7 +94,9 @@ export async function POST(req: NextRequest) {
   });
 
   await upsertStudiosForDevelopers(data.developers);
-  await recalculateCatalogRarity();
+  // skipRecalc : import en lot (page admin) — un seul recalcul catalogue complet
+  // à la fin du lot plutôt qu'un par jeu (coût O(N x taille catalogue) sinon).
+  if (!skipRecalc) await recalculateCatalogRarity();
 
   const finalGame = await prisma.steamGame.findUnique({ where: { id: game.id } });
   await writeAppLog({

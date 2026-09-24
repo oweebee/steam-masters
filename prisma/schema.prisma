@@ -181,6 +181,9 @@ model SteamGame {
 
   cards    Card[]
   auctions Auction[]
+
+  @@index([name])
+  @@index([developers], type: Gin)
 }
 
 model Studio {
@@ -228,6 +231,10 @@ model Card {
   studio        Studio?    @relation(fields: [studioId], references: [id])
   tradeCards    TradeCard[]
   auctions      Auction[]
+
+  @@index([userId, createdAt])
+  @@index([gameId, rarity])
+  @@index([studioId, rarity])
 }
 
 model Trade {
@@ -247,6 +254,8 @@ model Trade {
   cards    TradeCard[]
 
   @@index([status, expiresAt])
+  @@index([fromUserId])
+  @@index([toUserId])
 }
 
 model TradeCard {
@@ -257,6 +266,9 @@ model TradeCard {
 
   trade Trade @relation(fields: [tradeId], references: [id])
   card  Card  @relation(fields: [cardId],  references: [id])
+
+  @@index([cardId])
+  @@index([tradeId])
 }
 
 model Auction {
@@ -290,6 +302,8 @@ model Bid {
 
   auction Auction @relation(fields: [auctionId], references: [id])
   user    User    @relation(fields: [userId],    references: [id])
+
+  @@index([auctionId, amount])
 }
 
 model Guild {

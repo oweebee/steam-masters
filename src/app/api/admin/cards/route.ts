@@ -13,11 +13,11 @@ export async function GET() {
 
   const [games, studios] = await Promise.all([
     prisma.steamGame.findMany({
-      include: { cards: { include: { user: { select: { username: true } } } } },
+      include: { cards: { select: { id: true, rarity: true, atk: true, user: { select: { username: true } } } } },
       orderBy: { updatedAt: "desc" },
     }),
     prisma.studio.findMany({
-      include: { cards: { include: { user: { select: { username: true } } } } },
+      include: { cards: { select: { id: true, rarity: true, atk: true, user: { select: { username: true } } } } },
       orderBy: { updatedAt: "desc" },
     }),
   ]);
