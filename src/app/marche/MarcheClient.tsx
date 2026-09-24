@@ -86,6 +86,8 @@ export function MarcheClient({ userId }: { userId: string }) {
       setCollection(Array.isArray(collectionData) ? collectionData : []);
       setSelectedCardId((current) => {
         const sellable = collectionData.filter((card: CollectionCard) => card.sellable);
+        const requested = new URLSearchParams(window.location.search).get("cardId");
+        if (requested && sellable.some((card: CollectionCard) => card.id === requested)) return requested;
         return sellable.some((card: CollectionCard) => card.id === current) ? current : (sellable[0]?.id ?? "");
       });
     } catch (reason) {

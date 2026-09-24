@@ -19,9 +19,10 @@ export async function POST(_req: Request, { params }: { params: Promise<{ id: st
     return NextResponse.json({ error: "Cet échange n'est plus en attente" }, { status: 400 });
   }
 
-  const updated = await prisma.trade.update({
-    where: { id },
+  const updated = await prisma.trade.updateMany({
+    where: { id, status: "PENDING" },
     data: { status: "DECLINED", resolvedAt: new Date() },
   });
-  return NextResponse.json(updated);
+  if (updated.count !== 1) return NextResponse.json({ error: "Cette proposition n'est plus en attente" }, { status: 409 });
+  return NextResponse.json({ id, status: "DECLINED" });
 }

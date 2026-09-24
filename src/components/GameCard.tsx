@@ -1,6 +1,7 @@
 "use client";
 import { FlipCard } from "./FlipCard";
 import { CardOrnaments } from "./CardOrnaments";
+import { FlameDial } from "./FlameDial";
 import { RARITY_STYLES, type Rarity } from "@/lib/rarityStyles";
 
 function formatOwners(n: number) {
@@ -30,6 +31,7 @@ export function GameCard({
   ownerEstimate,
   priceCents,
   isFree,
+  onFlipChange,
 }: {
   id?: string;
   name: string;
@@ -45,6 +47,7 @@ export function GameCard({
   ownerEstimate?: number;
   priceCents?: number | null;
   isFree?: boolean;
+  onFlipChange?: (flipped: boolean) => void;
 }) {
   const style = RARITY_STYLES[rarity];
   const canFlip = !!id;
@@ -57,7 +60,7 @@ export function GameCard({
       <CardOrnaments />
       <div className="steam-card-visual">
         <img src={headerImage} alt={name} className="w-full h-36 object-cover" />
-        <span className="steam-card-image-dial" aria-hidden="true"><i /></span>
+        <FlameDial />
       </div>
 
       <div className="steam-card-content p-4 flex flex-col gap-2 flex-1">
@@ -145,5 +148,5 @@ export function GameCard({
     </div>
   );
 
-  return <FlipCard front={front} back={back} canFlip={canFlip} />;
+  return <FlipCard front={front} back={back} canFlip={canFlip} onFlipChange={onFlipChange} />;
 }

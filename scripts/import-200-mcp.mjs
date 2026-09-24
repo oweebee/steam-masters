@@ -7,6 +7,7 @@ import { randomUUID } from "node:crypto";
 const TARGET = Number(process.argv.find((arg) => arg.startsWith("--limit="))?.split("=")[1] ?? 200);
 if (!Number.isInteger(TARGET) || TARGET < 1 || TARGET > 200) throw new Error("--limit doit être entre 1 et 200");
 const EXECUTE = process.argv.includes("--execute");
+const FRANCHISE_MODE = process.argv.includes("--franchises");
 const cardDefense = (owners) => Math.max(50, Math.min(250, Math.round(50 + 25 * Math.log10(Math.max(1, owners)))));
 const MCP_URL = "https://steammasters-mcp.obsidianspoon.com";
 const context = readFileSync("CONTEXT.md", "utf8");
@@ -98,7 +99,28 @@ function ownersFromRange(range) {
   return Number.isFinite(lo) && Number.isFinite(hi) && hi >= lo ? Math.round((lo + hi) / 2) : 0;
 }
 const asianTitle = /[\u3040-\u30ff\u3400-\u9fff\uac00-\ud7af]/u;
-const nonGameEdition = /\b(test server|playtest|demo|dedicated server|soundtrack|prologue)\b/i;
+const nonGameEdition = /\b(test server|playtest|demo|dedicated server|soundtrack|prologue|teaser|trial|beta)\b/i;
+// Grands univers demandés par l'utilisateur. Les noms restent de simples
+// critères de recherche : Steam Store + SteamSpy valident chaque fiche importée.
+const franchisePatterns = [
+  /tomb raider/i, /alan wake/i, /borderlands/i, /fallout/i,
+  /bio\s*shock/i, /elder scrolls|skyrim/i, /dishonored/i, /^doom(?:$|\s+(?:ii|iii|3|64|eternal|vfr|classic|the dark ages)\b|:\s*the dark ages)|^final doom$|^master levels for doom/i,
+  /wolfenstein/i, /assassin.s creed/i, /far cry/i, /resident evil/i,
+  /devil may cry/i, /\bhitman\b/i, /^metro (?:2033|last light|exodus|awakening|redux)/i, /mass effect/i,
+  /dragon age/i, /dead space/i, /\bhalo\b/i, /gears of war/i,
+  /batman.*arkham/i, /the witcher/i, /cyberpunk 2077/i, /just cause/i,
+  /saints row/i, /watch.dogs/i, /splinter cell/i, /prince of persia/i,
+  /red dead/i, /grand theft auto/i, /max payne/i, /quantum break/i,
+  /star wars/i, /\blego\b/i, /^uncharted[™:]|^uncharted\s+legacy/i, /god of war/i, /horizon.*(zero dawn|forbidden west)/i,
+  /^dark souls|^elden ring|^sekiro/i, /^f\.e\.a\.r\./i, /^unreal tournament/i,
+  /^crysis/i, /^call of duty/i, /^red faction/i, /^rayman/i,
+  /^castlevania/i, /^street fighter/i, /final fantasy/i,
+  /^danganronpa/i, /^zero escape/i, /^dynasty warriors/i,
+  /^one piece/i, /^naruto/i, /^dead or alive/i, /^nba 2k/i, /^wwe 2k/i,
+  /^grid\b/i, /^dirt\b/i,
+];
+const matchesFranchise = (name) => franchisePatterns.some((pattern) => pattern.test(name ?? ""));
+const normalizedStudio = (name) => String(name ?? "").trim().toLocaleLowerCase("en");
 
 async function gameFromSteam(appid) {
   const [store, reviews, ccu, spy] = await Promise.all([
@@ -176,27 +198,58 @@ try {
     process.exit(0);
   }
   if (process.argv.includes("--audit-only")) {
-    const summary = await rows(`SELECT (SELECT COUNT(*) FROM "SteamGame") games,(SELECT COUNT(*) FROM "Studio") studios,
+    const summary = await rows(`SELECT (SELECT COUNT(*) FROM "SteamGame") games,(SELECT COUNT(*) FROM "Studio") studios,(SELECT COUNT(*) FROM "Card") instances,
       (SELECT COUNT(*) FROM "SteamGame" WHERE def<=0) invalid_def,
       (SELECT COUNT(*) FROM "SteamGame" game LEFT JOIN "StoredImage" image ON image.key='game:'||game.id WHERE game."headerImage" <> '/api/images/game/'||game.id OR image.data IS NULL) invalid_images,
+      (SELECT COUNT(*) FROM "SteamGame" game WHERE NOT EXISTS (SELECT 1 FROM "Studio" studio WHERE studio.name=ANY(game.developers))) missing_studio_links,
       (SELECT COUNT(*) FROM "Studio" studio WHERE studio."gameCount" <> (SELECT COUNT(*) FROM "SteamGame" game WHERE studio.name=ANY(game.developers)) OR studio.games <> COALESCE((SELECT array_agg(game.name ORDER BY game.name) FROM "SteamGame" game WHERE studio.name=ANY(game.developers)),ARRAY[]::text[])) inconsistent_studios`);
     const suspect = await rows(`SELECT game.id,game.name,game.tags,game.developers,(SELECT COUNT(*) FROM "Card" WHERE "gameId"=game.id) instances,(SELECT COUNT(*) FROM "Auction" WHERE "gameId"=game.id) auctions,(SELECT json_agg(json_build_object('name',studio.name,'gameCount',studio."gameCount",'instances',(SELECT COUNT(*) FROM "Card" WHERE "studioId"=studio.id),'auctions',(SELECT COUNT(*) FROM "Auction" WHERE "studioId"=studio.id))) FROM "Studio" studio WHERE studio.name=ANY(game.developers)) studios FROM "SteamGame" game WHERE game."updatedAt" > now()-interval '30 minutes' AND (game.name ~* '(^|[^[:alnum:]])(test server|playtest|demo|dedicated server|soundtrack|prologue|crosshair|lossless)([^[:alnum:]]|$)' OR game.tags::text ~* '(utilit|software|production|design|animation)') ORDER BY game.name`);
     console.log("Audit", summary[0], "Titres à examiner", JSON.stringify(suspect));
+    if (FRANCHISE_MODE) {
+      const named = await rows(`SELECT
+        COUNT(*) FILTER (WHERE name ILIKE '%Tomb Raider%') tomb_raider,
+        COUNT(*) FILTER (WHERE name ILIKE '%Alan Wake%') alan_wake,
+        COUNT(*) FILTER (WHERE name ILIKE '%Borderlands%') borderlands,
+        COUNT(*) FILTER (WHERE name ILIKE '%Fallout%') fallout
+        FROM "SteamGame"`);
+      const franchise = await rows(`SELECT id,name,developers FROM "SteamGame" WHERE "updatedAt" > now()-interval '60 minutes' ORDER BY "updatedAt"`);
+      const catalog = await rows('SELECT name,developers FROM "SteamGame"');
+      const confirmedStudios = new Set(catalog.filter((game) => matchesFranchise(game.name)).flatMap((game) => game.developers ?? []).map(normalizedStudio));
+      const directCount = franchise.filter((game) => matchesFranchise(game.name)).length;
+      const unrelated = franchise.filter((game) => !matchesFranchise(game.name) && !game.developers.some((developer) => confirmedStudios.has(normalizedStudio(developer))));
+      console.log("Licences nommées", named[0], "Import récent", franchise.length, "titres directs", directCount, "jeux des studios", franchise.length - directCount - unrelated.length, "hors cible confirmée", JSON.stringify(unrelated));
+    }
     process.exit(0);
   }
   const before = (await rows('SELECT (SELECT COUNT(*) FROM "SteamGame") AS games, (SELECT COUNT(*) FROM "Studio") AS studios, (SELECT value FROM "AppSetting" WHERE key=\'MCP_GUIDE_VERSION\') AS guide_version'))[0];
   console.log("Avant import", before);
   const existing = new Set((await rows('SELECT id FROM "SteamGame"')).map((row) => row.id));
   const candidates = new Map();
-  for (let page = 0; page < 15 && candidates.size < 800; page++) {
+  for (let page = 0; page < 15 && (FRANCHISE_MODE || candidates.size < 800); page++) {
     const data = await get(`https://steamspy.com/api.php?request=all&page=${page}`);
     for (const [id, item] of Object.entries(data)) {
       if (existing.has(id) || asianTitle.test(item.name ?? "") || nonGameEdition.test(item.name ?? "") || ownersFromRange(item.owners) <= 0) continue;
-      candidates.set(id, { id, owners: ownersFromRange(item.owners), reviews: (item.positive ?? 0) + (item.negative ?? 0) });
+      candidates.set(id, { id, name: item.name, developer: item.developer, owners: ownersFromRange(item.owners), reviews: (item.positive ?? 0) + (item.negative ?? 0) });
     }
     console.log(`Candidats page ${page}: ${candidates.size}`);
   }
-  const queue = [...candidates.values()].sort((a, b) => b.owners - a.owners || b.reviews - a.reviews || Number(a.id) - Number(b.id));
+  let queue = [...candidates.values()].sort((a, b) => b.owners - a.owners || b.reviews - a.reviews || Number(a.id) - Number(b.id));
+  let franchiseStudios = new Set();
+  if (FRANCHISE_MODE) {
+    const catalogStudios = await rows('SELECT name,developers FROM "SteamGame"');
+    const studioNames = new Set(catalogStudios.filter((game) => matchesFranchise(game.name)).flatMap((game) => game.developers ?? []).map(normalizedStudio));
+    const direct = queue.filter((candidate) => matchesFranchise(candidate.name));
+    for (const candidate of direct) {
+      for (const developer of String(candidate.developer ?? "").split(/[,;]/)) {
+        if (developer.trim()) studioNames.add(normalizedStudio(developer));
+      }
+    }
+    const siblings = queue.filter((candidate) => !matchesFranchise(candidate.name) && String(candidate.developer ?? "").split(/[,;]/).some((developer) => studioNames.has(normalizedStudio(developer))));
+    franchiseStudios = studioNames;
+    queue = [...direct, ...siblings];
+    console.log(`Grandes licences : ${direct.length} titres directs absents, ${siblings.length} autres jeux de leurs studios, ${studioNames.size} studios ciblés.`);
+    console.log("Aperçu licences", direct.slice(0, 15).map((game) => game.name));
+  }
   if (!EXECUTE) { console.log(`Préparation seulement : ${queue.length} candidats, ajouter --execute pour importer.`); process.exit(0); }
   let added = 0;
   let checked = 0;
@@ -220,6 +273,14 @@ try {
     try {
       const game = await gameFromSteam(candidate.id);
       if (!game) { failures.push(`${candidate.id}: inéligible`); continue; }
+      if (FRANCHISE_MODE) {
+        const direct = matchesFranchise(game.name);
+        if (!direct && !game.developers.some((developer) => franchiseStudios.has(normalizedStudio(developer)))) {
+          failures.push(`${candidate.id}: studio non confirmé par Steam`);
+          continue;
+        }
+        if (direct) for (const developer of game.developers) franchiseStudios.add(normalizedStudio(developer));
+      }
       batch.push(game);
       if (batch.length >= 5) await flush();
     } catch (error) { failures.push(`${candidate.id}: ${error.message.slice(0, 100)}`); }

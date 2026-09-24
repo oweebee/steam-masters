@@ -3,6 +3,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { FlipCard } from "./FlipCard";
 import { GameCard } from "./GameCard";
 import { CardOrnaments } from "./CardOrnaments";
+import { FlameDial } from "./FlameDial";
 import { RARITY_STYLES, type Rarity } from "@/lib/rarityStyles";
 
 type GameLink = { name: string; appid: string | null; hasCard: boolean; headerImage?: string | null };
@@ -22,6 +23,7 @@ export function StudioCard({
   about,
   avatarUrl,
   coverImage,
+  onFlipChange,
 }: {
   name: string;
   gameCount: number;
@@ -32,6 +34,7 @@ export function StudioCard({
   about?: string | null;
   avatarUrl?: string | null;
   coverImage?: string | null;
+  onFlipChange?: (flipped: boolean) => void;
 }) {
   const style = RARITY_STYLES[rarity];
   const [resolvedGames, setResolvedGames] = useState<GameLink[]>(games);
@@ -163,7 +166,7 @@ export function StudioCard({
           ) : (
             <span className="text-4xl">🏢</span>
           )}
-          <span className="steam-card-image-dial" aria-hidden="true"><i /></span>
+          <FlameDial />
         </div>
 
         <div className="steam-statbar flex justify-between items-center pt-2 border-t border-gray-800">
@@ -221,7 +224,7 @@ export function StudioCard({
   );
 
   return <>
-    <FlipCard front={front} back={back} canFlip={canFlip} />
+    <FlipCard front={front} back={back} canFlip={canFlip} onFlipChange={onFlipChange} />
     {preview && <div className="battle-preview-overlay" role="presentation" onClick={() => setPreview(null)}>
       <div className="battle-preview-dialog" role="dialog" aria-modal="true" aria-label={`Carte ${preview.name}`} onClick={(event) => event.stopPropagation()}>
         <button type="button" className="battle-preview-close" onClick={() => setPreview(null)} aria-label="Fermer la carte">×</button>

@@ -2,6 +2,7 @@ import { randomInt } from "node:crypto";
 import type { Prisma } from "@prisma/client";
 import { cardDefense } from "@/lib/cardDefense";
 import { stakedCardCount } from "@/lib/battleStake";
+import { activeTradeWhere } from "@/lib/tradeExpiry";
 
 export type BattleCard = {
   id: string;
@@ -49,6 +50,12 @@ export async function loadBattleDeck(tx: Prisma.TransactionClient, userId: strin
   });
   if (cards.length !== 5) throw new Error("Une carte ne t'appartient plus");
   if (await stakedCardCount(tx, ids as string[])) throw new Error("Une carte du deck est déjà misée dans un combat");
+  if (await tx.tradeCard.count({ where: { cardId: { in: ids as string[] }, trade: activeTradeWhere() } })) {
+    throw new Error("Une carte du deck est engagée dans un échange ou un envoi");
+  }
+  if (await tx.auction.count({ where: { cardId: { in: ids as string[] }, status: "ACTIVE" } })) {
+    throw new Error("Une carte du deck est aux enchères");
+  }
   const byId = new Map(cards.map((card) => [card.id, card]));
   return (ids as string[]).map((id) => {
     const card = byId.get(id)!;

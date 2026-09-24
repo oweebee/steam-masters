@@ -5,6 +5,7 @@ type Rarity = "COMMON" | "UNCOMMON" | "RARE" | "EPIC" | "LEGENDARY";
 
 type Joueur = { id: string; username: string };
 type CardOption = { id: string; label: string; headerImage: string | null; rarity: Rarity; type: "GAME" | "STUDIO" };
+type OwnedCollectionRecord = { id: string; sellable: boolean; rarity: Rarity; game: { name: string; headerImage: string } | null; studio: { name: string } | null };
 type CardSort = "name" | "rarity" | "type";
 
 type TradeCard = {
@@ -168,33 +169,37 @@ export function EchangesClient({ myUserId }: { myUserId: string }) {
     fetch("/api/joueurs").then((r) => (r.ok ? r.json() : [])).then((users: (Joueur & { isSelf?: boolean })[]) => setJoueurs(users.filter((user) => !user.isSelf)));
     fetch("/api/collection")
       .then((r) => (r.ok ? r.json() : []))
-      .then((cards: any[]) =>
+      .then((cards: OwnedCollectionRecord[]) => {
+        const available = cards.filter((c) => c.sellable);
         setMyCollection(
-          cards.map((c) => ({
+          available.map((c) => ({
             id: c.id,
             label: c.game?.name ?? c.studio?.name ?? "?",
             headerImage: c.game?.headerImage ?? null,
             rarity: c.rarity,
             type: c.game ? "GAME" : "STUDIO",
           }))
-        )
-      );
+        );
+        const requested = new URLSearchParams(window.location.search).get("cardId");
+        if (requested && available.some((card) => card.id === requested)) setOfferCardIds([requested]);
+      });
     loadTrades();
   }, []);
 
   useEffect(() => {
-    if (!targetId) {
+    const controller = new AbortController();
+    const timer = window.setTimeout(() => {
       setTargetCollection([]);
-      setTargetLoading(false);
-      return;
-    }
-    setTargetLoading(true);
-    setTargetCollection([]);
-    fetch(`/api/joueurs/${targetId}/collection`)
-      .then((r) => (r.ok ? r.json() : []))
-      .then(setTargetCollection)
-      .finally(() => setTargetLoading(false));
-    setWantCardIds([]);
+      setWantCardIds([]);
+      setTargetLoading(!!targetId);
+      if (!targetId) return;
+      fetch(`/api/joueurs/${targetId}/collection`, { signal: controller.signal })
+        .then((r) => (r.ok ? r.json() : []))
+        .then((cards: CardOption[]) => { if (!controller.signal.aborted) setTargetCollection(cards); })
+        .catch(() => { if (!controller.signal.aborted) setTargetCollection([]); })
+        .finally(() => { if (!controller.signal.aborted) setTargetLoading(false); });
+    }, 0);
+    return () => { window.clearTimeout(timer); controller.abort(); };
   }, [targetId]);
 
   function toggle(list: string[], setList: (v: string[]) => void, id: string) {
@@ -276,7 +281,7 @@ export function EchangesClient({ myUserId }: { myUserId: string }) {
               cards={targetCollection}
               selectedIds={wantCardIds}
               onToggle={(id) => toggle(wantCardIds, setWantCardIds, id)}
-              unavailableMessage={!targetId ? "Choisis d'abord un joueur." : targetLoading ? "Chargement de sa collection…" : undefined}
+              unavailableMessage={!targetId ? "Choisis d’abord un joueur." : targetLoading ? "Chargement de sa collection…" : undefined}
             />
             <label className="text-gray-400 text-xs uppercase mt-2 block">Demandez des pièces</label>
             <input
@@ -306,7 +311,7 @@ export function EchangesClient({ myUserId }: { myUserId: string }) {
           {incoming.map((t) => (
             <div key={t.id} className="bg-gray-900 border border-gray-800 rounded-lg p-3 flex items-center justify-between gap-4">
               <div className="text-sm text-gray-300">
-                <span className="text-white font-medium">{t.fromUser.username}</span> t'offre{" "}
+                <span className="text-white font-medium">{t.fromUser.username}</span> t’offre{" "}
                 {t.cards.filter((c) => c.side === "OFFER").map(cardLabel).join(", ") || "rien"}
                 {t.offerCoins > 0 && ` + ${t.offerCoins} jetons`} contre{" "}
                 {t.cards.filter((c) => c.side === "WANT").map(cardLabel).join(", ") || "rien"}

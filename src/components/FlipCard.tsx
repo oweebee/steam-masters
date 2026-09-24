@@ -25,17 +25,23 @@ export function FlipCard({
   front,
   back,
   canFlip = true,
+  onFlipChange,
 }: {
   front: ReactNode;
   back: ReactNode;
   canFlip?: boolean;
+  onFlipChange?: (flipped: boolean) => void;
 }) {
   const [flipped, setFlipped] = useState(false);
 
   return (
     <div
       className="steam-card-wrap relative w-72 h-[26rem] [perspective:1200px]"
-      onClick={() => canFlip && setFlipped((f) => !f)}
+      onClick={() => {
+        if (!canFlip) return;
+        setFlipped(!flipped);
+        onFlipChange?.(!flipped);
+      }}
     >
       <div
         className={`relative w-full h-full transition-transform duration-500 ${

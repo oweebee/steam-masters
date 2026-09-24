@@ -344,58 +344,43 @@ a.bg-purple-600 {
   left: 50%;
   bottom: -1.125rem;
   z-index: 5;
-  display: flex;
   width: 2.25rem;
   height: 2.25rem;
-  align-items: center;
-  justify-content: center;
   transform: translateX(-50%);
   border: 2px solid #9b6938;
   border-radius: 50%;
-  background: radial-gradient(circle, #37271d 0 34%, #b17a43 36% 45%, #17110d 48%);
+  overflow: hidden;
+  background: radial-gradient(circle at 50% 70%, #48190b, #120b08 70%);
   box-shadow: 0 2px 5px #000, 0 0 var(--rarity-halo) var(--card-accent), 0 0 calc(var(--rarity-halo) * 2) var(--card-accent-soft);
 }
 
-.steam-card-image-dial::before {
-  content: "";
+.steam-card-flame-video {
   position: absolute;
-  left: 50%;
-  bottom: 2px;
-  width: 1.72rem;
-  height: 1.66rem;
-  transform-origin: 50% 90%;
-  clip-path: polygon(52% 0, 66% 20%, 61% 39%, 80% 24%, 94% 57%, 87% 79%, 70% 96%, 50% 100%, 28% 96%, 9% 78%, 6% 56%, 31% 34%, 29% 20%);
-  background: radial-gradient(ellipse at 50% 83%, #fff9db 0 10%, #ffd676 21%, var(--card-accent) 49%, #a92c1d 82%);
-  animation: rarity-flame 1.55s ease-in-out infinite alternate;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  transform: scale(2.1) translateY(-9%);
+  mix-blend-mode: screen;
+  -webkit-mask-image: linear-gradient(#000 0 63%, transparent 98%);
+  mask-image: linear-gradient(#000 0 63%, transparent 98%);
+  opacity: 0;
+  transition: opacity .25s ease;
 }
 
-@keyframes rarity-flame {
-  0% { transform: translateX(-50%) rotate(-5deg) scale(.96, .9); clip-path: polygon(52% 0, 66% 20%, 61% 39%, 80% 24%, 94% 57%, 87% 79%, 70% 96%, 50% 100%, 28% 96%, 9% 78%, 6% 56%, 31% 34%, 29% 20%); }
-  48% { transform: translateX(-50%) rotate(6deg) scale(.9, 1.06); clip-path: polygon(39% 8%, 56% 27%, 57% 42%, 73% 13%, 94% 53%, 86% 80%, 68% 96%, 50% 100%, 27% 96%, 8% 79%, 13% 48%, 31% 41%, 24% 17%); }
-  100% { transform: translateX(-50%) rotate(-3deg) scale(1.03, .94); clip-path: polygon(58% 4%, 70% 25%, 61% 38%, 83% 30%, 94% 58%, 85% 83%, 67% 97%, 50% 100%, 28% 95%, 8% 77%, 10% 49%, 33% 31%, 31% 13%); }
+.steam-card-image-dial[data-playing="true"] .steam-card-flame-video {
+  opacity: 1;
 }
 
-.steam-card-image-dial i {
+.steam-card-flame-fallback {
   position: absolute;
-  left: 50%;
-  bottom: 5px;
-  z-index: 1;
-  width: .54rem;
-  height: .76rem;
-  transform: translateX(-50%);
-  clip-path: polygon(50% 0, 77% 35%, 100% 76%, 75% 100%, 25% 100%, 0 76%, 23% 35%);
-  background: linear-gradient(#fffdf2, #ffe7a1);
-  animation: rarity-flame-core 1.13s ease-in-out infinite alternate;
+  inset: 0;
+  background: radial-gradient(ellipse at 50% 76%, #fff1bd 0 9%, #f89835 20%, #7a260f 43%, transparent 66%);
+  transition: opacity .25s ease;
 }
 
-@keyframes rarity-flame-core {
-  0% { transform: translateX(-50%) translateY(1px) rotate(5deg) scale(.92, .82); }
-  55% { transform: translateX(-50%) translateY(-2px) rotate(-9deg) scale(.84, 1.14); }
-  100% { transform: translateX(-50%) rotate(6deg) scale(1.06, .9); }
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .steam-card-image-dial::before, .steam-card-image-dial i { animation-duration: 4s; }
+.steam-card-image-dial[data-playing="true"] .steam-card-flame-fallback {
+  opacity: 0;
 }
 
 .steam-studio-visual { overflow: visible; }
@@ -830,6 +815,58 @@ a.bg-purple-600 {
 .steam-sale-card-target.is-selected > span { color: #fff3df; border-color: #eb7a4e; background: #8e251d; }
 .steam-sale-card-target.is-locked { cursor: not-allowed; border-color: #51483e; background: rgba(0,0,0,0.55); }
 .steam-sale-card-target.is-locked > span { border-color: #655b50; color: #8b8174; filter: grayscale(1); }
+
+.steam-owned-frame { display: flex; align-items: stretch; gap: 0; }
+.steam-owned-frame.is-flipped {
+  padding: 0.35rem;
+  border: 1px solid #9b653c;
+  background: linear-gradient(135deg, #4b2e1d, #1a120d 12%, #211711 86%, #6c3e23);
+  box-shadow: inset 0 0 0 2px #17100b, 0 0 20px #080504, 0 0 0 1px #38291f;
+}
+.steam-owned-frame.is-flipped .steam-card-wrap { flex: 0 0 18rem; }
+.steam-owned-actions {
+  width: 15.5rem;
+  height: 26rem;
+  padding: 0.7rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  overflow-y: auto;
+  color: #dfc8a8;
+  background: radial-gradient(circle at 85% 4%, #50301d, transparent 35%), repeating-linear-gradient(130deg, #211811 0 2px, #1d150f 2px 8px);
+  border: 1px solid #6f4b2c;
+  border-left: 3px double #c78a4c;
+  border-radius: 0 0.7rem 0.7rem 0;
+  box-shadow: inset 0 0 0 2px #17100a, inset 0 8px 16px #0006;
+}
+.steam-owned-actions-heading { display: flex; align-items: center; gap: 0.55rem; border-bottom: 1px solid #79512e; padding-bottom: 0.5rem; margin-bottom: 0.15rem; }
+.steam-owned-actions-heading > span { font-size: 1.5rem; color: #cb9a5a; text-shadow: 0 0 9px #b45b22; }
+.steam-owned-actions-heading small { display: block; color: #a58055; font-size: 0.62rem; text-transform: uppercase; letter-spacing: 0.13em; }
+.steam-owned-actions-heading strong { display: block; max-width: 12rem; color: #f5dec1; font: bold 0.85rem Georgia, serif; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.steam-owned-actions label { display: flex; flex-direction: column; gap: 0.2rem; font-size: 0.67rem; color: #bda487; }
+.steam-owned-actions select, .steam-owned-actions input { width: 100%; min-height: 1.9rem; padding: 0.25rem 0.4rem; color: #f5dec1; background: #170f0b; border: 1px solid #79512e; border-radius: 0.3rem; outline-color: #d28a45; font-size: 0.75rem; }
+.steam-owned-actions button, .steam-delivery-row button { min-height: 2rem; color: #f6dfc1; font-size: 0.73rem; font-weight: 700; border: 1px solid #9d6536; border-radius: 0.35rem; background: linear-gradient(#6c3c22, #3b1e13); box-shadow: inset 0 1px #cf9662, 0 2px 3px #0008; }
+.steam-owned-actions button:hover:not(:disabled), .steam-delivery-row button:hover:not(:disabled) { background: linear-gradient(#9d532a, #602613); }
+.steam-owned-actions button:disabled, .steam-delivery-row button:disabled { opacity: 0.43; cursor: not-allowed; }
+.steam-owned-actions .steam-owned-primary { color: #fff2d7; border-color: #d47f3f; background: linear-gradient(#ae5830, #782819); }
+.steam-owned-action-divider { height: 1px; margin: 0.1rem 0; background: linear-gradient(90deg, transparent, #aa7543, transparent); }
+.steam-owned-locked, .steam-owned-error { color: #ffab9b; font-size: 0.7rem; }
+.steam-owned-success { color: #b6db9f; font-size: 0.7rem; }
+.steam-delivery-inbox { border: 1px solid #78502d; border-radius: 0.7rem; padding: 0.8rem; margin: 0 0 1rem; background: linear-gradient(135deg, #241910, #17110d); }
+.steam-delivery-inbox h2 { font: bold 1.1rem Georgia, serif; color: #efd1a5; }
+.steam-delivery-inbox > p { color: #a48c72; font-size: 0.75rem; margin: 0.25rem 0 0.5rem; }
+.steam-delivery-row { display: flex; justify-content: space-between; align-items: center; gap: 1rem; border-top: 1px solid #4a3423; padding: 0.5rem 0; font-size: 0.8rem; color: #d4baa0; }
+.steam-delivery-row strong { color: #f0d9b7; }
+.steam-delivery-row small { display: block; color: #9e856c; font-size: 0.7rem; }
+.steam-delivery-row > div { display: flex; gap: 0.35rem; flex-wrap: wrap; }
+.steam-delivery-row button { padding: 0 0.7rem; }
+
+@media (max-width: 760px), (display-mode: standalone) and (max-width: 900px) {
+  .steam-owned-frame.is-flipped { flex-direction: column; width: 18.7rem; }
+  .steam-owned-frame.is-flipped .steam-card-wrap { flex: none; }
+  .steam-owned-actions { width: 18rem; height: auto; max-height: none; border-left: 1px solid #6f4b2c; border-top: 3px double #c78a4c; border-radius: 0 0 0.7rem 0.7rem; }
+  .steam-delivery-row { align-items: flex-start; flex-direction: column; }
+}
 
 @media (max-width: 760px) {
   .steam-collection-toolbar { align-items: stretch; flex-direction: column; }

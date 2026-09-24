@@ -1,4 +1,5 @@
 import type { Prisma } from "@prisma/client";
+import { activeTradeWhere } from "@/lib/tradeExpiry";
 
 export function parseStakeCoins(value: unknown): number {
   if (value === undefined || value === null || value === "") return 0;
@@ -22,24 +23,30 @@ export async function stakedCardCount(tx: Prisma.TransactionClient, cardIds: str
   } });
 }
 
+export async function activeDeckCardCount(tx: Prisma.TransactionClient, userId: string, cardIds: string[]): Promise<number> {
+  if (!cardIds.length) return 0;
+  const ids = new Set(cardIds);
+  const active = await tx.battle.findMany({
+    where: { status: "ACTIVE", OR: [{ challengerId: userId }, { opponentId: userId }] },
+    select: { challengerId: true, challengerDeck: true, opponentDeck: true },
+  });
+  return active.reduce((count, battle) => {
+    const deck = battle.challengerId === userId ? battle.challengerDeck : battle.opponentDeck;
+    return count + (Array.isArray(deck) ? deck.filter((item) => typeof item === "object" && item !== null && "id" in item && typeof item.id === "string" && ids.has(item.id)).length : 0);
+  }, 0);
+}
+
 export async function assertStakeCardAvailable(tx: Prisma.TransactionClient, userId: string, cardId: string | null): Promise<void> {
   if (!cardId) return;
   const card = await tx.card.findFirst({ where: { id: cardId, userId }, select: { id: true } });
   if (!card) throw new Error("La carte misée ne t'appartient plus");
   const [trades, auctions, battles] = await Promise.all([
-    tx.tradeCard.count({ where: { cardId, trade: { status: "PENDING" } } }),
+    tx.tradeCard.count({ where: { cardId, trade: activeTradeWhere() } }),
     tx.auction.count({ where: { cardId, status: "ACTIVE" } }),
     stakedCardCount(tx, [cardId]),
   ]);
   if (trades || auctions || battles) throw new Error("Cette carte est déjà engagée ailleurs");
-  const active = await tx.battle.findMany({
-    where: { status: "ACTIVE", OR: [{ challengerId: userId }, { opponentId: userId }] },
-    select: { challengerId: true, challengerDeck: true, opponentDeck: true },
-  });
-  if (active.some((battle) => {
-    const deck = battle.challengerId === userId ? battle.challengerDeck : battle.opponentDeck;
-    return Array.isArray(deck) && deck.some((item) => typeof item === "object" && item !== null && "id" in item && item.id === cardId);
-  })) throw new Error("Cette carte est déjà jouée dans un combat actif");
+  if (await activeDeckCardCount(tx, userId, [cardId])) throw new Error("Cette carte est déjà jouée dans un combat actif");
 }
 
 export async function settleBattleStake(tx: Prisma.TransactionClient, stake: {

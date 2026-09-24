@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { auth } from "@/auth";
 import { prisma } from "@/lib/prisma";
+import { activeTradeWhere, expireCardDeliveries } from "@/lib/tradeExpiry";
 
 // Système d'échange : N cartes contre M cartes (N ou M peuvent être 0), plus
 // optionnellement des jetons de chaque côté. L'initiateur (fromUser) propose,
@@ -11,9 +12,10 @@ export async function GET() {
   const session = await auth();
   if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   const userId = (session.user as any).id as string;
+  await expireCardDeliveries();
 
   const trades = await prisma.trade.findMany({
-    where: { OR: [{ fromUserId: userId }, { toUserId: userId }] },
+    where: { isDelivery: false, OR: [{ fromUserId: userId }, { toUserId: userId }] },
     include: {
       fromUser: { select: { id: true, username: true } },
       toUser: { select: { id: true, username: true } },
@@ -55,10 +57,14 @@ export async function POST(req: Request) {
   if (offerCoins < 0 || wantCoins < 0) {
     return NextResponse.json({ error: "Montant de jetons invalide" }, { status: 400 });
   }
+  if (new Set(offerCardIds).size !== offerCardIds.length || new Set(wantCardIds).size !== wantCardIds.length) {
+    return NextResponse.json({ error: "Une carte figure plusieurs fois dans la proposition" }, { status: 400 });
+  }
 
   // Vérifie que les cartes offertes appartiennent bien à l'initiateur, et les
   // cartes demandées au destinataire (pas de triche en manipulant le payload).
-  const [offerOwned, wantOwned, fromUser, staked] = await Promise.all([
+  const allCardIds = [...offerCardIds, ...wantCardIds];
+  const [offerOwned, wantOwned, fromUser, staked, locked, auctions] = await Promise.all([
     prisma.card.count({ where: { id: { in: offerCardIds }, userId: fromUserId } }),
     prisma.card.count({ where: { id: { in: wantCardIds }, userId: toUserId } }),
     prisma.user.findUnique({ where: { id: fromUserId }, select: { coins: true } }),
@@ -66,6 +72,8 @@ export async function POST(req: Request) {
       { challengerStakeCardId: { in: [...offerCardIds, ...wantCardIds] } },
       { opponentStakeCardId: { in: [...offerCardIds, ...wantCardIds] } },
     ] } }),
+    prisma.tradeCard.count({ where: { cardId: { in: allCardIds }, trade: activeTradeWhere() } }),
+    prisma.auction.count({ where: { cardId: { in: allCardIds }, status: "ACTIVE" } }),
   ]);
   if (offerOwned !== offerCardIds.length) {
     return NextResponse.json({ error: "Une des cartes offertes ne t'appartient pas (plus)" }, { status: 400 });
@@ -77,6 +85,7 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: "Solde de jetons insuffisant" }, { status: 400 });
   }
   if (staked > 0) return NextResponse.json({ error: "Une carte est misée dans un combat" }, { status: 400 });
+  if (locked > 0 || auctions > 0) return NextResponse.json({ error: "Une carte est déjà engagée dans une autre proposition ou une enchère" }, { status: 400 });
 
   const trade = await prisma.trade.create({
     data: {

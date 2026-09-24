@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { auth } from "@/auth";
 import { prisma } from "@/lib/prisma";
 import { buildStudioGamesByDeveloper } from "@/lib/studioGames";
+import { activeTradeWhere } from "@/lib/tradeExpiry";
 
 export async function GET() {
   const session = await auth();
@@ -16,7 +17,7 @@ export async function GET() {
       game: true,
       studio: true,
       tradeCards: {
-        where: { trade: { status: "PENDING" } },
+        where: { trade: activeTradeWhere() },
         select: { id: true },
       },
       auctions: {
@@ -35,6 +36,14 @@ export async function GET() {
     select: { challengerStakeCardId: true, opponentStakeCardId: true },
   });
   const stakedIds = new Set(stakes.flatMap((stake) => [stake.challengerStakeCardId, stake.opponentStakeCardId]).filter((id): id is string => !!id));
+  const activeBattles = await prisma.battle.findMany({
+    where: { status: "ACTIVE", OR: [{ challengerId: userId }, { opponentId: userId }] },
+    select: { challengerId: true, challengerDeck: true, opponentDeck: true },
+  });
+  const playingIds = new Set(activeBattles.flatMap((battle) => {
+    const deck = battle.challengerId === userId ? battle.challengerDeck : battle.opponentDeck;
+    return Array.isArray(deck) ? deck.flatMap((item) => typeof item === "object" && item !== null && "id" in item && typeof item.id === "string" ? [item.id] : []) : [];
+  }));
 
   const studioGamesMap = await buildStudioGamesByDeveloper(
     cards.flatMap((c) => c.studio?.name ? [c.studio.name] : [])
@@ -42,7 +51,7 @@ export async function GET() {
 
   const out = cards.map(({ tradeCards, auctions, ...card }) => ({
     ...card,
-    sellable: tradeCards.length === 0 && auctions.length === 0 && !stakedIds.has(card.id),
+    sellable: tradeCards.length === 0 && auctions.length === 0 && !stakedIds.has(card.id) && !playingIds.has(card.id),
     staked: stakedIds.has(card.id),
     studio: card.studio
       ? { ...card.studio, games: studioGamesMap.get(card.studio.name) ?? [] }

@@ -13,7 +13,10 @@ export async function AppShell({ children }: { children: React.ReactNode }) {
   return (
     <div className="steam-app-shell min-h-screen bg-gray-950 flex">
       <Sidebar isAdmin={isAdmin} username={session.user?.name ?? ""} coins={user?.coins ?? 0} />
-      <main className="steam-main flex-1 p-8">{children}</main>
+      <main className="steam-main flex-1 p-8 flex flex-col">
+        <div className="flex-1">{children}</div>
+        <footer className="pt-8 text-right text-[10px] text-stone-600"><a href="/flame/README.md" className="hover:text-amber-400">Crédit de la flamme animée</a></footer>
+      </main>
     </div>
   );
 }

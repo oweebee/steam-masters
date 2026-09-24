@@ -23,6 +23,7 @@ export async function POST(_req: Request, { params }: { params: Promise<{ id: st
       if (!trade) throw new Error("Échange introuvable");
       if (trade.toUserId !== userId) throw new Error("Seul le destinataire peut accepter cet échange");
       if (trade.status !== "PENDING") throw new Error("Cet échange n'est plus en attente");
+      if (trade.expiresAt && trade.expiresAt <= new Date()) throw new Error("Cette proposition a expiré");
 
       const offerCardIds = trade.cards.filter((c) => c.side === "OFFER").map((c) => c.cardId);
       const wantCardIds = trade.cards.filter((c) => c.side === "WANT").map((c) => c.cardId);
@@ -38,19 +39,29 @@ export async function POST(_req: Request, { params }: { params: Promise<{ id: st
       if (!fromUser || fromUser.coins < trade.offerCoins) throw new Error("L'initiateur n'a plus assez de jetons");
       if (!toUser || toUser.coins < trade.wantCoins) throw new Error("Tu n'as plus assez de jetons");
       if (await stakedCardCount(tx, [...offerCardIds, ...wantCardIds])) throw new Error("Une carte de cet échange est misée dans un combat");
+      if (trade.isDelivery && (offerCardIds.length !== 1 || wantCardIds.length !== 0 || trade.offerCoins !== 0)) {
+        throw new Error("Envoi de carte invalide");
+      }
+
+      const activeAuctions = await tx.auction.count({ where: { cardId: { in: [...offerCardIds, ...wantCardIds] }, status: "ACTIVE" } });
+      if (activeAuctions) throw new Error("Une carte est déjà en vente");
 
       if (offerCardIds.length > 0) {
-        await tx.card.updateMany({ where: { id: { in: offerCardIds } }, data: { userId: trade.toUserId } });
+        const moved = await tx.card.updateMany({ where: { id: { in: offerCardIds }, userId: trade.fromUserId }, data: { userId: trade.toUserId } });
+        if (moved.count !== offerCardIds.length) throw new Error("La carte offerte a changé de propriétaire");
       }
       if (wantCardIds.length > 0) {
-        await tx.card.updateMany({ where: { id: { in: wantCardIds } }, data: { userId: trade.fromUserId } });
+        const moved = await tx.card.updateMany({ where: { id: { in: wantCardIds }, userId: trade.toUserId }, data: { userId: trade.fromUserId } });
+        if (moved.count !== wantCardIds.length) throw new Error("La carte demandée a changé de propriétaire");
       }
       if (trade.offerCoins > 0) {
-        await tx.user.update({ where: { id: trade.fromUserId }, data: { coins: { decrement: trade.offerCoins } } });
+        const paid = await tx.user.updateMany({ where: { id: trade.fromUserId, coins: { gte: trade.offerCoins } }, data: { coins: { decrement: trade.offerCoins } } });
+        if (paid.count !== 1) throw new Error("L'initiateur n'a plus assez de pièces");
         await tx.user.update({ where: { id: trade.toUserId }, data: { coins: { increment: trade.offerCoins } } });
       }
       if (trade.wantCoins > 0) {
-        await tx.user.update({ where: { id: trade.toUserId }, data: { coins: { decrement: trade.wantCoins } } });
+        const paid = await tx.user.updateMany({ where: { id: trade.toUserId, coins: { gte: trade.wantCoins } }, data: { coins: { decrement: trade.wantCoins } } });
+        if (paid.count !== 1) throw new Error("Tu n'as plus assez de pièces");
         await tx.user.update({ where: { id: trade.fromUserId }, data: { coins: { increment: trade.wantCoins } } });
       }
 
@@ -58,7 +69,7 @@ export async function POST(_req: Request, { params }: { params: Promise<{ id: st
         where: { id },
         data: { status: "ACCEPTED", resolvedAt: new Date() },
       });
-    });
+    }, { isolationLevel: "Serializable" });
 
     return NextResponse.json(result);
   } catch (e: any) {
