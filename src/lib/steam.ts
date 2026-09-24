@@ -11,10 +11,23 @@ export function sleep(ms: number) {
   return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
-const STEAM_REQUEST_DELAY_MS = 900;
+// Keep a conservative global cadence for sequential catalog scans. Steam's
+// appdetails endpoint can still rate-limit long runs, so callers must preserve
+// their cursor when the retry budget is exhausted.
+export const STEAM_REQUEST_DELAY_MS = 2_000;
 const STEAM_MAX_RETRIES = 4;
 const STEAM_REQUEST_TIMEOUT_MS = 12_000;
 const STEAM_NETWORK_MAX_RETRIES = 1;
+
+function retryAfterMs(value: string | null, attempt: number) {
+  if (value) {
+    const seconds = Number(value);
+    if (Number.isFinite(seconds) && seconds > 0) return seconds * 1000;
+    const date = Date.parse(value);
+    if (Number.isFinite(date)) return Math.max(0, date - Date.now());
+  }
+  return 3000 * 2 ** attempt + Math.floor(Math.random() * 1000);
+}
 
 async function fetchWithRetry(url: string, init?: RequestInit): Promise<Response> {
   for (let attempt = 0; attempt <= STEAM_MAX_RETRIES; attempt += 1) {
@@ -23,11 +36,10 @@ async function fetchWithRetry(url: string, init?: RequestInit): Promise<Response
       const signal = init?.signal ? AbortSignal.any([init.signal, timeoutSignal]) : timeoutSignal;
       const res = await fetch(url, { ...init, signal });
       if (res.status !== 429) return res;
-      const retryAfter = Number(res.headers.get("retry-after"));
-      const requestedBackoffMs = Number.isFinite(retryAfter) && retryAfter > 0
-        ? retryAfter * 1000
-        : 2000 * 2 ** attempt;
-      const backoffMs = Math.min(requestedBackoffMs, 15_000);
+      const backoffMs = retryAfterMs(res.headers.get("retry-after"), attempt);
+      // Don't retry earlier than Steam asks. If the requested wait is too long
+      // for one API request, return the 429 so the resumable caller can pause.
+      if (backoffMs > 60_000) return res;
       if (attempt === STEAM_MAX_RETRIES) return res;
       await sleep(backoffMs);
     } catch (error) {
@@ -161,19 +173,22 @@ export async function getSteamGameData(appid: number): Promise<SteamGameData> {
   const cached = await redis.get(cacheKey);
   if (cached) return JSON.parse(cached);
 
+  // Verify the Steam content type before querying reviews, player counts, or
+  // SteamSpy. Steam's `dlc` list can contain AppIDs that are not card content.
+  const details = await fetchAppDetails(appid);
+  if (details.type !== "game" && details.type !== "dlc") {
+    throw new Error(`Steam appdetails: appid ${appid} n'est ni un jeu ni un DLC`);
+  }
+
   // La clé API stockée en admin n'est pas requise par ces endpoints publics,
   // mais on la lit pour usage futur (endpoints Steamworks nécessitant une clé).
   await getSteamApiKey();
 
-  const [details, reviewScore, peakCcu, ownerEstimate] = await Promise.all([
-    fetchAppDetails(appid),
+  const [reviewScore, peakCcu, ownerEstimate] = await Promise.all([
     fetchReviewScore(appid),
     fetchCurrentPlayers(appid),
     fetchOwnerEstimate(appid),
   ]);
-  if (details.type !== "game" && details.type !== "dlc") {
-    throw new Error(`Steam appdetails: appid ${appid} n'est ni un jeu ni un DLC`);
-  }
   const parentAppId = details.type === "dlc" ? Number(details.fullgame?.appid) : null;
 
   const data: SteamGameData = {

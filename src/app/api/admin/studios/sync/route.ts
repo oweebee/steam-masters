@@ -106,14 +106,42 @@ export async function POST(req: NextRequest) {
     }
   }
 
+  // Les fiches DLC héritent des studios du jeu parent. On vérifie les DLC
+  // déjà présents pour les jeux de ce studio; la découverte/import Steam des
+  // AppID manquants reste au scanner DLC dédié (évite les appels en rafale).
+  const studioGames = await prisma.steamGame.findMany({
+    where: { contentType: "GAME", developers: { has: name } },
+    select: { id: true, developers: true, dlcAppIds: true },
+  });
+  const studioGameIds = studioGames.map((game) => game.id);
+  const studioDlcs = studioGameIds.length ? await prisma.steamGame.findMany({
+    where: { contentType: "DLC", parentGameId: { in: studioGameIds } },
+    select: { id: true, developers: true, parentGameId: true },
+  }) : [];
+  const parentById = new Map(studioGames.map((game) => [game.id, game]));
+  const dlcDeveloperRepairs = new Map<string, string[]>();
+  for (const dlc of studioDlcs) {
+    const parent = dlc.parentGameId ? parentById.get(dlc.parentGameId) : null;
+    if (dlc.developers.length === 0 && parent?.developers.length) {
+      const key = JSON.stringify(parent.developers);
+      dlcDeveloperRepairs.set(key, [...(dlcDeveloperRepairs.get(key) ?? []), dlc.id]);
+    }
+  }
+  for (const [developerKey, ids] of dlcDeveloperRepairs) {
+    await prisma.steamGame.updateMany({ where: { id: { in: ids }, contentType: "DLC" }, data: { developers: JSON.parse(developerKey) as string[] } });
+  }
+  const cataloguedDlcIds = new Set(studioDlcs.map((dlc) => dlc.id));
+  const missingDlcIds = new Set(studioGames.flatMap((game) => game.dlcAppIds).filter((id) => !cataloguedDlcIds.has(id)));
+  const dlcsLinked = Array.from(dlcDeveloperRepairs.values()).reduce((sum, ids) => sum + ids.length, 0);
+
   await upsertStudiosForDevelopers(Array.from(affectedDevelopers));
   await recalculateCatalogRarity();
   await writeAppLog({
     runId,
     category: "SYNC",
     level: errors.length > 0 ? "WARNING" : "SUCCESS",
-    message: `${name} terminé : ${imported} ajouté(s), ${errors.length} erreur(s), ${officialGames.length - imported - errors.length} déjà présent(s)`,
-    details: { studio: name, official: officialGames.length, imported, errors: errors.length, relatedStudios: Array.from(affectedDevelopers) },
+    message: `${name} terminé : ${imported} jeu(x) ajouté(s), ${studioDlcs.length} DLC vérifié(s), ${dlcsLinked} lien(s) studio réparé(s), ${missingDlcIds.size} DLC à cataloguer, ${errors.length} erreur(s)`,
+    details: { studio: name, official: officialGames.length, imported, errors: errors.length, dlcsChecked: studioDlcs.length, dlcsLinked, dlcsMissing: missingDlcIds.size, relatedStudios: Array.from(affectedDevelopers) },
   });
   return NextResponse.json({
     studio: name,
@@ -122,5 +150,8 @@ export async function POST(req: NextRequest) {
     existing: officialGames.length - imported - errors.length,
     errors,
     relatedStudios: Array.from(affectedDevelopers),
+    dlcsChecked: studioDlcs.length,
+    dlcsLinked,
+    dlcsMissing: missingDlcIds.size,
   });
 }

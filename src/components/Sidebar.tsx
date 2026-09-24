@@ -2,22 +2,23 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useEffect, useState } from "react";
+import { SteamMenuIcon, type SteamMenuIconName } from "@/components/SteamMenuIcon";
 
 // active:false = page stub ("À venir"), voir CONTEXT.md § mécaniques pas encore implémentées.
 // Affichées barrées dans le menu tant qu'elles ne sont pas développées.
-const NAV = [
-  { href: "/dashboard", label: "Paquets", icon: "📦", active: true },
-  { href: "/collection", label: "Collection", icon: "🗂️", active: true },
-  { href: "/echanges", label: "Échanges", icon: "🔁", active: true },
-  { href: "/marche", label: "Marché", icon: "💰", active: true },
-  { href: "/profil", label: "Profil", icon: "👤", active: false },
-  { href: "/guilde", label: "Guilde", icon: "🏰", active: false },
-  { href: "/joueurs", label: "Joueurs", icon: "🧑‍🤝‍🧑", active: true },
-  { href: "/messages", label: "Messages", icon: "💬", active: true },
-  { href: "/bataille", label: "Bataille", icon: "⚔️", active: true },
-  { href: "/succes", label: "Succès", icon: "🏆", active: false },
-  { href: "/classement", label: "Classement", icon: "📊", active: false },
-  { href: "/parametres", label: "Paramètres", icon: "⚙️", active: false },
+const NAV: { href: string; label: string; icon: SteamMenuIconName; active: boolean }[] = [
+  { href: "/dashboard", label: "Paquets", icon: "packs", active: true },
+  { href: "/collection", label: "Collection", icon: "collection", active: true },
+  { href: "/echanges", label: "Échanges", icon: "exchange", active: true },
+  { href: "/marche", label: "Marché", icon: "market", active: true },
+  { href: "/profil", label: "Profil", icon: "profile", active: false },
+  { href: "/guilde", label: "Guilde", icon: "guild", active: false },
+  { href: "/joueurs", label: "Joueurs", icon: "players", active: true },
+  { href: "/messages", label: "Messages", icon: "messages", active: true },
+  { href: "/bataille", label: "Bataille", icon: "battle", active: true },
+  { href: "/succes", label: "Succès", icon: "achievements", active: false },
+  { href: "/classement", label: "Classement", icon: "ranking", active: false },
+  { href: "/parametres", label: "Paramètres", icon: "settings", active: false },
 ];
 
 const STORAGE_KEY = "sm_sidebar_collapsed";
@@ -35,7 +36,7 @@ function BottomNav({ isAdmin }: { isAdmin: boolean }) {
             pathname === item.href ? "text-white" : "text-gray-500"
           }`}
         >
-          <span className="text-xl leading-none">{item.icon}</span>
+          <SteamMenuIcon name={item.icon} className="steam-nav-icon" />
           <span className="text-[8px] tracking-tight leading-none">{item.label}</span>
         </Link>
       ))}
@@ -127,7 +128,7 @@ export function Sidebar({ isAdmin, username, coins }: { isAdmin: boolean; userna
                   active ? "bg-blue-600 text-white border-red-500/60" : "text-gray-400 hover:bg-gray-800 hover:text-white"
                 }`}
               >
-                <span className="steam-nav-icon shrink-0">{item.icon}</span>
+                <SteamMenuIcon name={item.icon} className="steam-nav-icon shrink-0" />
                 {!collapsed && (
                   <span className={`truncate ${!item.active ? "line-through" : ""}`}>{item.label}</span>
                 )}
@@ -142,7 +143,7 @@ export function Sidebar({ isAdmin, username, coins }: { isAdmin: boolean; userna
                 collapsed ? "justify-center" : ""
               } ${pathname === "/admin/games" ? "bg-purple-600 text-white" : "text-purple-400 hover:bg-gray-800"}`}
             >
-              <span className="steam-nav-icon shrink-0">🛡️</span>
+              <SteamMenuIcon name="admin" className="steam-nav-icon shrink-0" />
               {!collapsed && <span className="truncate">Console Admin</span>}
             </Link>
           )}

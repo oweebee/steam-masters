@@ -4,6 +4,8 @@ import { prisma } from "@/lib/prisma";
 import { upsertStudiosForDevelopers } from "@/lib/steam";
 import { recalculateCatalogRarity } from "@/lib/catalogRarity";
 import { writeAppLog } from "@/lib/appLog";
+import { cardDefense } from "@/lib/cardDefense";
+import { persistRemoteImage } from "@/lib/storedImages";
 
 async function requireAdmin() {
   const session = await auth();
@@ -27,6 +29,67 @@ export async function POST(req: Request) {
   const developers = Array.from(new Set(games.flatMap((game) => game.developers).filter(Boolean)));
   await upsertStudiosForDevelopers(developers);
 
+  const dlcs = await prisma.steamGame.findMany({
+    where: { contentType: "DLC" },
+    select: { id: true, name: true, ownerEstimate: true, def: true, developers: true, parentGameId: true, headerImage: true, parentGame: { select: { contentType: true, developers: true } } },
+  });
+  const imageKeys = dlcs.map((dlc) => `game:${dlc.id}`);
+  const validImages = await prisma.storedImage.findMany({
+    where: { key: { in: imageKeys }, data: { not: null }, mimeType: { not: null } },
+    select: { key: true },
+  });
+  const imageKeySet = new Set(validImages.map((image) => image.key));
+  const defRepairs = new Map<number, string[]>();
+  const dlcStudioRepairs = new Map<string, string[]>();
+  const dlcIssues: { id: string; reason: string }[] = [];
+  let dlcImagesRestored = 0;
+  let dlcImagesMissing = 0;
+  let dlcParentsInvalid = 0;
+  let dlcOwnersInvalid = 0;
+
+  for (const dlc of dlcs) {
+    if (dlc.ownerEstimate > 0) {
+      const expectedDef = cardDefense(dlc.ownerEstimate);
+      if (dlc.def !== expectedDef) defRepairs.set(expectedDef, [...(defRepairs.get(expectedDef) ?? []), dlc.id]);
+    } else {
+      dlcOwnersInvalid += 1;
+      dlcIssues.push({ id: dlc.id, reason: "estimation de possesseurs non positive; DEF non fabriquée" });
+    }
+
+    if (!dlc.parentGameId || dlc.parentGame?.contentType !== "GAME") {
+      dlcParentsInvalid += 1;
+      dlcIssues.push({ id: dlc.id, reason: "jeu parent absent ou non typé GAME" });
+    } else if (dlc.developers.length === 0 && dlc.parentGame.developers.length > 0) {
+      const developerKey = JSON.stringify(dlc.parentGame.developers);
+      dlcStudioRepairs.set(developerKey, [...(dlcStudioRepairs.get(developerKey) ?? []), dlc.id]);
+    } else if (dlc.developers.length === 0) {
+      dlcIssues.push({ id: dlc.id, reason: "aucun studio renseigné sur le DLC ou son jeu parent" });
+    }
+
+    const imageKey = `game:${dlc.id}`;
+    if (!imageKeySet.has(imageKey)) {
+      const stored = await prisma.storedImage.findUnique({ where: { key: imageKey }, select: { sourceUrl: true } });
+      const sourceUrl = stored?.sourceUrl ?? (dlc.headerImage.startsWith("https://") ? dlc.headerImage : null);
+      if (sourceUrl) {
+        try {
+          await persistRemoteImage("game", dlc.id, sourceUrl);
+          dlcImagesRestored += 1;
+          continue;
+        } catch (error) {
+          dlcIssues.push({ id: dlc.id, reason: `image non restaurée: ${error instanceof Error ? error.message : "source inaccessible"}` });
+        }
+      }
+      dlcImagesMissing += 1;
+    }
+  }
+
+  for (const [def, ids] of defRepairs) {
+    await prisma.steamGame.updateMany({ where: { id: { in: ids }, contentType: "DLC", ownerEstimate: { gt: 0 } }, data: { def } });
+  }
+  for (const [developerKey, ids] of dlcStudioRepairs) {
+    await prisma.steamGame.updateMany({ where: { id: { in: ids }, contentType: "DLC" }, data: { developers: JSON.parse(developerKey) as string[] } });
+  }
+
   const orphanStudios = await prisma.studio.findMany({
     where: { gameCount: 0 },
     select: { id: true, name: true, _count: { select: { cards: true } } },
@@ -38,12 +101,15 @@ export async function POST(req: Request) {
 
   const rarityResult = await recalculateCatalogRarity();
 
+  const dlcDefenseFixed = Array.from(defRepairs.values()).reduce((sum, ids) => sum + ids.length, 0);
+  const dlcStudiosLinked = Array.from(dlcStudioRepairs.values()).reduce((sum, ids) => sum + ids.length, 0);
+  const dlcsWithoutStudio = dlcs.filter((dlc) => dlc.developers.length === 0 && (!dlc.parentGame || dlc.parentGame.developers.length === 0)).length;
   await writeAppLog({
     runId,
     category: "REPAIR",
-    level: "SUCCESS",
-    message: `Scan terminé : ${developers.length} studio(s), ${rarityResult?.cardsFixed ?? 0} rareté(s) de carte corrigée(s), ${removable.length} studio(s) orphelin(s) supprimé(s)`,
-    details: { entriesScanned: rarityResult?.entriesScanned ?? 0, gamesFixed: rarityResult?.gamesFixed ?? 0, studiosFixed: rarityResult?.studiosFixed ?? 0, cardsFixed: rarityResult?.cardsFixed ?? 0, orphanStudiosRemoved: removable.length },
+    level: dlcIssues.length ? "WARNING" : "SUCCESS",
+    message: `Scan terminé : ${developers.length} studio(s), ${dlcs.length} DLC vérifié(s), ${dlcStudiosLinked} lien(s) studio réparé(s), ${dlcDefenseFixed} DEF corrigée(s), ${dlcImagesRestored} image(s) restaurée(s), ${dlcIssues.length} anomalie(s) DLC`,
+    details: { entriesScanned: rarityResult?.entriesScanned ?? 0, gamesFixed: rarityResult?.gamesFixed ?? 0, studiosFixed: rarityResult?.studiosFixed ?? 0, cardsFixed: rarityResult?.cardsFixed ?? 0, orphanStudiosRemoved: removable.length, dlcsScanned: dlcs.length, dlcStudiosLinked, dlcsWithoutStudio, dlcDefenseFixed, dlcImagesRestored, dlcImagesMissing, dlcParentsInvalid, dlcOwnersInvalid, dlcIssues },
   });
 
   return NextResponse.json({
@@ -53,5 +119,13 @@ export async function POST(req: Request) {
     studiosUpserted: developers.length,
     orphanStudiosRemoved: removable.length,
     orphanStudiosKept: orphanStudios.length - removable.length,
+    dlcsScanned: dlcs.length,
+    dlcStudiosLinked,
+    dlcsWithoutStudio,
+    dlcDefenseFixed,
+    dlcImagesRestored,
+    dlcImagesMissing,
+    dlcParentsInvalid,
+    dlcOwnersInvalid,
   });
 }

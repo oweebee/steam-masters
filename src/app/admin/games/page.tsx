@@ -19,7 +19,7 @@ type Game = {
   isFree: boolean;
   contentType: "GAME" | "DLC";
 };
-type DlcScanState = { scannedGames: number; total: number; imported: number; rejected: number; errors: number; done: boolean; current?: string };
+type DlcScanState = { scannedGames: number; total: number; imported: number; rejected: number; errors: number; done: boolean; cancelled?: boolean; current?: string; error?: string; retryable?: boolean };
 
 type Suggestion = { appid: number; name: string; tinyImage: string };
 type StudioMatch = { id: string; name: string; gameCount: number };
@@ -47,7 +47,7 @@ export default function AdminGamesPage() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [syncingStudios, setSyncingStudios] = useState(false);
-  const [syncProgress, setSyncProgress] = useState({ done: 0, total: 0, imported: 0, errors: 0 });
+  const [syncProgress, setSyncProgress] = useState({ done: 0, total: 0, imported: 0, errors: 0, dlcsChecked: 0, dlcsLinked: 0, dlcsMissing: 0 });
   const [syncMessage, setSyncMessage] = useState("");
   const [seeding, setSeeding] = useState(false);
   const [seedMessage, setSeedMessage] = useState("");
@@ -55,7 +55,10 @@ export default function AdminGamesPage() {
   const [repairing, setRepairing] = useState(false);
   const [repairMessage, setRepairMessage] = useState("");
   const [dlcScan, setDlcScan] = useState<DlcScanState | null>(null);
+  const [archivedDlcErrors, setArchivedDlcErrors] = useState(0);
+  const [purgingDlcErrors, setPurgingDlcErrors] = useState(false);
   const [scanningDlcs, setScanningDlcs] = useState(false);
+  const [cancelRequested, setCancelRequested] = useState(false);
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   async function load() {
@@ -65,7 +68,10 @@ export default function AdminGamesPage() {
 
   useEffect(() => { load(); }, []);
   useEffect(() => {
-    fetch("/api/admin/games/dlc-scan").then((response) => response.json()).then((data) => setDlcScan(data.state)).catch(() => {});
+    fetch("/api/admin/games/dlc-scan").then((response) => response.json()).then((data) => {
+      setDlcScan(data.state);
+      setArchivedDlcErrors(Number(data.archivedErrors) || 0);
+    }).catch(() => {});
   }, []);
 
   useEffect(() => {
@@ -125,7 +131,7 @@ export default function AdminGamesPage() {
     const runId = sharedRunId ?? createRunId("studio-sync");
     setSyncingStudios(true);
     setSyncMessage("");
-    setSyncProgress({ done: 0, total: 0, imported: 0, errors: 0 });
+    setSyncProgress({ done: 0, total: 0, imported: 0, errors: 0, dlcsChecked: 0, dlcsLinked: 0, dlcsMissing: 0 });
 
     const listRes = await resilientFetch("/api/admin/studios/sync");
     if (!listRes?.ok) {
@@ -139,6 +145,9 @@ export default function AdminGamesPage() {
     const known = new Set(queue);
     let imported = 0;
     let errors = 0;
+    let dlcsChecked = 0;
+    let dlcsLinked = 0;
+    let dlcsMissing = 0;
 
     for (let index = 0; index < queue.length; index += 1) {
       setSyncMessage(`Synchronisation de ${queue[index]}…`);
@@ -151,6 +160,9 @@ export default function AdminGamesPage() {
         const data = await res.json();
         imported += data.imported ?? 0;
         errors += Array.isArray(data.errors) ? data.errors.length : 0;
+        dlcsChecked += data.dlcsChecked ?? 0;
+        dlcsLinked += data.dlcsLinked ?? 0;
+        dlcsMissing += data.dlcsMissing ?? 0;
         for (const related of data.relatedStudios ?? []) {
           if (!known.has(related)) {
             known.add(related);
@@ -161,11 +173,11 @@ export default function AdminGamesPage() {
         errors += 1;
         setSyncMessage(`${queue[index]} interrompu ou en erreur, passage au studio suivant…`);
       }
-      setSyncProgress({ done: index + 1, total: queue.length, imported, errors });
+      setSyncProgress({ done: index + 1, total: queue.length, imported, errors, dlcsChecked, dlcsLinked, dlcsMissing });
       if (index < queue.length - 1) await new Promise((r) => setTimeout(r, 400));
     }
 
-    setSyncMessage(`Terminé : ${imported} jeu(x) Steam ajouté(s), ${errors} erreur(s).`);
+    setSyncMessage(`Terminé : ${imported} jeu(x) ajouté(s), ${dlcsChecked} DLC vérifié(s), ${dlcsLinked} lien(s) studio réparé(s), ${dlcsMissing} DLC à cataloguer, ${errors} erreur(s).`);
     setSyncingStudios(false);
     load();
   }
@@ -173,7 +185,7 @@ export default function AdminGamesPage() {
   async function fullRepairScan() {
     const runId = createRunId("full-repair");
     setRepairing(true);
-    setRepairMessage("Réparation locale (rareté, fiches studio, orphelins)…");
+    setRepairMessage("Réparation locale (raretés, DLC, images, fiches studio, orphelins)…");
     const res = await resilientFetch("/api/admin/consistency", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -186,7 +198,7 @@ export default function AdminGamesPage() {
     }
     const data = await res.json();
     setRepairMessage(
-      `Local OK : ${data.gamesRarityFixed} rareté(s) catalogue corrigée(s), ${data.cardsRarityFixed ?? 0} carte(s) violette/orange réalignée(s), ${data.studiosUpserted} studio(s) recalculé(s), ` +
+      `Local OK : ${data.gamesRarityFixed} rareté(s) catalogue corrigée(s), ${data.cardsRarityFixed ?? 0} carte(s) réalignée(s), ${data.dlcsScanned ?? 0} DLC vérifié(s), ${data.dlcStudiosLinked ?? 0} lien(s) studio DLC réparé(s), ${data.dlcsWithoutStudio ?? 0} DLC sans studio, ${data.dlcDefenseFixed ?? 0} DEF DLC corrigée(s), ${data.dlcImagesRestored ?? 0} image(s) DLC restaurée(s), ${data.studiosUpserted} studio(s) recalculé(s), ` +
       `${data.orphanStudiosRemoved} orphelin(s) supprimé(s). Recherche des jeux manquants sur Steam (peut prendre plusieurs minutes)…`
     );
     load();
@@ -197,6 +209,7 @@ export default function AdminGamesPage() {
 
   async function scanDlcs() {
     setScanningDlcs(true);
+    setCancelRequested(false);
     let state = dlcScan;
     const runId = createRunId("dlc-catalog");
     try {
@@ -206,8 +219,17 @@ export default function AdminGamesPage() {
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ runId, restart: state?.done === true }),
         });
-        if (!response?.ok) throw new Error("Connexion ou synchronisation interrompue; le curseur est conservé pour reprendre.");
-        state = await response.json();
+        const payload = await response?.json().catch(() => null);
+        if (!response?.ok) {
+          if (payload && typeof payload === "object") {
+            state = payload as DlcScanState;
+            setDlcScan(state);
+          }
+          throw new Error(payload?.retryable
+            ? `Steam limite les requêtes. Le curseur est conservé sur ${payload.current ?? "le contenu en cours"}; attends un peu puis reprends le scan.`
+            : payload?.error ?? "Connexion ou synchronisation interrompue; le curseur est conservé pour reprendre.");
+        }
+        state = payload as DlcScanState;
         setDlcScan(state);
       } while (state && !state.done);
       load();
@@ -215,6 +237,51 @@ export default function AdminGamesPage() {
       setError(caught instanceof Error ? caught.message : "Scan DLC interrompu; tu peux le reprendre.");
     } finally {
       setScanningDlcs(false);
+      setCancelRequested(false);
+    }
+  }
+
+  async function interruptDlcScan(deferUntilBatchEnds: boolean) {
+    setCancelRequested(true);
+    setError("");
+    try {
+      const response = await resilientFetch("/api/admin/games/dlc-scan", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ cancel: true, defer: deferUntilBatchEnds }),
+      });
+      const data = await response?.json().catch(() => null);
+      if (!response?.ok || !data) throw new Error("Impossible de demander l’arrêt du scan.");
+      if (data.state) setDlcScan(data.state as DlcScanState);
+      if (data.done) {
+        setDlcScan(data as DlcScanState);
+        load();
+      }
+    } catch (caught) {
+      setError(caught instanceof Error ? caught.message : "Impossible d’interrompre le scan DLC.");
+      setCancelRequested(false);
+    } finally {
+      if (!deferUntilBatchEnds) setCancelRequested(false);
+    }
+  }
+
+  async function purgeDlcErrorArchive() {
+    if (!window.confirm(`Purger les ${archivedDlcErrors} AppID archivés ? Ils pourront être retentés au prochain scan.`)) return;
+    setPurgingDlcErrors(true);
+    try {
+      const response = await fetch("/api/admin/games/dlc-scan", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ purgeErrorArchive: true }),
+      });
+      const data = await response.json();
+      if (!response.ok) throw new Error(data.error ?? "Purge impossible.");
+      setArchivedDlcErrors(Number(data.archivedErrors) || 0);
+      setError(`${data.purged ?? 0} AppID retiré(s) de l’archive; ils pourront être vérifiés à nouveau.`);
+    } catch (caught) {
+      setError(caught instanceof Error ? caught.message : "Purge de l’archive impossible.");
+    } finally {
+      setPurgingDlcErrors(false);
     }
   }
 
@@ -444,13 +511,18 @@ export default function AdminGamesPage() {
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div>
             <h2 className="text-white font-semibold">Scanner les DLC et extensions</h2>
-            <p className="text-gray-500 text-xs mt-1">Parcourt le catalogue par lots reprenables, importe les DLC Steam avec DEF positive et stocke leur image sur le serveur.</p>
+            <p className="text-gray-500 text-xs mt-1">Parcourt le catalogue par lots reprenables, ignore les AppID inconnus archivés, importe les DLC valides et stocke leur image sur le serveur.</p>
           </div>
-          <button type="button" onClick={scanDlcs} disabled={scanningDlcs || syncingStudios || seeding} className="bg-red-800 hover:bg-red-700 text-white font-semibold rounded-lg px-4 py-2 disabled:opacity-50">
-            {scanningDlcs ? "Scan en cours…" : dlcScan && !dlcScan.done ? "Reprendre le scan DLC" : "Scanner les DLC"}
-          </button>
+          <div className="flex flex-wrap gap-2">
+            <button type="button" onClick={() => scanningDlcs ? void interruptDlcScan(true) : void scanDlcs()} disabled={cancelRequested || (!scanningDlcs && (syncingStudios || seeding || repairing))} className="bg-red-800 hover:bg-red-700 text-white font-semibold rounded-lg px-4 py-2 disabled:opacity-50">
+              {scanningDlcs ? cancelRequested ? "Arrêt demandé…" : "Interrompre et valider" : dlcScan && !dlcScan.done ? "Reprendre le scan DLC" : "Scanner les DLC"}
+            </button>
+            <button type="button" onClick={() => void purgeDlcErrorArchive()} disabled={purgingDlcErrors || scanningDlcs || archivedDlcErrors === 0} className="border border-amber-700 text-amber-200 hover:bg-amber-950 rounded-lg px-3 py-2 text-sm disabled:opacity-50">
+              {purgingDlcErrors ? "Purge…" : `Purger l’archive d’erreurs (${archivedDlcErrors})`}
+            </button>
+          </div>
         </div>
-        {dlcScan && <p className="text-gray-400 text-xs mt-3">{scanningDlcs ? `Analyse de ${dlcScan.current ?? "Steam"}… ` : dlcScan.done ? "Scan terminé · " : "Reprise disponible · "}{dlcScan.scannedGames}/{dlcScan.total} jeux · {dlcScan.imported} DLC créés · {dlcScan.rejected} refusés · {dlcScan.errors} erreurs</p>}
+        {dlcScan && <p className="text-gray-400 text-xs mt-3">{scanningDlcs ? cancelRequested ? "Arrêt après le lot en cours, puis recalcul et validation… " : `Analyse de ${dlcScan.current ?? "Steam"}… ` : dlcScan.cancelled ? "Scan interrompu · données intégrées et raretés recalculées · " : dlcScan.done ? "Scan terminé · " : "Reprise disponible · "}{dlcScan.scannedGames}/{dlcScan.total} jeux · {dlcScan.imported} DLC créés · {dlcScan.rejected} refusés · {dlcScan.errors} erreurs</p>}
       </div>
 
       <div className="bg-gray-900 border border-gray-800 rounded-xl p-4 mb-8 max-w-2xl">
@@ -481,7 +553,7 @@ export default function AdminGamesPage() {
             <p className="text-gray-400 text-xs mt-2">{syncMessage}</p>
             {syncProgress.total > 0 && (
               <p className="text-gray-600 text-[11px] mt-1">
-                {syncProgress.done}/{syncProgress.total} studios · {syncProgress.imported} jeux ajoutés · {syncProgress.errors} erreurs
+                {syncProgress.done}/{syncProgress.total} studios · {syncProgress.imported} jeux ajoutés · {syncProgress.dlcsChecked} DLC vérifiés · {syncProgress.dlcsLinked} liens studio réparés · {syncProgress.dlcsMissing} DLC à cataloguer · {syncProgress.errors} erreurs
               </p>
             )}
           </div>

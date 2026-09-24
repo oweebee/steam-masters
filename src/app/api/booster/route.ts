@@ -114,9 +114,9 @@ export async function POST() {
     // Vert=20, Blanc=illimité. Si le palier tiré est déjà plafonné pour ce jeu/
     // studio précis, on redescend d'un cran (jamais on ne change de jeu/studio).
     let rarity: Rarity = rollCardRarity();
-    // Un tirage orange n'est possible que sur un jeu du catalogue déjà éligible
-    // par ses ventes estimées. Les Studios et jeux moins vendus passent Épique.
-    if (rarity === "LEGENDARY" && (!responseGame || !isLegendaryGameEligible(responseGame.ownerEstimate, responseGame.rarity, responseGame.contentType))) {
+    // Un tirage orange n'est possible que sur une fiche de jeu/DLC éligible
+    // par ses ventes estimées. Les Studios et titres moins vendus passent Épique.
+    if (rarity === "LEGENDARY" && (!responseGame || !isLegendaryGameEligible(responseGame.ownerEstimate, responseGame.rarity))) {
       rarity = "EPIC";
     }
     if (rarity === "EPIC" && !(responseGame

@@ -1,19 +1,20 @@
 "use client";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { SteamMenuIcon, type SteamMenuIconName } from "@/components/SteamMenuIcon";
 
-const TABS = [
-  { href: "/admin", label: "Accueil", icon: "🏠" },
-  { href: "/admin/users", label: "Utilisateurs", icon: "👥" },
-  { href: "/admin/cards", label: "Toutes les cartes", icon: "🃏" },
-  { href: "/admin/games", label: "Import de jeux", icon: "📥" },
-  { href: "/admin/logs", label: "Journal", icon: "📜" },
-  { href: "/admin/settings", label: "Configuration", icon: "⚙️" },
+const TABS: { href: string; label: string; icon: SteamMenuIconName }[] = [
+  { href: "/admin", label: "Accueil", icon: "home" },
+  { href: "/admin/users", label: "Utilisateurs", icon: "users" },
+  { href: "/admin/cards", label: "Toutes les cartes", icon: "cards" },
+  { href: "/admin/games", label: "Import de jeux", icon: "import" },
+  { href: "/admin/logs", label: "Journal", icon: "logs" },
+  { href: "/admin/settings", label: "Configuration", icon: "configuration" },
 ];
 
-const SHORTCUTS = [
-  { href: "/dashboard", label: "Paquets", icon: "📦" },
-  { href: "/collection", label: "Collection", icon: "🗂️" },
+const SHORTCUTS: { href: string; label: string; icon: SteamMenuIconName }[] = [
+  { href: "/dashboard", label: "Paquets", icon: "packs" },
+  { href: "/collection", label: "Collection", icon: "collection" },
 ];
 
 export function AdminTabs() {
@@ -34,7 +35,7 @@ export function AdminTabs() {
                     : "border-transparent text-gray-400 hover:text-white hover:border-gray-700"
                 }`}
               >
-                <span className="steam-tab-icon">{tab.icon}</span>
+                <SteamMenuIcon name={tab.icon} className="steam-tab-icon" />
                 {tab.label}
               </Link>
             );
@@ -48,7 +49,7 @@ export function AdminTabs() {
               title={`Retour : ${s.label}`}
               className="flex items-center gap-1.5 px-3 py-1.5 my-2 text-xs rounded-lg bg-gray-900 text-gray-400 hover:text-white hover:bg-gray-800 whitespace-nowrap transition"
             >
-              <span>{s.icon}</span>
+              <SteamMenuIcon name={s.icon} className="steam-tab-icon" />
               {s.label}
             </Link>
           ))}
