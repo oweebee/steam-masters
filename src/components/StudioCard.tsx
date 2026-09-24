@@ -151,7 +151,7 @@ export function StudioCard({
           )}
         </div>
 
-        <div className="steam-card-visual steam-studio-visual w-[calc(100%+2rem)] h-28 -mx-4 mt-auto bg-gradient-to-br from-gray-800 to-gray-900 flex items-center justify-center overflow-hidden">
+        <div className="steam-card-visual steam-studio-visual w-[calc(100%+2rem)] h-28 -mx-4 mt-auto bg-gradient-to-br from-gray-800 to-gray-900 flex items-center justify-center">
           {gameImages.length > 1 ? (
             <div className={`steam-studio-mosaic steam-studio-mosaic-${Math.min(gameImages.length, 4)}`}>
               {gameImages.slice(0, 4).map((image, index) => (

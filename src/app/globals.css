@@ -203,10 +203,10 @@ a.bg-purple-600 {
 .steam-card-shell {
   --card-accent: #c4b49e;
   --card-accent-soft: rgba(196, 180, 158, 0.22);
-  --rarity-halo: 5px;
-  --rarity-sparkle: 3.8s;
-  --rarity-flame-height: .45rem;
-  --rarity-flame-opacity: .45;
+  --rarity-halo: 7px;
+  --rarity-sparkle: 3.2s;
+  --rarity-flame-height: 1rem;
+  --rarity-flame-opacity: .72;
   position: relative;
   overflow: hidden;
   background:
@@ -218,10 +218,10 @@ a.bg-purple-600 {
     0 10px 24px rgba(0,0,0,0.42);
 }
 
-.steam-card-shell[data-rarity="UNCOMMON"] { --card-accent: #43b967; --card-accent-soft: rgba(67,185,103,0.28); --rarity-halo: 8px; --rarity-sparkle: 3.2s; --rarity-flame-height: .55rem; --rarity-flame-opacity: .6; }
-.steam-card-shell[data-rarity="RARE"] { --card-accent: #4b91dc; --card-accent-soft: rgba(75,145,220,0.38); --rarity-halo: 11px; --rarity-sparkle: 2.7s; --rarity-flame-height: .65rem; --rarity-flame-opacity: .75; }
-.steam-card-shell[data-rarity="EPIC"] { --card-accent: #a967dc; --card-accent-soft: rgba(169,103,220,0.48); --rarity-halo: 15px; --rarity-sparkle: 2.1s; --rarity-flame-height: .77rem; --rarity-flame-opacity: .9; }
-.steam-card-shell[data-rarity="LEGENDARY"] { --card-accent: #e58238; --card-accent-soft: rgba(229,130,56,0.62); --rarity-halo: 20px; --rarity-sparkle: 1.55s; --rarity-flame-height: .9rem; --rarity-flame-opacity: 1; }
+.steam-card-shell[data-rarity="UNCOMMON"] { --card-accent: #43b967; --card-accent-soft: rgba(67,185,103,0.28); --rarity-halo: 9px; --rarity-sparkle: 2.8s; --rarity-flame-height: 1.05rem; --rarity-flame-opacity: .8; }
+.steam-card-shell[data-rarity="RARE"] { --card-accent: #4b91dc; --card-accent-soft: rgba(75,145,220,0.38); --rarity-halo: 12px; --rarity-sparkle: 2.3s; --rarity-flame-height: 1.1rem; --rarity-flame-opacity: .88; }
+.steam-card-shell[data-rarity="EPIC"] { --card-accent: #a967dc; --card-accent-soft: rgba(169,103,220,0.48); --rarity-halo: 16px; --rarity-sparkle: 1.7s; --rarity-flame-height: 1.17rem; --rarity-flame-opacity: .95; }
+.steam-card-shell[data-rarity="LEGENDARY"] { --card-accent: #e58238; --card-accent-soft: rgba(229,130,56,0.62); --rarity-halo: 21px; --rarity-sparkle: 1.2s; --rarity-flame-height: 1.22rem; --rarity-flame-opacity: 1; }
 
 .steam-card-shell::after {
   content: "";
@@ -325,21 +325,23 @@ a.bg-purple-600 {
 .steam-card-rarity-gem::after {
   content: "";
   position: absolute;
-  inset: -4px;
+  inset: -7px;
   border-radius: 50%;
-  background: radial-gradient(circle, var(--card-accent-soft) 0 15%, transparent 70%);
-  animation: rarity-glint calc(var(--rarity-sparkle) * 1.7) ease-in-out infinite;
+  background: radial-gradient(circle, var(--card-accent-soft) 0 20%, transparent 75%);
+  animation: rarity-led-pulse var(--rarity-sparkle) ease-out infinite;
 }
 
 @keyframes rarity-sparkle {
-  0%, 100% { filter: brightness(1); box-shadow: inset 0 0 0 1px #21130e, 0 2px 4px #000, 0 0 3px var(--card-accent), 0 0 var(--rarity-halo) var(--card-accent-soft); }
-  46% { filter: brightness(1.2); box-shadow: inset 0 0 0 1px #21130e, 0 2px 4px #000, 0 0 5px var(--card-accent), 0 0 calc(var(--rarity-halo) * 1.3) var(--card-accent-soft); }
-  51% { filter: brightness(1.8); box-shadow: inset 0 0 0 1px #21130e, 0 2px 4px #000, 0 0 8px var(--card-accent), 0 0 calc(var(--rarity-halo) * 1.8) var(--card-accent-soft); }
-  55% { filter: brightness(1.1); }
-  60% { filter: brightness(1.5); }
+  0%, 100% { filter: brightness(.8); box-shadow: inset 0 0 0 1px #21130e, 0 2px 4px #000, 0 0 3px var(--card-accent), 0 0 var(--rarity-halo) var(--card-accent-soft); }
+  35%, 52% { filter: brightness(2.1); box-shadow: inset 0 0 0 1px #21130e, 0 2px 4px #000, 0 0 9px var(--card-accent), 0 0 calc(var(--rarity-halo) * 2) var(--card-accent); }
+  43% { filter: brightness(.65); }
+  68% { filter: brightness(1.45); }
 }
 
-@keyframes rarity-glint { 0%, 28%, 75%, 100% { opacity: .18; } 46% { opacity: 1; } }
+@keyframes rarity-led-pulse {
+  0% { transform: scale(.65); opacity: .75; }
+  70%, 100% { transform: scale(1.75); opacity: 0; }
+}
 
 .steam-card-clamp {
   position: absolute;
@@ -375,14 +377,14 @@ a.bg-purple-600 {
   content: "";
   position: absolute;
   left: 50%;
-  bottom: 43%;
-  width: .48rem;
+  bottom: 2px;
+  width: 1.4rem;
   height: var(--rarity-flame-height);
   opacity: var(--rarity-flame-opacity);
-  transform-origin: 50% 95%;
-  border-radius: 65% 8% 65% 50%;
-  background: radial-gradient(ellipse at 48% 78%, #fff8ce 0 13%, var(--card-accent) 38%, transparent 75%);
-  filter: drop-shadow(0 0 var(--rarity-halo) var(--card-accent));
+  transform-origin: 50% 90%;
+  clip-path: polygon(50% 0%, 66% 20%, 65% 37%, 82% 24%, 95% 55%, 91% 75%, 75% 92%, 50% 100%, 25% 92%, 9% 75%, 5% 55%, 30% 37%, 29% 20%);
+  background: radial-gradient(ellipse at 50% 86%, #fff9d8 0 13%, var(--card-accent) 33%, #a92c1d 84%);
+  filter: drop-shadow(0 0 7px var(--card-accent));
   animation: rarity-flame calc(var(--rarity-sparkle) * .48) ease-in-out infinite alternate;
 }
 
@@ -399,18 +401,23 @@ a.bg-purple-600 {
 
 @media (prefers-reduced-motion: reduce) {
   .steam-card-rarity-gem, .steam-card-rarity-gem::after,
-  .steam-card-image-dial, .steam-card-image-dial::before { animation: none; }
+  .steam-card-image-dial, .steam-card-image-dial::before { animation-duration: 6s; }
 }
 
 .steam-card-image-dial i {
-  width: 2px;
-  height: 0.55rem;
-  transform: rotate(38deg) translateY(-1px);
-  transform-origin: bottom;
-  border-radius: 2px;
-  background: var(--card-accent);
-  box-shadow: 0 0 4px var(--card-accent);
+  position: absolute;
+  left: 50%;
+  bottom: 4px;
+  z-index: 1;
+  width: .44rem;
+  height: .6rem;
+  transform: translateX(-50%);
+  clip-path: polygon(50% 0, 77% 35%, 100% 76%, 75% 100%, 25% 100%, 0 76%, 23% 35%);
+  background: #fff6cd;
+  box-shadow: 0 0 8px #fff6cd;
 }
+
+.steam-studio-visual { overflow: visible; }
 
 .steam-card-visual {
   position: relative;
