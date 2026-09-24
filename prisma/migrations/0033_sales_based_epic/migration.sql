@@ -33,7 +33,7 @@ FROM ranked_dlcs AS ranked WHERE dlc.id = ranked.id;
 -- Un studio ne peut être Épique que si au moins un jeu du catalogue remplit
 -- réellement le palier Épique par ventes. Aucun studio n'est Légendaire.
 WITH ranked_games AS (
-  SELECT id, developers, "ownerEstimate",
+  SELECT id, developers, "ownerEstimate", "reviewScore",
          row_number() OVER (ORDER BY "ownerEstimate" DESC, id ASC) AS position,
          count(*) OVER () AS total
   FROM "SteamGame" WHERE "contentType" = 'GAME'
