@@ -37,6 +37,17 @@ export async function POST(req: NextRequest) {
     await writeAppLog({ runId, category: "IMPORT", level: "WARNING", message: `${data.name} refusé : DEF nul`, details: { appid: String(data.appid), def: data.ownerEstimate } });
     return NextResponse.json({ error: "Jeu refusé : DEF doit être supérieur à 0" }, { status: 422 });
   }
+  const parentGameId = data.parentAppId ? String(data.parentAppId) : null;
+  if (data.contentType === "DLC" && !parentGameId) {
+    await writeAppLog({ runId, category: "IMPORT", level: "WARNING", message: `${data.name} refusé : Steam ne fournit aucun jeu parent`, details: { appid: String(data.appid) } });
+    return NextResponse.json({ error: "DLC refusé : jeu parent Steam introuvable" }, { status: 422 });
+  }
+  if (data.contentType === "DLC") {
+    const parent = await prisma.steamGame.findUnique({ where: { id: parentGameId! }, select: { contentType: true } });
+    if (parent?.contentType !== "GAME") {
+      return NextResponse.json({ error: "DLC refusé : importez d’abord son jeu parent" }, { status: 422 });
+    }
+  }
 
   let headerImage: string;
   try {
@@ -74,6 +85,9 @@ export async function POST(req: NextRequest) {
       developers: data.developers,
       priceCents: data.priceCents,
       isFree: data.isFree,
+      contentType: data.contentType,
+      parentGameId,
+      dlcAppIds: data.dlcAppIds.map(String),
     },
     create: {
       id: String(data.appid),
@@ -90,10 +104,13 @@ export async function POST(req: NextRequest) {
       developers: data.developers,
       priceCents: data.priceCents,
       isFree: data.isFree,
+      contentType: data.contentType,
+      parentGameId,
+      dlcAppIds: data.dlcAppIds.map(String),
     },
   });
 
-  await upsertStudiosForDevelopers(data.developers);
+  if (data.contentType === "GAME") await upsertStudiosForDevelopers(data.developers);
   // skipRecalc : import en lot (page admin) — un seul recalcul catalogue complet
   // à la fin du lot plutôt qu'un par jeu (coût O(N x taille catalogue) sinon).
   if (!skipRecalc) await recalculateCatalogRarity();
@@ -103,8 +120,8 @@ export async function POST(req: NextRequest) {
     runId,
     category: "IMPORT",
     level: "SUCCESS",
-    message: `${data.name} importé avec ${data.developers.length} studio(s) lié(s)`,
-    details: { appid: String(data.appid), developers: data.developers, def: data.ownerEstimate, reviewScore: data.reviewScore },
+    message: `${data.name} (${data.contentType}) importé${data.contentType === "GAME" ? ` avec ${data.developers.length} studio(s) lié(s)` : ` — parent ${parentGameId}`}`,
+    details: { appid: String(data.appid), contentType: data.contentType, parentGameId, developers: data.developers, def: data.ownerEstimate, reviewScore: data.reviewScore },
   });
   return NextResponse.json(finalGame ?? game);
 }

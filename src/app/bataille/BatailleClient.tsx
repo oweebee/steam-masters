@@ -10,7 +10,7 @@ import type { PublicBattleCard, BattleQuestion } from "@/lib/battle";
 
 type OwnedCard = {
   id: string; rarity: Rarity; atk: number; sellable?: boolean; staked?: boolean;
-  game?: { id: string; name: string; headerImage: string; description: string; def: number; tags: string[]; developers: string[]; reviewScore: number; peakCcu: number; ownerEstimate: number; priceCents: number | null; isFree: boolean } | null;
+  game?: { id: string; name: string; headerImage: string; description: string; def: number; tags: string[]; developers: string[]; reviewScore: number; peakCcu: number; ownerEstimate: number; priceCents: number | null; isFree: boolean; contentType: "GAME" | "DLC" } | null;
   studio?: { name: string; avatarUrl: string | null; gameCount: number; def: number; games: { name: string; appid: string | null; hasCard: boolean; headerImage?: string | null }[]; about: string | null } | null;
 };
 type Player = { id: string; username: string; cardCount: number; isSelf: boolean };
@@ -114,7 +114,7 @@ function DeckPicker({ cards, selected, onChange, allowPreview }: { cards: OwnedC
     {allowPreview && preview && <div className="battle-preview-overlay" role="presentation" onClick={() => setPreview(null)}>
       <div className="battle-preview-dialog" role="dialog" aria-modal="true" aria-label={`Carte ${preview.game?.name ?? preview.studio?.name ?? ""}`} onClick={(event) => event.stopPropagation()}>
         <button type="button" className="battle-preview-close" onClick={() => setPreview(null)} aria-label="Fermer la carte">×</button>
-        {preview.game ? <GameCard id={preview.game.id} name={preview.game.name} headerImage={preview.game.headerImage} description={preview.game.description} atk={preview.atk} def={preview.game.def} rarity={preview.rarity} tags={preview.game.tags} developers={preview.game.developers} reviewScore={preview.game.reviewScore} peakCcu={preview.game.peakCcu} ownerEstimate={preview.game.ownerEstimate} priceCents={preview.game.priceCents} isFree={preview.game.isFree} /> : preview.studio ? <StudioCard name={preview.studio.name} gameCount={preview.studio.gameCount} atk={preview.atk} def={preview.studio.def} rarity={preview.rarity} games={preview.studio.games} about={preview.studio.about} avatarUrl={preview.studio.avatarUrl} /> : null}
+        {preview.game ? <GameCard id={preview.game.id} name={preview.game.name} headerImage={preview.game.headerImage} description={preview.game.description} atk={preview.atk} def={preview.game.def} rarity={preview.rarity} tags={preview.game.tags} developers={preview.game.developers} reviewScore={preview.game.reviewScore} peakCcu={preview.game.peakCcu} ownerEstimate={preview.game.ownerEstimate} priceCents={preview.game.priceCents} isFree={preview.game.isFree} contentType={preview.game.contentType} /> : preview.studio ? <StudioCard name={preview.studio.name} gameCount={preview.studio.gameCount} atk={preview.atk} def={preview.studio.def} rarity={preview.rarity} games={preview.studio.games} about={preview.studio.about} avatarUrl={preview.studio.avatarUrl} /> : null}
       </div>
     </div>}
   </div>;

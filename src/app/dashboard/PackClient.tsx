@@ -20,6 +20,7 @@ type Game = {
   ownerEstimate: number;
   priceCents: number | null;
   isFree: boolean;
+  contentType: "GAME" | "DLC";
 };
 
 type Studio = {
@@ -148,6 +149,7 @@ export function PackClient() {
               ownerEstimate={lastOpened.ownerEstimate}
               priceCents={lastOpened.priceCents}
               isFree={lastOpened.isFree}
+              contentType={lastOpened.contentType}
             />
           )}
           {lastOpenedStudio && (

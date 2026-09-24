@@ -13,7 +13,7 @@ export async function GET(req: NextRequest, context: { params: Promise<{ id: str
   const game = await prisma.steamGame.findUnique({ where: { id }, select: {
     id: true, name: true, headerImage: true, description: true, atk: true, def: true,
     rarity: true, tags: true, developers: true, reviewScore: true, peakCcu: true,
-    ownerEstimate: true, priceCents: true, isFree: true,
+    ownerEstimate: true, priceCents: true, isFree: true, contentType: true, parentGameId: true,
   } });
   if (!game) return NextResponse.json({ error: "Carte introuvable" }, { status: 404 });
   if (!game.developers.includes(studioName)) {

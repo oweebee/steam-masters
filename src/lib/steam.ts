@@ -61,6 +61,9 @@ export interface SteamGameData {
   developers: string[]; // source: appdetails.developers (Steam officiel)
   priceCents: number | null; // source: appdetails.price_overview.final (devise EUR, cc=fr) — null si non disponible
   isFree: boolean;            // source: appdetails.is_free (Steam officiel)
+  contentType: "GAME" | "DLC";
+  parentAppId: number | null;
+  dlcAppIds: number[];
 }
 
 export interface SteamDeveloperGame {
@@ -99,9 +102,22 @@ async function fetchAppDetails(appid: number) {
   );
   if (!res.ok) throw new Error(`Steam appdetails HTTP ${res.status}`);
   const json = await res.json();
-  const entry = json[String(appid)];
+  const entry = json[String(appid)] ?? Object.values(json).find((candidate) =>
+    Number((candidate as { data?: { steam_appid?: number } })?.data?.steam_appid) === appid
+  );
   if (!entry?.success) throw new Error(`Steam appdetails: appid ${appid} introuvable`);
   return entry.data;
+}
+
+export async function getSteamDlcAppIds(appid: number): Promise<number[]> {
+  const cacheKey = `steam:dlc-list:v1:${appid}`;
+  const cached = await redis.get(cacheKey);
+  if (cached) return JSON.parse(cached) as number[];
+  const details = await fetchAppDetails(appid);
+  if (details.type !== "game") throw new Error(`Steam appdetails: ${appid} n'est pas un jeu parent`);
+  const ids = (details.dlc ?? []).map(Number).filter((id: number) => Number.isSafeInteger(id) && id > 0);
+  await redis.set(cacheKey, JSON.stringify(ids), "EX", CACHE_TTL);
+  return ids;
 }
 
 async function fetchReviewScore(appid: number): Promise<number> {
@@ -141,7 +157,7 @@ async function fetchOwnerEstimate(appid: number): Promise<number> {
 }
 
 export async function getSteamGameData(appid: number): Promise<SteamGameData> {
-  const cacheKey = `steam:game:${appid}`;
+  const cacheKey = `steam:game:v2:${appid}`;
   const cached = await redis.get(cacheKey);
   if (cached) return JSON.parse(cached);
 
@@ -155,7 +171,10 @@ export async function getSteamGameData(appid: number): Promise<SteamGameData> {
     fetchCurrentPlayers(appid),
     fetchOwnerEstimate(appid),
   ]);
-  if (details.type !== "game") throw new Error(`Steam appdetails: appid ${appid} n'est pas un jeu`);
+  if (details.type !== "game" && details.type !== "dlc") {
+    throw new Error(`Steam appdetails: appid ${appid} n'est ni un jeu ni un DLC`);
+  }
+  const parentAppId = details.type === "dlc" ? Number(details.fullgame?.appid) : null;
 
   const data: SteamGameData = {
     appid,
@@ -169,6 +188,9 @@ export async function getSteamGameData(appid: number): Promise<SteamGameData> {
     developers: details.developers ?? [],
     priceCents: details.price_overview?.final ?? null,
     isFree: !!details.is_free,
+    contentType: details.type === "dlc" ? "DLC" : "GAME",
+    parentAppId: Number.isSafeInteger(parentAppId) && parentAppId! > 0 ? parentAppId : null,
+    dlcAppIds: details.type === "game" ? (details.dlc ?? []).map(Number).filter((id: number) => Number.isSafeInteger(id) && id > 0) : [],
   };
 
   await redis.set(cacheKey, JSON.stringify(data), "EX", CACHE_TTL);
@@ -259,7 +281,7 @@ export async function upsertStudiosForDevelopers(developers: string[]) {
 
   // Une seule lecture pour tout le lot (avant : 2 requêtes + 1 upsert par studio).
   const games = await prisma.steamGame.findMany({
-    where: { developers: { hasSome: Array.from(names) } },
+    where: { contentType: "GAME", developers: { hasSome: Array.from(names) } },
     select: { name: true, reviewScore: true, ownerEstimate: true, developers: true },
   });
   const gamesByDeveloper = new Map<string, typeof games>();

@@ -82,6 +82,9 @@ export async function POST(req: NextRequest) {
           developers: data.developers,
           priceCents: data.priceCents,
           isFree: data.isFree,
+          contentType: "GAME",
+          parentGameId: null,
+          dlcAppIds: data.dlcAppIds.map(String),
         },
       });
       data.developers.forEach((developer) => affectedDevelopers.add(developer));

@@ -24,6 +24,10 @@ enum Rarity {
   EPIC
   LEGENDARY
 }
+enum SteamContentType {
+  GAME
+  DLC
+}
 enum TradeStatus {
   PENDING
   ACCEPTED
@@ -177,12 +181,18 @@ model SteamGame {
   developers    String[]
   priceCents    Int?     // prix Steam en centimes (devise EUR), null si non récupéré
   isFree        Boolean  @default(false)
+  contentType   SteamContentType @default(GAME)
+  parentGameId  String?
+  dlcAppIds     String[] @default([])
   updatedAt     DateTime @updatedAt
 
+  parentGame SteamGame?  @relation("GameDlc", fields: [parentGameId], references: [id], onDelete: SetNull)
+  dlcGames   SteamGame[] @relation("GameDlc")
   cards    Card[]
   auctions Auction[]
 
   @@index([name])
+  @@index([contentType, parentGameId])
   @@index([developers], type: Gin)
 }
 

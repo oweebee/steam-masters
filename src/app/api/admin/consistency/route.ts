@@ -23,7 +23,7 @@ export async function POST(req: Request) {
   const runId = typeof body?.runId === "string" ? body.runId : null;
   await writeAppLog({ runId, category: "REPAIR", message: "Scan de cohérence locale démarré" });
 
-  const games = await prisma.steamGame.findMany({ select: { developers: true } });
+  const games = await prisma.steamGame.findMany({ where: { contentType: "GAME" }, select: { developers: true } });
   const developers = Array.from(new Set(games.flatMap((game) => game.developers).filter(Boolean)));
   await upsertStudiosForDevelopers(developers);
 
@@ -42,13 +42,14 @@ export async function POST(req: Request) {
     runId,
     category: "REPAIR",
     level: "SUCCESS",
-    message: `Scan terminé : ${developers.length} studio(s), ${removable.length} orphelin(s) supprimé(s)`,
-    details: { gamesScanned: rarityResult?.entriesScanned ?? 0, gamesFixed: rarityResult?.gamesFixed ?? 0, studiosFixed: rarityResult?.studiosFixed ?? 0, orphanStudiosRemoved: removable.length },
+    message: `Scan terminé : ${developers.length} studio(s), ${rarityResult?.cardsFixed ?? 0} rareté(s) de carte corrigée(s), ${removable.length} studio(s) orphelin(s) supprimé(s)`,
+    details: { entriesScanned: rarityResult?.entriesScanned ?? 0, gamesFixed: rarityResult?.gamesFixed ?? 0, studiosFixed: rarityResult?.studiosFixed ?? 0, cardsFixed: rarityResult?.cardsFixed ?? 0, orphanStudiosRemoved: removable.length },
   });
 
   return NextResponse.json({
     gamesScanned: rarityResult?.entriesScanned ?? 0,
     gamesRarityFixed: (rarityResult?.gamesFixed ?? 0) + (rarityResult?.studiosFixed ?? 0),
+    cardsRarityFixed: rarityResult?.cardsFixed ?? 0,
     studiosUpserted: developers.length,
     orphanStudiosRemoved: removable.length,
     orphanStudiosKept: orphanStudios.length - removable.length,

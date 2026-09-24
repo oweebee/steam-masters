@@ -27,6 +27,7 @@ export async function GET() {
   const items = [
     ...games.map((g) => ({
       type: "GAME" as const,
+      contentType: g.contentType,
       id: g.id,
       name: g.name,
       headerImage: g.headerImage,

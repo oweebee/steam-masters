@@ -17,7 +17,7 @@ export async function buildGameLinkMap(
   const unique = Array.from(new Set(allNames));
   if (unique.length === 0) return new Map();
   const games = await prisma.steamGame.findMany({
-    where: { name: { in: unique } },
+    where: { name: { in: unique }, contentType: "GAME" },
   });
   return new Map(games.map((g) => [g.name, {
     appid: g.id,
@@ -52,7 +52,7 @@ export async function buildStudioGamesByDeveloper(
   if (uniqueNames.length === 0) return out;
 
   const games = await prisma.steamGame.findMany({
-    where: { developers: { hasSome: uniqueNames } },
+    where: { developers: { hasSome: uniqueNames }, contentType: "GAME" },
     orderBy: { name: "asc" },
   });
 

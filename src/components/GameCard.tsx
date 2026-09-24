@@ -31,6 +31,7 @@ export function GameCard({
   ownerEstimate,
   priceCents,
   isFree,
+  contentType = "GAME",
   onFlipChange,
 }: {
   id?: string;
@@ -47,6 +48,7 @@ export function GameCard({
   ownerEstimate?: number;
   priceCents?: number | null;
   isFree?: boolean;
+  contentType?: "GAME" | "DLC";
   onFlipChange?: (flipped: boolean) => void;
 }) {
   const style = RARITY_STYLES[rarity];
@@ -66,6 +68,7 @@ export function GameCard({
       <div className="steam-card-content p-4 flex flex-col gap-2 flex-1">
         <div className="steam-card-nameplate">
           <h3 className="steam-card-title text-white font-bold text-lg leading-tight">{name}</h3>
+          {contentType === "DLC" && <span className="ml-2 rounded border border-amber-700/70 px-1.5 py-0.5 text-[9px] uppercase tracking-wider text-amber-300">DLC</span>}
         </div>
 
         {tags.length > 0 && (

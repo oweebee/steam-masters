@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import type { SteamGame, Studio } from "@prisma/client";
 import { auth } from "@/auth";
 import { prisma } from "@/lib/prisma";
+import { isEpicGameEligible, isLegendaryGameEligible } from "@/lib/catalogRarity";
 import { rollCardRarity, RARITY_CAP, nextLowerRarity, rollAtkForRarity, type Rarity } from "@/lib/rarityRoll";
 
 const BOOSTER_INTERVAL_MS = 60 * 60 * 1000; // 1 heure
@@ -61,6 +62,7 @@ export async function POST() {
   let studioId: string | undefined;
   let responseGame: SteamGame | null = null;
   let responseStudio: StudioResponse | null = null;
+  let studioEpicEligible = false;
 
   if (idx < gamePoolSize) {
     const [game] = await prisma.steamGame.findMany({ take: 1, skip: idx, orderBy: { id: "asc" } });
@@ -73,6 +75,7 @@ export async function POST() {
     studioId = studio.id;
     const studioGames = await prisma.steamGame.findMany({
       where: {
+        contentType: "GAME",
         OR: [
           { developers: { has: studio.name } },
           ...(studio.games.length ? [{ name: { in: studio.games } }] : []),
@@ -80,6 +83,7 @@ export async function POST() {
       },
       orderBy: { name: "asc" },
     });
+    studioEpicEligible = studio.rarity === "EPIC" && studioGames.some((game) => isEpicGameEligible(game.ownerEstimate, game.rarity));
     responseStudio = {
       ...studio,
       coverImage: studioGames[0]?.headerImage ?? null,
@@ -110,6 +114,16 @@ export async function POST() {
     // Vert=20, Blanc=illimité. Si le palier tiré est déjà plafonné pour ce jeu/
     // studio précis, on redescend d'un cran (jamais on ne change de jeu/studio).
     let rarity: Rarity = rollCardRarity();
+    // Un tirage orange n'est possible que sur un jeu du catalogue déjà éligible
+    // par ses ventes estimées. Les Studios et jeux moins vendus passent Épique.
+    if (rarity === "LEGENDARY" && (!responseGame || !isLegendaryGameEligible(responseGame.ownerEstimate, responseGame.rarity, responseGame.contentType))) {
+      rarity = "EPIC";
+    }
+    if (rarity === "EPIC" && !(responseGame
+      ? isEpicGameEligible(responseGame.ownerEstimate, responseGame.rarity)
+      : studioEpicEligible)) {
+      rarity = "RARE";
+    }
     for (;;) {
       const cap = RARITY_CAP[rarity];
       if (cap === Infinity) break;

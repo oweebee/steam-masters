@@ -17,7 +17,9 @@ type Game = {
   ownerEstimate: number;
   priceCents: number | null;
   isFree: boolean;
+  contentType: "GAME" | "DLC";
 };
+type DlcScanState = { scannedGames: number; total: number; imported: number; rejected: number; errors: number; done: boolean; current?: string };
 
 type Suggestion = { appid: number; name: string; tinyImage: string };
 type StudioMatch = { id: string; name: string; gameCount: number };
@@ -52,6 +54,8 @@ export default function AdminGamesPage() {
   const [seedProgress, setSeedProgress] = useState({ base: 0, studiosDone: 0, studiosTotal: 0, errors: 0 });
   const [repairing, setRepairing] = useState(false);
   const [repairMessage, setRepairMessage] = useState("");
+  const [dlcScan, setDlcScan] = useState<DlcScanState | null>(null);
+  const [scanningDlcs, setScanningDlcs] = useState(false);
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   async function load() {
@@ -60,6 +64,9 @@ export default function AdminGamesPage() {
   }
 
   useEffect(() => { load(); }, []);
+  useEffect(() => {
+    fetch("/api/admin/games/dlc-scan").then((response) => response.json()).then((data) => setDlcScan(data.state)).catch(() => {});
+  }, []);
 
   useEffect(() => {
     if (debounceRef.current) clearTimeout(debounceRef.current);
@@ -179,13 +186,36 @@ export default function AdminGamesPage() {
     }
     const data = await res.json();
     setRepairMessage(
-      `Local OK : ${data.gamesRarityFixed} rareté(s) corrigée(s), ${data.studiosUpserted} studio(s) recalculé(s), ` +
+      `Local OK : ${data.gamesRarityFixed} rareté(s) catalogue corrigée(s), ${data.cardsRarityFixed ?? 0} carte(s) violette/orange réalignée(s), ${data.studiosUpserted} studio(s) recalculé(s), ` +
       `${data.orphanStudiosRemoved} orphelin(s) supprimé(s). Recherche des jeux manquants sur Steam (peut prendre plusieurs minutes)…`
     );
     load();
     await syncAllStudios(runId);
     setRepairMessage((m) => m.replace("Recherche des jeux manquants sur Steam (peut prendre plusieurs minutes)…", "Terminé."));
     setRepairing(false);
+  }
+
+  async function scanDlcs() {
+    setScanningDlcs(true);
+    let state = dlcScan;
+    const runId = createRunId("dlc-catalog");
+    try {
+      do {
+        const response = await resilientFetch("/api/admin/games/dlc-scan", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ runId, restart: state?.done === true }),
+        });
+        if (!response?.ok) throw new Error("Connexion ou synchronisation interrompue; le curseur est conservé pour reprendre.");
+        state = await response.json();
+        setDlcScan(state);
+      } while (state && !state.done);
+      load();
+    } catch (caught) {
+      setError(caught instanceof Error ? caught.message : "Scan DLC interrompu; tu peux le reprendre.");
+    } finally {
+      setScanningDlcs(false);
+    }
   }
 
   async function addTwentyNewGames() {
@@ -410,6 +440,19 @@ export default function AdminGamesPage() {
         {repairMessage && <p className="text-gray-400 text-xs mt-3">{repairMessage}</p>}
       </div>
 
+      <div className="bg-gray-900 border border-gray-800 rounded-xl p-4 mb-4 max-w-2xl">
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <div>
+            <h2 className="text-white font-semibold">Scanner les DLC et extensions</h2>
+            <p className="text-gray-500 text-xs mt-1">Parcourt le catalogue par lots reprenables, importe les DLC Steam avec DEF positive et stocke leur image sur le serveur.</p>
+          </div>
+          <button type="button" onClick={scanDlcs} disabled={scanningDlcs || syncingStudios || seeding} className="bg-red-800 hover:bg-red-700 text-white font-semibold rounded-lg px-4 py-2 disabled:opacity-50">
+            {scanningDlcs ? "Scan en cours…" : dlcScan && !dlcScan.done ? "Reprendre le scan DLC" : "Scanner les DLC"}
+          </button>
+        </div>
+        {dlcScan && <p className="text-gray-400 text-xs mt-3">{scanningDlcs ? `Analyse de ${dlcScan.current ?? "Steam"}… ` : dlcScan.done ? "Scan terminé · " : "Reprise disponible · "}{dlcScan.scannedGames}/{dlcScan.total} jeux · {dlcScan.imported} DLC créés · {dlcScan.rejected} refusés · {dlcScan.errors} erreurs</p>}
+      </div>
+
       <div className="bg-gray-900 border border-gray-800 rounded-xl p-4 mb-8 max-w-2xl">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div>
@@ -463,6 +506,7 @@ export default function AdminGamesPage() {
             ownerEstimate={g.ownerEstimate}
             priceCents={g.priceCents}
             isFree={g.isFree}
+            contentType={g.contentType}
           />
         ))}
       </div>

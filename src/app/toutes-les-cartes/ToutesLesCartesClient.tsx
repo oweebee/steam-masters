@@ -7,6 +7,7 @@ type Rarity = "COMMON" | "UNCOMMON" | "RARE" | "EPIC" | "LEGENDARY";
 
 type Item = {
   type: "GAME" | "STUDIO";
+  contentType?: "GAME" | "DLC";
   id: string;
   name: string;
   headerImage: string | null;
@@ -154,6 +155,7 @@ export function ToutesLesCartesClient() {
                 ownerEstimate={it.ownerEstimate}
                 priceCents={it.priceCents}
                 isFree={it.isFree}
+                contentType={it.contentType}
               />
             </div>
           ) : (

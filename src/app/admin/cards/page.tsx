@@ -9,6 +9,7 @@ type Instance = { id: string; username: string; rarity: Rarity; atk: number };
 
 type Item = {
   type: "GAME" | "STUDIO";
+  contentType?: "GAME" | "DLC";
   id: string;
   name: string;
   headerImage: string | null;
@@ -420,6 +421,7 @@ export default function AdminCardsPage() {
                 ownerEstimate={it.ownerEstimate}
                 priceCents={it.priceCents}
                 isFree={it.isFree}
+                contentType={it.contentType}
               />
             ) : (
               <StudioCard

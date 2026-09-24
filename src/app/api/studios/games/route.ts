@@ -18,6 +18,7 @@ export async function GET(req: NextRequest) {
   });
   const localGames = await prisma.steamGame.findMany({
     where: {
+      contentType: "GAME",
       OR: [
         { developers: { has: name } },
         ...(studio?.games.length ? [{ name: { in: studio.games } }] : []),

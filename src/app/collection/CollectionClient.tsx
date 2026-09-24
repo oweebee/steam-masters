@@ -37,6 +37,7 @@ type Card = {
     ownerEstimate: number;
     priceCents: number | null;
     isFree: boolean;
+    contentType: "GAME" | "DLC";
   } | null;
   studio: {
     id: string;
@@ -340,6 +341,7 @@ export function CollectionClient() {
               ownerEstimate={c.game.ownerEstimate}
               priceCents={c.game.priceCents}
               isFree={c.game.isFree}
+              contentType={c.game.contentType}
               onFlipChange={(flipped) => handleCardFlip(c.id, flipped)}
             />
           ) : c.studio ? (
