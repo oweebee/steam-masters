@@ -55,9 +55,9 @@ export function CoherencePanel({ externalBusy }: { externalBusy: boolean }) {
     (status === "ALL" || status === "FAILED" && issue.status === "FAILED" || status === "LOCAL" && issue.method.startsWith("LOCAL") || status === "STEAM" && issue.method === "STEAM") &&
     `${issue.sourceName} ${issue.targetName} ${issue.appId ?? ""} ${issue.reason} ${issue.failureReason ?? ""}`.toLocaleLowerCase("fr").includes(query.trim().toLocaleLowerCase("fr"))
   ), [report, relation, status, query]);
-  const lastPage = Math.max(0, Math.ceil(filtered.length / 50) - 1);
+  const lastPage = Math.max(0, Math.ceil(filtered.length / 200) - 1);
   const currentPage = Math.min(page, lastPage);
-  const visible = filtered.slice(currentPage * 50, currentPage * 50 + 50);
+  const visible = filtered.slice(currentPage * 200, currentPage * 200 + 200);
   const selectedIssues = (report?.issues ?? []).filter((issue) => selected.includes(issue.key));
   const steamSelected = selectedIssues.filter((issue) => issue.method === "STEAM");
   const studioSelected = selectedIssues.filter((issue) => issue.method === "LOCAL_STUDIO");
@@ -72,22 +72,35 @@ export function CoherencePanel({ externalBusy }: { externalBusy: boolean }) {
     } catch (e) { setError(e instanceof Error ? e.message : "Erreur locale."); }
     finally { setBusy(false); }
   }
-  async function importSelection() {
-    if (locked || !steamSelected.length) return;
+  async function ignoreAll() {
+    const keys = filtered.map((i) => i.key);
+    if (!keys.length || locked) return;
+    if (!window.confirm(`Retirer définitivement ${keys.length} lien(s) ? Ils ne seront plus proposés ni cliquables. Aucune carte détenue par un joueur ne sera supprimée.`)) return;
+    setBusy(true); setError("");
+    try {
+      const data = await request("/api/admin/coherence", { action: "ignore", keys });
+      setReport(data); setSelected([]);
+      setMessage(`${data.removed} lien(s) retiré(s) définitivement.`);
+    } catch (e) { setError(e instanceof Error ? e.message : "Erreur locale."); }
+    finally { setBusy(false); }
+  }
+  async function importSelection(issueList?: typeof steamSelected) {
+    const list = issueList ?? steamSelected;
+    if (locked || !list.length) return;
     setImporting(true); setError(""); stopped.current = false;
-    setImportProgress({ index: 0, total: steamSelected.length, current: "" });
+    setImportProgress({ index: 0, total: list.length, current: "" });
     let resolved = 0; let failed = 0;
     try {
-      for (let index = 0; index < steamSelected.length && !stopped.current; index++) {
-        const issue = steamSelected[index];
-        setMessage(`${index + 1}/${steamSelected.length} · ${issue.sourceName} → ${issue.targetName}`);
-        setImportProgress({ index: index + 1, total: steamSelected.length, current: `${issue.sourceName} → ${issue.targetName}` });
+      for (let index = 0; index < list.length && !stopped.current; index++) {
+        const issue = list[index];
+        setMessage(`${index + 1}/${list.length} · ${issue.sourceName} → ${issue.targetName}`);
+        setImportProgress({ index: index + 1, total: list.length, current: `${issue.sourceName} → ${issue.targetName}` });
         const response = await fetch("/api/admin/coherence/import", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ key: issue.key }), signal: AbortSignal.timeout(300_000) });
         const result = await response.json();
         if (result.resolved) resolved++; else failed++;
         if (result.paused || response.status >= 500) { stopped.current = true; if (mounted.current) setError(`${result.error ?? "Serveur indisponible."}${result.retryAfter ? ` Reprise possible dans ${result.retryAfter} s.` : ""}`); }
         if (mounted.current) await refresh();
-        if (index + 1 < steamSelected.length && !stopped.current) {
+        if (index + 1 < list.length && !stopped.current) {
           for (let tick = 0; tick < 42 && !stopped.current; tick++) await new Promise((resolve) => setTimeout(resolve, 100));
         }
       }
@@ -114,7 +127,7 @@ export function CoherencePanel({ externalBusy }: { externalBusy: boolean }) {
     <div className="overflow-hidden rounded-xl border border-amber-900/60 bg-stone-950">
       <div className="flex flex-wrap gap-2 border-b border-stone-800 p-3"><input aria-label="Rechercher une anomalie" className="min-w-0 flex-1 rounded-lg border border-stone-700 bg-stone-900 px-3 py-2 text-sm text-white" placeholder="Nom, AppID, raison…" value={query} onChange={(e) => { setQuery(e.target.value); setPage(0); }} /><select aria-label="Filtrer les anomalies" className="rounded-lg border border-stone-700 bg-stone-900 px-3 py-2 text-sm text-white" value={status} onChange={(e) => { setStatus(e.target.value); setPage(0); }}><option value="ALL">Tous les états</option><option value="FAILED">Échecs / cas ambigus</option><option value="LOCAL">Traitables localement</option><option value="STEAM">Steam requis</option></select></div>
       <div className="flex flex-wrap items-center gap-2 border-b border-stone-800 p-3"><button className={button} disabled={locked} onClick={() => setSelected((current) => [...new Set([...current, ...visible.map((i) => i.key)])].slice(0, 200))}>Sélectionner cette page</button><button className={button} disabled={locked} onClick={() => setSelected([])}>Vider la sélection</button><span className="text-xs text-stone-400">{selected.length}/200 sélectionnés</span></div>
-      <div className="flex flex-wrap gap-2 border-b border-stone-800 p-3"><button className={button} disabled={locked || !studioSelected.length} onClick={() => void local("create-studios")}>Créer {studioSelected.length || "les"} studios localement</button><button className={`${button} !border-blue-800`} disabled={locked || !steamSelected.length} onClick={() => void importSelection()}>Créer / vérifier via Steam ({steamSelected.length})</button><button className={`${button} !border-red-900 !text-red-300`} disabled={locked || !selected.length} onClick={() => void local("ignore")}>Retirer définitivement les liens</button>{importing && <button className={button} onClick={() => { stopped.current = true; setMessage("Arrêt demandé après l’élément en cours…"); }}>Interrompre après cette carte</button>}</div>
+      <div className="flex flex-wrap gap-2 border-b border-stone-800 p-3"><button className={button} disabled={locked || !studioSelected.length} onClick={() => void local("create-studios")}>Créer {studioSelected.length || "les"} studios localement</button><button className={`${button} !border-blue-800`} disabled={locked || !steamSelected.length} onClick={() => void importSelection()}>Créer / vérifier via Steam ({steamSelected.length})</button><button className={`${button} !border-red-900 !text-red-300`} disabled={locked || !selected.length} onClick={() => void local("ignore")}>Retirer définitivement les liens</button><button className={`${button} !border-red-800 !text-red-400`} disabled={locked || !filtered.length} onClick={() => void ignoreAll()}>Retirer tout ({filtered.length})</button><button className={`${button} !border-blue-700 !text-blue-300`} disabled={locked || !filtered.filter((i) => i.method === "STEAM").length} onClick={() => void importSelection(filtered.filter((i) => i.method === "STEAM"))}>Steam tous ({filtered.filter((i) => i.method === "STEAM").length})</button>{importing && <button className={button} onClick={() => { stopped.current = true; setMessage("Arrêt demandé après l’élément en cours…"); }}>Interrompre après cette carte</button>}</div>
       <p className="px-3 py-2 text-xs text-stone-500">Les imports Steam sont déclenchés uniquement ici, un par un. Une limitation Steam met le lot en pause. Les échecs sont conservés sur le serveur.</p>
       {message && !importing && <p role="status" className="px-3 py-2 text-sm text-amber-200">{message}</p>}{importing && message && <div role="status" className="border-y border-amber-900/50 bg-amber-950/30 px-3 py-2 text-sm text-amber-200">{message}</div>}{error && <p role="alert" className="border-y border-red-900 bg-red-950/40 px-3 py-3 text-sm text-red-200">{error}</p>}
       <div className="overflow-x-auto"><table className="w-full min-w-[720px] text-left text-sm"><thead className="bg-stone-900 text-xs text-stone-400"><tr><th className="p-3">Choix</th><th className="p-3">Carte source → Carte liée</th><th className="p-3">Traitement</th><th className="p-3">Diagnostic</th></tr></thead><tbody>{visible.map((issue) => <tr key={issue.key} className={`border-t border-stone-800 ${issue.status === "FAILED" ? "bg-red-950/35" : ""}`}><td className="p-3"><input type="checkbox" aria-label={`Sélectionner ${issue.targetName}`} disabled={locked || selected.length >= 200 && !selected.includes(issue.key)} checked={selected.includes(issue.key)} onChange={(e) => toggle(issue.key, e.target.checked)} /></td><td className="p-3"><span className="block text-xs text-stone-500">{relations[issue.relation]}</span><span className="block text-stone-300">{issue.sourceName}</span><button onClick={() => setDetail(issue)} className="text-left font-semibold text-amber-200 underline decoration-amber-900 underline-offset-4">→ {issue.targetName}</button></td><td className="p-3 text-xs text-stone-400">{methods[issue.method]}{issue.status === "FAILED" && <strong className="mt-1 block text-red-300">Échec conservé</strong>}</td><td className="max-w-md p-3 text-xs text-stone-300">{issue.failureReason ?? issue.reason}</td></tr>)}</tbody></table></div>
