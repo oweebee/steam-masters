@@ -1,4 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
+
+export const maxDuration = 300;
 import { auth } from "@/auth";
 import { prisma } from "@/lib/prisma";
 import {
@@ -47,6 +49,7 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
   const runId = playerSubmission?.id ?? (typeof body?.runId === "string" ? body.runId : null);
+  const skipRecalc = body?.skipRecalc === true;
 
   const studio = await prisma.studio.findUnique({ where: { name }, select: { id: true } });
   if (!studio) return NextResponse.json({ error: "Studio introuvable" }, { status: 404 });
@@ -151,7 +154,7 @@ export async function POST(req: NextRequest) {
   const dlcsLinked = Array.from(dlcDeveloperRepairs.values()).reduce((sum, ids) => sum + ids.length, 0);
 
   await upsertStudiosForDevelopers(Array.from(affectedDevelopers));
-  await recalculateCatalogRarity();
+  if (!skipRecalc) await recalculateCatalogRarity();
   if (playerSubmission) {
     const cataloguedIds = await prisma.steamGame.findMany({
       where: { id: { in: officialGames.map((game) => game.appid) }, contentType: "GAME" },

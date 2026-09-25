@@ -432,10 +432,12 @@ export default function AdminGamesPage() {
 
     for (let index = 0; index < studioQueue.length; index += 1) {
       setSeedMessage(`Complétion du studio ${studioQueue[index]}…`);
+      const studioSignal = AbortSignal.timeout(180_000);
       const response = await resilientFetch("/api/admin/studios/sync", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ name: studioQueue[index], runId }),
+        body: JSON.stringify({ name: studioQueue[index], runId, skipRecalc: true }),
+        signal: studioSignal,
       });
       if (response?.ok) {
         const data = await response.json();
@@ -451,6 +453,13 @@ export default function AdminGamesPage() {
       }
       setSeedProgress({ base, studiosDone: index + 1, studiosTotal: studioQueue.length, errors });
     }
+
+    setSeedMessage("Recalcul final des raretés…");
+    await resilientFetch("/api/admin/consistency", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ runId }),
+    });
 
     const [afterGamesRes, afterStudiosRes] = await Promise.all([
       resilientFetch("/api/admin/games"),
