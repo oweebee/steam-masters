@@ -30,8 +30,15 @@ export function analyzeCoherence({ games, studios }: Snapshot): CoherenceIssue[]
   const issues: CoherenceIssue[] = [];
   const byId = new Map(games.map((game) => [game.id, game]));
   const mains = games.filter((game) => game.contentType === "GAME");
-  const matches = <T extends { name: string }>(rows: T[], name: string) => rows.filter((row) => normalizeCoherenceName(row.name) === normalizeCoherenceName(name));
-  const contains = (names: string[], name: string) => names.some((entry) => normalizeCoherenceName(entry) === normalizeCoherenceName(name));
+  // Pre-build lookup maps: O(n+m) init → O(1) per lookup instead of O(n×m) linear scans.
+  const norm = (s: string) => normalizeCoherenceName(s);
+  const studiosByNorm = new Map<string, LocalStudio[]>();
+  for (const s of studios) { const k = norm(s.name); const arr = studiosByNorm.get(k); if (arr) arr.push(s); else studiosByNorm.set(k, [s]); }
+  const mainsByNorm = new Map<string, LocalGame[]>();
+  for (const g of mains) { const k = norm(g.name); const arr = mainsByNorm.get(k); if (arr) arr.push(g); else mainsByNorm.set(k, [g]); }
+  const gameDeveloperNorms = new Map(games.map((g) => [g.id, new Set(g.developers.map(norm))]));
+  const studioGameNorms = new Map(studios.map((s) => [s.id, new Set(s.games.map(norm))]));
+  const devInAnyMain = new Set(mains.flatMap((g) => g.developers.map(norm)));
   const add = (issue: Omit<CoherenceIssue, "key">) => issues.push({ ...issue, key: `${issue.relation}:${issue.linkKey}` });
   for (const game of games) {
     const relation: Relation = game.contentType === "GAME" ? "GAME_STUDIO" : "DLC_STUDIO";
@@ -40,15 +47,15 @@ export function analyzeCoherence({ games, studios }: Snapshot): CoherenceIssue[]
     const developers = [...new Set([...game.developers, ...inherited].map((name) => name.trim()).filter(Boolean))];
     if (!developers.length) add({ relation, method: "STEAM", sourceType: game.contentType, sourceId: game.id, sourceName: game.name, targetType: "STUDIO", targetName: "Studio non renseigné", linkKey: `unknown-studio:${game.id}`, appId: game.id, reason: "Aucun développeur renseigné dans les données locales." });
     for (const name of developers) {
-      const found = matches(studios, name);
+      const found = studiosByNorm.get(norm(name)) ?? [];
       const base = { relation, sourceType: game.contentType, sourceId: game.id, sourceName: game.name, targetType: "STUDIO" as const, targetName: name, linkKey: studioLinkKey(game.id, name) };
       if (found.length > 1) { add({ ...base, method: "BLOCKED", reason: "Plusieurs studios portent ce nom : rapprochement automatique impossible." }); continue; }
-      if (!contains(game.developers, name)) {
+      if (!gameDeveloperNorms.get(game.id)?.has(norm(name))) {
         add({ ...base, method: "LOCAL_LINK", targetId: found[0]?.id, repair: { gameId: game.id, developer: name }, reason: "Le développeur du jeu parent manque sur la fiche DLC." });
       } else if (!found.length) {
-        const canBuild = mains.some((entry) => contains(entry.developers, name));
+        const canBuild = devInAnyMain.has(norm(name));
         add({ ...base, method: canBuild ? "LOCAL_STUDIO" : "BLOCKED", repair: { developer: name }, reason: canBuild ? "Studio absent, créable depuis les jeux déjà en base." : "Studio absent et aucun jeu principal local ne permet de calculer sa fiche." });
-      } else if (game.contentType === "GAME" && !contains(found[0].games, game.name)) {
+      } else if (game.contentType === "GAME" && !studioGameNorms.get(found[0].id)?.has(norm(game.name))) {
         add({ ...base, method: "LOCAL_LINK", targetId: found[0].id, repair: { studioId: found[0].id, gameName: game.name }, reason: "Les deux fiches existent, mais le jeu manque dans la liste du studio." });
       }
     }
@@ -60,8 +67,8 @@ export function analyzeCoherence({ games, studios }: Snapshot): CoherenceIssue[]
     if (game.contentType === "DLC" && parent?.contentType === "GAME" && !parent.dlcAppIds.includes(game.id)) add({ relation: "GAME_DLC", method: "LOCAL_LINK", sourceType: "GAME", sourceId: parent.id, sourceName: parent.name, targetType: "DLC", targetId: game.id, targetName: game.name, linkKey: dlcLinkKey(parent.id, game.id), repair: { gameId: parent.id, dlcId: game.id }, reason: "Le DLC existe et connaît son parent, mais manque dans la liste du jeu." });
   }
   for (const studio of studios) for (const name of new Set(studio.games.filter((name) => name.trim()))) {
-    const found = matches(mains, name);
-    if (found.length === 1 && contains(found[0].developers, studio.name)) continue;
+    const found = mainsByNorm.get(norm(name)) ?? [];
+    if (found.length === 1 && gameDeveloperNorms.get(found[0].id)?.has(norm(studio.name))) continue;
     add({ relation: "STUDIO_GAME", method: found.length === 1 ? "LOCAL_LINK" : found.length > 1 ? "BLOCKED" : "STEAM", sourceType: "STUDIO", sourceId: studio.id, sourceName: studio.name, targetType: "GAME", targetId: found.length === 1 ? found[0].id : undefined, targetName: name, linkKey: found.length === 1 ? studioLinkKey(found[0].id, studio.name) : studioTitleKey(studio.id, name), repair: found.length === 1 ? { gameId: found[0].id, developer: studio.name } : undefined, reason: found.length === 1 ? "Le jeu existe, mais ne référence pas ce studio." : found.length > 1 ? "Plusieurs jeux portent ce nom : AppID à vérifier manuellement." : "Le studio référence un jeu absent du catalogue." });
   }
   for (const game of mains) for (const id of new Set(game.dlcAppIds)) {
@@ -69,7 +76,7 @@ export function analyzeCoherence({ games, studios }: Snapshot): CoherenceIssue[]
     if (dlc?.contentType === "DLC" && dlc.parentGameId === game.id) continue;
     // A parentless DLC with one known parent is already listed above.
     if (dlc?.contentType === "DLC" && (!dlc.parentGameId || byId.get(dlc.parentGameId)?.contentType !== "GAME")) continue;
-    add({ relation: "GAME_DLC", method: "STEAM", sourceType: "GAME", sourceId: game.id, sourceName: game.name, targetType: "DLC", targetId: id, targetName: dlc?.name ?? `DLC Steam #${id}`, appId: id, linkKey: dlcLinkKey(game.id, id), reason: !dlc ? "DLC déclaré absent du catalogue." : dlc.contentType !== "DLC" ? "Cette fiche existe mais n’est pas typée DLC." : "Le DLC est déjà associé à un autre jeu : vérification Steam nécessaire." });
+    add({ relation: "GAME_DLC", method: "STEAM", sourceType: "GAME", sourceId: game.id, sourceName: game.name, targetType: "DLC", targetId: id, targetName: dlc?.name ?? `DLC Steam #${id}`, appId: id, linkKey: dlcLinkKey(game.id, id), reason: !dlc ? "DLC déclaré absent du catalogue." : dlc.contentType !== "DLC" ? "Cette fiche existe mais n'est pas typée DLC." : "Le DLC est déjà associé à un autre jeu : vérification Steam nécessaire." });
   }
   return issues;
 }

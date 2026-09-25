@@ -41,14 +41,16 @@ export async function coherenceWrite<T>(fn: (db: Db) => Promise<T>): Promise<T> 
   }
 }
 export async function getCoherenceReport() {
-  return prisma.$transaction(async (db) => {
-    const [snapshot, registry] = await Promise.all([readSnapshot(db), readCoherenceRegistry(db)]);
-    const issues = analyzeCoherence(snapshot).filter((issue) => !isIgnored(issue, registry)).map((issue) => {
-      const failure = registry.failures[issue.key];
-      return { ...issue, status: failure || issue.method === "BLOCKED" ? "FAILED" as const : "MISSING" as const, failureReason: failure?.reason ?? (issue.method === "BLOCKED" ? issue.reason : undefined), failedAt: failure?.failedAt };
-    });
-    return { issues, scannedAt: new Date().toISOString(), steamRequests: 0, counts: { games: snapshot.games.filter((g) => g.contentType === "GAME").length, dlcs: snapshot.games.filter((g) => g.contentType === "DLC").length, studios: snapshot.studios.length }, ignoredCount: new Set(Object.values(registry.ignored).map((entry) => entry.issue.key)).size };
-  }, { isolationLevel: "RepeatableRead", timeout: 30_000 });
+  // Transaction is read-only (snapshot + registry). analyzeCoherence is pure CPU — runs OUTSIDE to avoid transaction timeout.
+  const [snapshot, registry] = await prisma.$transaction(
+    async (db) => Promise.all([readSnapshot(db), readCoherenceRegistry(db)]),
+    { isolationLevel: "RepeatableRead", timeout: 30_000 },
+  );
+  const issues = analyzeCoherence(snapshot).filter((issue) => !isIgnored(issue, registry)).map((issue) => {
+    const failure = registry.failures[issue.key];
+    return { ...issue, status: failure || issue.method === "BLOCKED" ? "FAILED" as const : "MISSING" as const, failureReason: failure?.reason ?? (issue.method === "BLOCKED" ? issue.reason : undefined), failedAt: failure?.failedAt };
+  });
+  return { issues, scannedAt: new Date().toISOString(), steamRequests: 0, counts: { games: snapshot.games.filter((g) => g.contentType === "GAME").length, dlcs: snapshot.games.filter((g) => g.contentType === "DLC").length, studios: snapshot.studios.length }, ignoredCount: new Set(Object.values(registry.ignored).map((entry) => entry.issue.key)).size };
 }
 export async function rememberCoherenceFailure(issue: CoherenceIssue, reason: string) {
   await coherenceWrite(async (db) => {
