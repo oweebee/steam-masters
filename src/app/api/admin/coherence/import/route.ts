@@ -17,7 +17,9 @@ export async function POST(req: NextRequest) {
   const wait = await coherenceWrite(async (db) => {
     const row = await db.appSetting.findUnique({ where: { key: LOCK } });
     const lease = row ? JSON.parse(row.value) : { until: 0 };
-    if (lease.until > Date.now()) return Math.ceil((lease.until - Date.now()) / 1000);
+    // Lock stale (> 11 min in future) means previous run crashed before finally — auto-reset.
+    const stale = lease.until > Date.now() + 11 * 60_000;
+    if (!stale && lease.until > Date.now()) return Math.ceil((lease.until - Date.now()) / 1000);
     const value = JSON.stringify({ token, until: Date.now() + 10 * 60_000 });
     await db.appSetting.upsert({ where: { key: LOCK }, create: { key: LOCK, value }, update: { value } });
     return 0;

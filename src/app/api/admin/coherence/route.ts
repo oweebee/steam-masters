@@ -11,9 +11,14 @@ export async function GET() {
 export async function POST(req: NextRequest) {
   if (!await requireAdmin()) return NextResponse.json({ error: "Non autorisé" }, { status: 403 });
   const body = await req.json().catch(() => null);
-  if (!body || !["scan", "ignore", "create-studios", "repair-existing-links"].includes(body.action)) return NextResponse.json({ error: "Action invalide" }, { status: 400 });
+  if (!body || !["scan", "ignore", "create-studios", "repair-existing-links", "clear-steam-lock"].includes(body.action)) return NextResponse.json({ error: "Action invalide" }, { status: 400 });
   const keys: string[] = Array.isArray(body.keys) ? [...new Set<string>(body.keys.filter((key: unknown): key is string => typeof key === "string" && key.length <= 2000))] : [];
   if (["ignore", "create-studios"].includes(body.action) && (!keys.length || keys.length > 200)) return NextResponse.json({ error: "Sélectionne entre 1 et 200 liens par opération." }, { status: 400 });
+  if (body.action === "clear-steam-lock") {
+    const { coherenceWrite: cw } = await import("@/lib/catalogCoherence");
+    await cw(async (db) => { await db.appSetting.deleteMany({ where: { key: "CATALOG_COHERENCE_STEAM_LOCK" } }); });
+    return NextResponse.json({ cleared: true });
+  }
   try {
     let result: { removed?: number; links?: number; created?: number } = {};
     if (body.action === "ignore") result = { removed: await dismissCoherenceIssues(keys) };
