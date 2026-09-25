@@ -176,6 +176,15 @@ export function EchangesClient({ myUserId }: { myUserId: string }) {
     }).then(setTrades).catch((e) => setError(e instanceof Error ? e.message : "Chargement des échanges impossible."));
   }
 
+  function loadMyCollection() {
+    return fetch("/api/collection", { cache: "no-store" })
+      .then((r) => (r.ok ? r.json() : []))
+      .then((cards: OwnedCollectionRecord[]) => {
+        const available = cards.filter((c) => c.sellable);
+        setMyCollection(available.map((c) => ({ id: c.id, label: c.game?.name ?? c.studio?.name ?? "?", headerImage: c.game?.headerImage ?? null, rarity: c.rarity, type: c.game?.contentType ?? "STUDIO" })));
+      }).catch(() => {});
+  }
+
   useEffect(() => {
     fetch("/api/joueurs").then((r) => (r.ok ? r.json() : [])).then((users: (Joueur & { isSelf?: boolean })[]) => setJoueurs(users.filter((user) => !user.isSelf)));
     fetch("/api/collection")
@@ -254,7 +263,7 @@ export function EchangesClient({ myUserId }: { myUserId: string }) {
       const res = await fetch(`/api/echanges/${id}/${action}`, { method: "POST", signal: AbortSignal.timeout(30_000) });
       const data = await res.json().catch(() => null);
       if (!res.ok || !data) throw new Error(data?.error ?? "Réponse serveur interrompue. Actualise les échanges.");
-      await loadTrades();
+      await Promise.all([loadTrades(), loadMyCollection()]);
     } catch (e) { setError(e instanceof Error ? e.message : "Action impossible."); }
     finally { setActingId(null); }
   }
