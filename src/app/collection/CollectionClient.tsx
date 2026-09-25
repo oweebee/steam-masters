@@ -150,6 +150,9 @@ export function CollectionClient() {
   const [categoryBusy, setCategoryBusy] = useState(false);
   const [categoryError, setCategoryError] = useState("");
   const [categoryMessage, setCategoryMessage] = useState("");
+  const [searchQuery, setSearchQuery] = useState("");
+  const [rarityFilter, setRarityFilter] = useState<Rarity | "ALL">("ALL");
+  const [categoryFilter, setCategoryFilter] = useState("ALL");
 
   async function refreshAll() {
     const [collectionResponse, playersResponse, offersResponse, categoriesResponse] = await Promise.all([
@@ -189,7 +192,7 @@ export function CollectionClient() {
     const dx = (window.innerWidth - width) / 2 - rect.left;
     const dy = Math.max(12, (window.innerHeight - height) / 2) - rect.top;
     const animation = requestAnimationFrame(() => {
-      frame.style.transform = `translate(${dx}px, ${dy}px)`;
+      frame.style.transform = `translate(${Math.round(dx)}px, ${Math.round(dy)}px)`;
     });
     return () => cancelAnimationFrame(animation);
   }, [flippedIds, returningId]);
@@ -270,7 +273,19 @@ export function CollectionClient() {
     router.refresh();
   }
 
-  const sellableIds = cards.filter((card) => card.sellable).map((card) => card.id);
+  const normalizedQuery = searchQuery.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLocaleLowerCase("fr").trim();
+  const filteredCards = cards.filter((card) => {
+    if (rarityFilter !== "ALL" && card.rarity !== rarityFilter) return false;
+    if (categoryFilter !== "ALL" && !card.categories.some((category) => category.id === categoryFilter)) return false;
+    if (!normalizedQuery) return true;
+    const haystack = [
+      card.game?.name, card.studio?.name, ...(card.game?.developers ?? []),
+      ...(card.game?.tags ?? []), ...card.categories.map((category) => category.name),
+    ].filter(Boolean).join(" ").normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLocaleLowerCase("fr");
+    return haystack.includes(normalizedQuery);
+  });
+  const sellableIds = filteredCards.filter((card) => card.sellable).map((card) => card.id);
+  const allVisibleSellableSelected = sellableIds.length > 0 && sellableIds.every((id) => selectedIds.includes(id));
   const selectedCardsAreSellable = selectedIds.every((id) => cards.find((card) => card.id === id)?.sellable);
 
   async function assignCategory(categoryId: string, action: "assign" | "unassign") {
@@ -345,10 +360,12 @@ export function CollectionClient() {
           <div className="steam-sale-actions">
             <button
               type="button"
-              onClick={() => setSelectedIds(selectedIds.length === sellableIds.length ? [] : sellableIds)}
+              onClick={() => setSelectedIds((current) => allVisibleSellableSelected
+                ? current.filter((id) => !sellableIds.includes(id))
+                : [...new Set([...current, ...sellableIds])])}
               className="steam-sale-secondary"
             >
-              {selectedIds.length === sellableIds.length ? "Tout désélectionner" : "Sélectionner les cartes vendables"}
+              {allVisibleSellableSelected ? "Désélectionner les visibles" : "Sélectionner les cartes visibles"}
             </button>
             <button type="button" onClick={() => setCategoryModal(true)} disabled={!selectedIds.length} className="steam-sale-secondary">⚑ Catégories</button>
             <button type="button" onClick={() => router.push(`/echanges?cardIds=${encodeURIComponent(selectedIds.join(","))}`)} disabled={!selectedIds.length || !selectedCardsAreSellable} className="steam-sale-secondary">⚒ Échanger</button>
@@ -366,6 +383,17 @@ export function CollectionClient() {
       </div>
       {saleMessage && <p className="steam-sale-message">{saleMessage}</p>}
       {saleError && <p className="text-red-400 text-sm mb-4">{saleError}</p>}
+      <section className="steam-collection-filters" aria-label="Rechercher et filtrer les cartes">
+        <label className="steam-collection-search"><span aria-hidden="true">⌕</span><input type="search" value={searchQuery} onChange={(event) => setSearchQuery(event.target.value)} placeholder="Rechercher une carte, un studio ou un tag…" aria-label="Rechercher dans mes collections" /></label>
+        <label><span>Rareté</span><select value={rarityFilter} onChange={(event) => setRarityFilter(event.target.value as Rarity | "ALL")}>
+          <option value="ALL">Toutes</option><option value="COMMON">Blanche</option><option value="UNCOMMON">Verte</option><option value="RARE">Bleue</option><option value="EPIC">Violette</option><option value="LEGENDARY">Légendaire</option>
+        </select></label>
+        <label><span>Catégorie</span><select value={categoryFilter} onChange={(event) => setCategoryFilter(event.target.value)}>
+          <option value="ALL">Toutes</option>{categories.map((category) => <option key={category.id} value={category.id}>{category.name}</option>)}
+        </select></label>
+        {(searchQuery || rarityFilter !== "ALL" || categoryFilter !== "ALL") && <button type="button" className="steam-sale-secondary" onClick={() => { setSearchQuery(""); setRarityFilter("ALL"); setCategoryFilter("ALL"); }}>Effacer</button>}
+        <small>{filteredCards.length} / {cards.length} carte{cards.length > 1 ? "s" : ""}</small>
+      </section>
       {deliveries.some((offer) => offer.status === "PENDING") && <section className="steam-delivery-inbox">
         <h2>Envois de cartes</h2>
         <p>Les propositions expirent après 3 jours. Les cartes restent réservées chez l’expéditeur jusque-là.</p>
@@ -386,7 +414,7 @@ export function CollectionClient() {
         {offerError && <p role="alert" className="steam-owned-error">{offerError}</p>}
       </section>}
       <div className="grid grid-cols-2 gap-3 sm:flex sm:flex-wrap sm:gap-6">
-        {cards.map((c) => {
+        {filteredCards.map((c) => {
           const selected = selectedIds.includes(c.id);
           return (
             <div key={c.id} className="steam-owned-slot">
@@ -444,6 +472,7 @@ export function CollectionClient() {
         {loaded && cards.length === 0 && (
           <p className="text-gray-500 text-sm">Aucune carte pour l&apos;instant — ouvre un paquet !</p>
         )}
+        {loaded && cards.length > 0 && filteredCards.length === 0 && <p className="text-gray-500 text-sm">Aucune carte ne correspond à ces filtres.</p>}
       </div>
       {categoryModal && <section className="steam-category-modal" role="dialog" aria-modal="true" aria-labelledby="steam-category-title">
         <header>

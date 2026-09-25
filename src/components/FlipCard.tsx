@@ -33,6 +33,7 @@ export function FlipCard({
   onFlipChange?: (flipped: boolean) => void;
 }) {
   const [flipped, setFlipped] = useState(false);
+  const [animating, setAnimating] = useState(false);
   const wrapRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -55,11 +56,13 @@ export function FlipCard({
   return (
     <div
       ref={wrapRef}
-      className="steam-card-wrap relative w-72 h-[26rem] [perspective:1200px]"
+      className={`steam-card-wrap relative w-72 h-[26rem] [perspective:1200px] ${flipped ? "is-flipped" : ""} ${flipped && !animating ? "is-settled" : ""}`}
       onClick={() => {
         if (!canFlip) return;
-        setFlipped(!flipped);
-        onFlipChange?.(!flipped);
+        const next = !flipped;
+        setFlipped(next);
+        setAnimating(true);
+        onFlipChange?.(next);
       }}
     >
       <div
@@ -67,6 +70,9 @@ export function FlipCard({
           flipped ? "[transform:rotateY(180deg)]" : ""
         } ${canFlip ? "cursor-pointer" : ""}`}
         style={{ transformStyle: "preserve-3d" }}
+        onTransitionEnd={(event) => {
+          if (event.target === event.currentTarget && event.propertyName === "transform") setAnimating(false);
+        }}
       >
         {/* FACE AVANT */}
         <div

@@ -224,6 +224,9 @@ a.bg-purple-600 {
   transform: translateY(-4px);
   filter: brightness(1.035);
 }
+.steam-card-wrap.is-flipped,
+.steam-card-wrap.is-flipped:hover { transform: none; filter: none; }
+.steam-card-wrap.is-flipped.is-settled { perspective: none; }
 
 .steam-card-shell {
   --card-accent: #c4b49e;
@@ -846,6 +849,17 @@ a.bg-purple-600 {
 .steam-sale-actions { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 0.45rem; }
 .steam-sale-message { margin: -0.5rem 0 1rem; color: #dfad65; font-size: 0.82rem; }
 
+.steam-collection-filters { display: flex; align-items: end; flex-wrap: wrap; gap: .6rem; margin: 0 0 1.15rem; padding: .75rem; border: 1px solid #4d3825; border-radius: .75rem; background: linear-gradient(110deg, rgba(183,123,59,.09), transparent 40%), #15110e; box-shadow: inset 0 1px 0 rgba(255,225,170,.05), 0 5px 16px rgba(0,0,0,.2); }
+.steam-collection-filters > label { display: grid; gap: .25rem; min-width: 8rem; color: #a88b69; font-size: .58rem; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; }
+.steam-collection-filters select,
+.steam-collection-search input { width: 100%; min-width: 0; border: 1px solid #59402b; border-radius: .45rem; padding: .55rem .65rem; color: #eadbc8; background: linear-gradient(#241b14,#15100c); font-size: .72rem; outline: none; }
+.steam-collection-filters select:focus,
+.steam-collection-search input:focus { border-color: #b77d45; box-shadow: 0 0 0 2px rgba(183,125,69,.16); }
+.steam-collection-search { display: flex !important; flex: 1 1 16rem; align-items: center; position: relative; min-width: min(100%, 14rem) !important; }
+.steam-collection-search > span { position: absolute; left: .65rem; top: 50%; transform: translateY(-52%); color: #d29b5d; font-size: 1.35rem; line-height: 1; pointer-events: none; }
+.steam-collection-search input { padding-left: 2.1rem; }
+.steam-collection-filters > small { margin: 0 0 .45rem auto; color: #82715d; font-size: .65rem; white-space: nowrap; }
+
 .steam-category-modal {
   position: fixed;
   z-index: 70;
@@ -989,6 +1003,10 @@ a.bg-purple-600 {
   .steam-collection-toolbar { align-items: stretch; flex-direction: column; }
   .steam-sale-actions { justify-content: stretch; }
   .steam-sale-actions button { flex: 1 1 auto; }
+  .steam-collection-filters { align-items: stretch; }
+  .steam-collection-filters > label { flex: 1 1 calc(50% - .3rem); }
+  .steam-collection-search { flex: 1 1 100% !important; }
+  .steam-collection-filters > small { margin-left: 0; align-self: center; }
   .steam-category-modal { padding: .9rem; }
   .steam-category-list article { flex-wrap: wrap; }
 }

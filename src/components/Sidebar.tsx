@@ -94,8 +94,12 @@ export function Sidebar({ isAdmin, username, coins }: { isAdmin: boolean; userna
 
   return (
     <>
+      <div
+        className={`steam-sidebar-spacer hidden sm:block shrink-0 transition-[width] duration-200 ${collapsed ? "w-16" : "w-64"}`}
+        aria-hidden="true"
+      />
       <aside
-        className={`steam-sidebar shrink-0 bg-gray-900 border-r border-gray-800 min-h-screen p-3 hidden sm:flex flex-col sticky top-0 transition-all duration-200 ${
+        className={`steam-sidebar fixed left-0 top-0 z-40 bg-gray-900 border-r border-gray-800 h-screen p-3 hidden sm:flex flex-col transition-all duration-200 ${
           collapsed ? "w-16" : "w-64"
         } ${loaded ? "" : "invisible"}`}
       >
@@ -115,7 +119,7 @@ export function Sidebar({ isAdmin, username, coins }: { isAdmin: boolean; userna
 
         {!collapsed && <div className="text-amber-400 text-xs px-2 mb-4">{coins} pièces</div>}
 
-        <nav className="flex flex-col gap-1 flex-1 overflow-y-auto">
+        <nav className="flex min-h-0 flex-col gap-1 flex-1 overflow-y-auto overscroll-contain">
           {NAV.map((item) => {
             const active = pathname === item.href;
             return (
