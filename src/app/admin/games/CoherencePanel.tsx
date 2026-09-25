@@ -24,7 +24,7 @@ export function CoherencePanel({ externalBusy }: { externalBusy: boolean }) {
   const [selected, setSelected] = useState<string[]>([]);
   const [page, setPage] = useState(0);
   const [detail, setDetail] = useState<Issue | null>(null);
-  const [importProgress, setImportProgress] = useState<{ index: number; total: number; current: string } | null>(null);
+  const [importProgress, setImportProgress] = useState<{ index: number; total: number; current: string; created: number; already: number; failed: number } | null>(null);
   const [lockWait, setLockWait] = useState(0);
   const [scanElapsed, setScanElapsed] = useState(0);
   const stopped = useRef(false);
@@ -89,16 +89,16 @@ export function CoherencePanel({ externalBusy }: { externalBusy: boolean }) {
     const list = issueList ?? steamSelected;
     if (locked || !list.length) return;
     setImporting(true); setError(""); stopped.current = false;
-    setImportProgress({ index: 0, total: list.length, current: "" });
-    let resolved = 0; let failed = 0;
+    setImportProgress({ index: 0, total: list.length, current: "", created: 0, already: 0, failed: 0 });
+
     try {
       for (let index = 0; index < list.length && !stopped.current; index++) {
         const issue = list[index];
         setMessage(`${index + 1}/${list.length} · ${issue.sourceName} → ${issue.targetName}`);
-        setImportProgress({ index: index + 1, total: list.length, current: `${issue.sourceName} → ${issue.targetName}` });
+        setImportProgress((p) => ({ ...(p ?? { index: 0, total: list.length, current: "", created: 0, already: 0, failed: 0 }), index: index + 1, current: `${issue.sourceName} → ${issue.targetName}` }));
         const response = await fetch("/api/admin/coherence/import", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ key: issue.key }), signal: AbortSignal.timeout(300_000) });
         const result = await response.json();
-        if (result.resolved) resolved++; else failed++;
+        if (result.resolved) { setImportProgress((p) => p ? { ...p, created: result.message ? p.created : p.created + 1, already: result.message ? p.already + 1 : p.already } : p); } else if (!result.paused) { setImportProgress((p) => p ? { ...p, failed: p.failed + 1 } : p); }
         if (result.paused && result.retryAfter) {
           const wait = result.retryAfter as number;
           for (let s = wait; s > 0 && !stopped.current; s--) {
@@ -116,7 +116,7 @@ export function CoherencePanel({ externalBusy }: { externalBusy: boolean }) {
     } catch (e) { if (mounted.current) setError(`Traitement interrompu : ${e instanceof Error ? e.message : "connexion perdue"}. Le résultat de l’élément en cours sera visible au prochain scan.`); }
     finally {
       if (mounted.current) {
-        setImporting(false); setImportProgress(null); setMessage(`${resolved} lien(s) validé(s), ${failed} échec(s). ${stopped.current ? "Traitement arrêté." : "Traitement terminé."}`);
+        setImportProgress((p) => { const s = p ?? { index: 0, total: list.length, current: "", created: 0, already: 0, failed: 0 }; setMessage(`✅ ${s.created} créé(s) · ♻️ ${s.already} déjà OK · ❌ ${s.failed} échec(s)${stopped.current ? " · Arrêté" : ""}`); return null; }); setImporting(false);
         await refresh().catch(() => setError("Impossible d’actualiser le résultat. Relance le scan local."));
       }
     }
@@ -128,7 +128,7 @@ export function CoherencePanel({ externalBusy }: { externalBusy: boolean }) {
     <div className="rounded-2xl border border-amber-900/80 bg-gradient-to-br from-stone-900 to-stone-950 p-4 sm:p-5">
       <div className="flex flex-wrap items-start justify-between gap-4"><div><h2 className="text-xl font-semibold text-amber-100">Atelier de cohérence</h2><p className="mt-1 text-sm text-stone-400">Contrôle des relations déjà enregistrées dans la base. Aucun appel Steam pendant le scan.</p></div><a href="/admin/logs" className="text-sm text-amber-300 underline">Journal de l’application</a></div>
       <div className="mt-4 flex flex-wrap gap-2"><button className={button} disabled={locked} onClick={() => void local("scan")}>{busy ? "Traitement local…" : "Scanner la base locale"}</button><button className={`${button} !border-amber-600`} disabled={locked} onClick={() => void local("repair-existing-links")}>⚙ Réparer les liens des cartes existantes</button></div>
-      {busy && !importing && <div className="mt-3 flex items-center justify-between gap-2 rounded-lg border border-amber-800/50 bg-amber-950/30 px-3 py-2"><div className="flex items-center gap-2"><span className="relative flex h-2 w-2"><span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-amber-400 opacity-75" /><span className="relative inline-flex h-2 w-2 rounded-full bg-amber-500" /></span><span className="text-xs text-amber-200">Analyse locale{report ? ` · ${report.counts.games} jeux / ${report.counts.studios} studios / ${report.counts.dlcs} DLC` : " de la base"} en cours…</span></div><span className="font-mono text-xs text-amber-500/70 tabular-nums">{scanElapsed}s</span></div>}{importing && importProgress && <div className="mt-3 space-y-2 rounded-lg border border-amber-900/60 bg-gradient-to-br from-stone-900 to-stone-950 px-3 py-3"><div className="flex items-center justify-between text-xs text-amber-200"><span className="font-medium">Import Steam · {importProgress.index}/{importProgress.total}</span><span className="tabular-nums font-mono">{importProgress.total > 0 ? Math.round(importProgress.index / importProgress.total * 100) : 0} %</span></div><div className="h-1 overflow-hidden rounded-full bg-stone-800"><div className="h-full rounded-full bg-gradient-to-r from-amber-700 to-amber-400 transition-all duration-300" style={{ width: `${importProgress.total > 0 ? importProgress.index / importProgress.total * 100 : 0}%` }} /></div>{importProgress.current && <p className="truncate text-xs text-stone-400">▶︎ {importProgress.current}</p>}{lockWait > 0 && <p className="text-xs text-amber-400">⏳ Rate-limit · reprise dans {lockWait}s</p>}</div>}
+      {busy && !importing && <div className="mt-3 flex items-center justify-between gap-2 rounded-lg border border-amber-800/50 bg-amber-950/30 px-3 py-2"><div className="flex items-center gap-2"><span className="relative flex h-2 w-2"><span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-amber-400 opacity-75" /><span className="relative inline-flex h-2 w-2 rounded-full bg-amber-500" /></span><span className="text-xs text-amber-200">Analyse locale{report ? ` · ${report.counts.games} jeux / ${report.counts.studios} studios / ${report.counts.dlcs} DLC` : " de la base"} en cours…</span></div><span className="font-mono text-xs text-amber-500/70 tabular-nums">{scanElapsed}s</span></div>}{importing && importProgress && <div className="mt-3 space-y-2 rounded-lg border border-amber-900/60 bg-gradient-to-br from-stone-900 to-stone-950 px-3 py-3"><div className="flex items-center justify-between text-xs text-amber-200"><span className="font-medium">Import Steam · {importProgress.index}/{importProgress.total}</span><span className="tabular-nums font-mono">{importProgress.total > 0 ? Math.round(importProgress.index / importProgress.total * 100) : 0} %</span></div><div className="h-1 overflow-hidden rounded-full bg-stone-800"><div className="h-full rounded-full bg-gradient-to-r from-amber-700 to-amber-400 transition-all duration-300" style={{ width: `${importProgress.total > 0 ? importProgress.index / importProgress.total * 100 : 0}%` }} /></div>{importProgress.current && <p className="truncate text-xs text-stone-400">▶︎ {importProgress.current}</p>}{lockWait > 0 && <p className="text-xs text-amber-400">⏳ Rate-limit · reprise dans {lockWait}s</p>}<div className="flex gap-3 text-xs tabular-nums"><span className="text-emerald-400">✅ {importProgress.created}</span><span className="text-stone-400">♻️ {importProgress.already}</span><span className="text-red-400">❌ {importProgress.failed}</span></div></div>}
       <p className="mt-2 text-xs text-stone-500">La réparation relie les fiches existantes lorsque les données permettent une association certaine. Les cas ambigus restent à examiner.</p>
       {report && <p className="mt-3 text-xs text-stone-400">{report.counts.games} jeux · {report.counts.studios} studios · {report.counts.dlcs} DLC · {report.ignoredCount} liens retirés · scan du {new Date(report.scannedAt).toLocaleString("fr-FR")}</p>}
     </div>
