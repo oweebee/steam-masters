@@ -18,6 +18,7 @@ type Delivery = {
 type Card = {
   id: string;
   sellable: boolean;
+  onAuction: boolean;
   // Rareté propre à CET exemplaire (loot table booster), indépendante de la
   // rareté intrinsèque du jeu/studio (ownerEstimate) — c'est elle qu'on affiche.
   rarity: Rarity;
@@ -437,6 +438,7 @@ export function CollectionClient() {
               isFree={c.game.isFree}
               contentType={c.game.contentType}
               privateCategories={c.categories}
+              onAuction={c.onAuction}
               onFlipChange={(flipped) => handleCardFlip(c.id, flipped)}
             />
           ) : c.studio ? (
@@ -450,6 +452,7 @@ export function CollectionClient() {
               about={c.studio.about}
               avatarUrl={c.studio.avatarUrl}
               privateCategories={c.categories}
+              onAuction={c.onAuction}
               onFlipChange={(flipped) => handleCardFlip(c.id, flipped)}
             />
           ) : null}

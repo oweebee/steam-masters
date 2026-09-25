@@ -1,5 +1,5 @@
 "use client";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 
 type Rarity = "COMMON" | "UNCOMMON" | "RARE" | "EPIC" | "LEGENDARY";
 
@@ -164,10 +164,16 @@ export function EchangesClient({ myUserId }: { myUserId: string }) {
   const [trades, setTrades] = useState<Trade[]>([]);
   const [error, setError] = useState("");
   const [sending, setSending] = useState(false);
+  const [confirmation, setConfirmation] = useState("");
+  const pendingRequest = useRef({ payload: "", id: "" });
+  const sendLock = useRef(false);
   const [actingId, setActingId] = useState<string | null>(null);
 
   function loadTrades() {
-    fetch("/api/echanges").then((r) => (r.ok ? r.json() : [])).then(setTrades);
+    return fetch("/api/echanges", { signal: AbortSignal.timeout(20_000), cache: "no-store" }).then(async (r) => {
+      if (!r.ok) throw new Error("Impossible d’actualiser les échanges. Réessaie dans un instant.");
+      return r.json();
+    }).then(setTrades).catch((e) => setError(e instanceof Error ? e.message : "Chargement des échanges impossible."));
   }
 
   useEffect(() => {
@@ -214,31 +220,43 @@ export function EchangesClient({ myUserId }: { myUserId: string }) {
   }
 
   async function proposeTrade() {
+    if (sendLock.current) return;
     setError("");
+    setConfirmation("");
     if (!targetId) { setError("Choisis un joueur"); return; }
+    sendLock.current = true;
     setSending(true);
-    const res = await fetch("/api/echanges", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ toUserId: targetId, offerCardIds, wantCardIds, offerCoins, wantCoins }),
-    });
-    const data = await res.json();
-    setSending(false);
-    if (!res.ok) { setError(data.error ?? "Erreur"); return; }
-    setOfferCardIds([]);
-    setWantCardIds([]);
-    setOfferCoins(0);
-    setWantCoins(0);
-    loadTrades();
+    const payload = { toUserId: targetId, offerCardIds, wantCardIds, offerCoins, wantCoins };
+    const fingerprint = JSON.stringify(payload);
+    if (pendingRequest.current.payload !== fingerprint) pendingRequest.current = { payload: fingerprint, id: crypto.randomUUID() };
+    try {
+      const res = await fetch("/api/echanges", {
+        method: "POST", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ ...payload, requestId: pendingRequest.current.id }), signal: AbortSignal.timeout(30_000),
+      });
+      const data = await res.json().catch(() => null);
+      if (!res.ok || !data) throw new Error(data?.error ?? "Réponse serveur interrompue. Tu peux réessayer : la même proposition ne sera pas créée deux fois.");
+      setOfferCardIds([]); setWantCardIds([]); setOfferCoins(0); setWantCoins(0);
+      setMyCollection((cards) => cards.filter((card) => !payload.offerCardIds.includes(card.id)));
+      pendingRequest.current = { payload: "", id: "" };
+      setConfirmation("Proposition envoyée. Elle attend l’acceptation du destinataire.");
+      await loadTrades();
+    } catch (e) {
+      setError(e instanceof Error && e.name !== "TimeoutError" ? e.message : "Le serveur met trop de temps à répondre. Vérifie les propositions ci-dessous puis réessaie si nécessaire.");
+      void loadTrades();
+    } finally { setSending(false); sendLock.current = false; }
   }
 
   async function act(id: string, action: "accept" | "decline") {
     setActingId(id);
-    const res = await fetch(`/api/echanges/${id}/${action}`, { method: "POST" });
-    const data = await res.json();
-    setActingId(null);
-    if (!res.ok) { setError(data.error ?? "Erreur"); return; }
-    loadTrades();
+    setError("");
+    try {
+      const res = await fetch(`/api/echanges/${id}/${action}`, { method: "POST", signal: AbortSignal.timeout(30_000) });
+      const data = await res.json().catch(() => null);
+      if (!res.ok || !data) throw new Error(data?.error ?? "Réponse serveur interrompue. Actualise les échanges.");
+      await loadTrades();
+    } catch (e) { setError(e instanceof Error ? e.message : "Action impossible."); }
+    finally { setActingId(null); }
   }
 
   const incoming = trades.filter((t) => t.status === "PENDING" && t.toUserId === myUserId);
@@ -248,6 +266,7 @@ export function EchangesClient({ myUserId }: { myUserId: string }) {
   return (
     <div className="flex flex-col gap-8">
       <h1 className="text-2xl font-bold text-white">Échanges</h1>
+      {confirmation && <p role="status" className="rounded-lg border border-emerald-900 bg-emerald-950/30 p-3 text-sm text-emerald-200">{confirmation}</p>}
 
       <section className="bg-gray-900 border border-gray-800 rounded-xl p-4 flex flex-col gap-4">
         <h2 className="text-white font-semibold">Proposer un échange</h2>

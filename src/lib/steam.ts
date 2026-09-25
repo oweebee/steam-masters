@@ -84,6 +84,18 @@ export interface SteamDeveloperGame {
   headerImage: string;
 }
 
+export async function searchSteamCatalog(term: string): Promise<{ appid: string; name: string }[]> {
+  const key = `steam:catalog-search:${term.trim().toLocaleLowerCase("fr")}`;
+  const cached = await redis.get(key);
+  if (cached) return JSON.parse(cached);
+  const response = await fetchWithRetry(`https://store.steampowered.com/api/storesearch/?term=${encodeURIComponent(term)}&l=french&cc=FR`, { cache: "no-store" });
+  if (!response.ok) throw new Error(`Steam search HTTP ${response.status}`);
+  const data = await response.json();
+  const items = (Array.isArray(data.items) ? data.items : []).filter((item: { type: string; id: number }) => item.type === "app" && Number.isSafeInteger(item.id)).map((item: { id: number; name: string }) => ({ appid: String(item.id), name: item.name }));
+  await redis.set(key, JSON.stringify(items), "EX", CACHE_TTL);
+  return items;
+}
+
 export async function discoverSteamGameAppids(maxResults = 200): Promise<string[]> {
   const appids = new Set<string>();
   const pageSize = 50;
@@ -294,6 +306,11 @@ export async function upsertStudiosForDevelopers(developers: string[]) {
   const names = new Set(developers.filter(Boolean));
   if (names.size === 0) return;
 
+  // Preserve references not yet imported: a normal import must not silently
+  // erase the local coherence backlog of its studio.
+  const existingStudios = await prisma.studio.findMany({ where: { name: { in: Array.from(names) } }, select: { name: true, games: true } });
+  const knownTitles = new Map(existingStudios.map((studio) => [studio.name, studio.games]));
+
   // Une seule lecture pour tout le lot (avant : 2 requêtes + 1 upsert par studio).
   const games = await prisma.steamGame.findMany({
     where: { contentType: "GAME", developers: { hasSome: Array.from(names) } },
@@ -313,7 +330,7 @@ export async function upsertStudiosForDevelopers(developers: string[]) {
     const gameCount = studioGames.length;
     const avgReviewScore = Math.round(studioGames.reduce((s, g) => s + g.reviewScore, 0) / gameCount);
     const totalOwnerEstimate = studioGames.reduce((s, g) => s + g.ownerEstimate, 0);
-    const gameNames = studioGames.map((g) => g.name).sort();
+    const gameNames = [...new Set([...(knownTitles.get(name) ?? []), ...studioGames.map((g) => g.name)])].sort();
     const stats = { gameCount, avgReviewScore, totalOwnerEstimate, games: gameNames, atk: avgReviewScore, def: cardDefense(totalOwnerEstimate) };
     return prisma.studio.upsert({
       where: { name },

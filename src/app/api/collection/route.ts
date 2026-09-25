@@ -57,6 +57,7 @@ export async function GET() {
   const out = cards.map(({ tradeCards, auctions, categories, ...card }) => ({
     ...card,
     categories: categories.map(({ category }) => category),
+    onAuction: auctions.length > 0,
     sellable: tradeCards.length === 0 && auctions.length === 0 && !stakedIds.has(card.id) && !playingIds.has(card.id),
     staked: stakedIds.has(card.id),
     studio: card.studio

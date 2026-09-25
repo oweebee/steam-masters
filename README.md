@@ -46,3 +46,17 @@ npm install
 npx prisma migrate dev
 npm run dev
 ```
+# Outils de maintenance et signalements
+
+- Admin → Import de jeux → **Cohérence** : cinq contrôles locaux Jeux/Studios/DLC,
+  sélection des anomalies, réparation des liens existants, suppression persistante
+  des liens invalides, création locale de studios et import Steam séparé.
+- Les échecs restent rouges avec leur motif. Les imports sont validés par un nouveau
+  contrôle local ; une limitation Steam interrompt le lot. La suppression d'un lien
+  ne supprime aucun exemplaire détenu par un joueur.
+- **Bug Report**, sous Paramètres : formulaire privé vers l'administration et suivi
+  de ses signalements. Admin → **Bug Reports** : recherche, statuts, notes internes,
+  réponse au joueur. L'accès MCP est décrit dans `MCP.md` et `AppSetting.MCP_GUIDE`.
+- Migrations nécessaires : `0037_bug_reports` et `0038_trade_request_id` (propositions
+  d'échange protégées contre les doublons lors d'une nouvelle tentative).
+- Vérification de régression locale sans données réelles : `npm run test:coherence`.

@@ -60,6 +60,10 @@ export default async function AdminPage() {
           <div className="font-semibold">Import de jeux</div>
           <div className="text-gray-400 text-sm mt-1">Ajouter un jeu Steam par AppID</div>
         </Link>
+        <Link href="/admin/bug-reports" className="bg-gray-900 border border-gray-800 hover:border-amber-600 rounded-xl p-6 text-white transition">
+          <div className="font-semibold">Bug Reports</div>
+          <div className="text-gray-400 text-sm mt-1">Signalements des joueurs, suivi et réponses</div>
+        </Link>
         <Link href="/admin/logs"
           className="bg-gray-900 border border-gray-800 hover:border-amber-600 rounded-xl p-6 text-white transition">
           <div className="text-2xl mb-2">📜</div>

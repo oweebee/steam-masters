@@ -9,6 +9,7 @@ const TABS: { href: string; label: string; icon: SteamMenuIconName }[] = [
   { href: "/admin/cards", label: "Toutes les cartes", icon: "cards" },
   { href: "/admin/games", label: "Import de jeux", icon: "import" },
   { href: "/admin/logs", label: "Journal", icon: "logs" },
+  { href: "/admin/bug-reports", label: "Bug Reports", icon: "bug" },
   { href: "/admin/settings", label: "Configuration", icon: "configuration" },
 ];
 

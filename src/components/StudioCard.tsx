@@ -26,6 +26,7 @@ export function StudioCard({
   coverImage,
   onFlipChange,
   privateCategories = [],
+  onAuction = false,
 }: {
   name: string;
   gameCount: number;
@@ -38,6 +39,7 @@ export function StudioCard({
   coverImage?: string | null;
   onFlipChange?: (flipped: boolean) => void;
   privateCategories?: PrivateCardCategory[];
+  onAuction?: boolean;
 }) {
   const style = RARITY_STYLES[rarity];
   const [resolvedGames, setResolvedGames] = useState<GameLink[]>(games);
@@ -178,6 +180,7 @@ export function StudioCard({
             <span className="text-xs">ATK</span>
             <span>{atk}</span>
           </div>
+          {onAuction && <span className="steam-auction-indicator" title="Cette carte est aux enchères" aria-label="Cette carte est aux enchères"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m8 7 3-3 4 4-3 3M5 10l3-3 4 4-3 3M11 14l6 6m-3-2 2-2 3 3-2 2M4 20h8" /></svg></span>}
           <div className="steam-stat steam-stat-def flex items-center gap-1 text-blue-400 font-bold">
             <span className="text-xs">DEF</span>
             <span>{def}</span>
@@ -206,7 +209,7 @@ export function StudioCard({
       <p className="text-gray-500 text-[10px] uppercase">Jeux sur Steam ({displayedGameCount})</p>
       <div className="flex-1 overflow-y-auto flex flex-col gap-1">
         {resolvedGames.map((g) =>
-          g.hasCard && g.appid ? (
+          loadState === "ready" && g.hasCard && g.appid ? (
             <button
               type="button"
               key={g.name}

@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/auth";
 import { prisma } from "@/lib/prisma";
+import { readCoherenceRegistry, studioGameIsIgnored } from "@/lib/catalogCoherence";
 
 // Une seule fiche liée à un studio, jamais une liste complète du catalogue.
 export async function GET(req: NextRequest, context: { params: Promise<{ id: string }> }) {
@@ -16,6 +17,8 @@ export async function GET(req: NextRequest, context: { params: Promise<{ id: str
     ownerEstimate: true, priceCents: true, isFree: true, contentType: true, parentGameId: true,
   } });
   if (!game) return NextResponse.json({ error: "Carte introuvable" }, { status: 404 });
+  const linkedStudio = await prisma.studio.findUnique({ where: { name: studioName }, select: { id: true, name: true, games: true } });
+  if (linkedStudio && studioGameIsIgnored(linkedStudio, game, await readCoherenceRegistry())) return NextResponse.json({ error: "Lien retiré du catalogue" }, { status: 404 });
   if (!game.developers.includes(studioName)) {
     const studio = await prisma.studio.findUnique({ where: { name: studioName }, select: { games: true } });
     if (!studio?.games.includes(game.name)) return NextResponse.json({ error: "Ce jeu n'est pas lié au studio" }, { status: 404 });

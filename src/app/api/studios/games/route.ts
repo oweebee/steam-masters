@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/auth";
 import { prisma } from "@/lib/prisma";
 import { getSteamDeveloperGames } from "@/lib/steam";
+import { readCoherenceRegistry, studioGameIsIgnored } from "@/lib/catalogCoherence";
 
 export async function GET(req: NextRequest) {
   const session = await auth();
@@ -14,7 +15,7 @@ export async function GET(req: NextRequest) {
 
   const studio = await prisma.studio.findUnique({
     where: { name },
-    select: { games: true },
+    select: { id: true, name: true, games: true },
   });
   const localGames = await prisma.steamGame.findMany({
     where: {
@@ -28,6 +29,8 @@ export async function GET(req: NextRequest) {
     orderBy: { name: "asc" },
   });
   const localById = new Map(localGames.map((game) => [game.id, game]));
+  const registry = await readCoherenceRegistry();
+  const isIgnored = (gameName: string, id: string) => !!studio && studioGameIsIgnored(studio, { id, name: gameName }, registry);
 
   try {
     const steamGames = await getSteamDeveloperGames(name);
@@ -45,14 +48,14 @@ export async function GET(req: NextRequest) {
       hasCard: true,
     }));
 
-    return NextResponse.json(Array.from(merged.values()));
+    return NextResponse.json(Array.from(merged.values()).map((game) => ({ ...game, hasCard: game.hasCard && !isIgnored(game.name, game.appid) })));
   } catch (error) {
     if (localGames.length > 0) {
       return NextResponse.json(localGames.map((game) => ({
         appid: game.id,
         name: game.name,
         headerImage: game.headerImage,
-        hasCard: true,
+        hasCard: !isIgnored(game.name, game.id),
       })));
     }
     const message = error instanceof Error ? error.message : "Catalogue Steam indisponible";

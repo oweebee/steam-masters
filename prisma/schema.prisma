@@ -76,6 +76,7 @@ model User {
   updatedAt     DateTime  @updatedAt
 
   cards           Card[]
+  bugReports      BugReport[]
   cardCategories  CardCategory[]
   sentTrades      Trade[]        @relation("TradeFrom")
   receivedTrades  Trade[]        @relation("TradeTo")
@@ -150,6 +151,31 @@ model AppSetting {
   key       String   @id
   value     String
   updatedAt DateTime @updatedAt
+}
+
+enum BugReportStatus {
+  OPEN
+  IN_PROGRESS
+  RESOLVED
+  DISMISSED
+}
+
+model BugReport {
+  id           String          @id @default(cuid())
+  requestId    String          @unique
+  userId       String?
+  title        String
+  description  String          @db.Text
+  pagePath     String?
+  status       BugReportStatus @default(OPEN)
+  adminNote    String          @default("") @db.Text
+  adminReply   String          @default("") @db.Text
+  createdAt    DateTime        @default(now())
+  updatedAt    DateTime        @updatedAt
+  user         User?           @relation(fields: [userId], references: [id], onDelete: SetNull)
+
+  @@index([userId, createdAt])
+  @@index([status, createdAt])
 }
 
 model StoredImage {
@@ -284,6 +310,7 @@ model CardCategoryAssignment {
 }
 
 model Trade {
+  requestId  String?     @unique
   id         String      @id @default(cuid())
   fromUserId String
   toUserId   String

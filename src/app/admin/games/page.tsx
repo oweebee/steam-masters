@@ -1,6 +1,7 @@
 "use client";
 import { useEffect, useRef, useState } from "react";
 import { GameCard } from "@/components/GameCard";
+import { CoherencePanel } from "./CoherencePanel";
 
 type Game = {
   id: string;
@@ -497,7 +498,7 @@ export default function AdminGamesPage() {
       <p className="mb-5 text-sm text-gray-500">Import, cohérence des fiches et paramètres des boosters au même endroit.</p>
       <nav className="mb-6 flex flex-wrap gap-2 rounded-xl border border-gray-800 bg-gray-900/70 p-2" aria-label="Outils du catalogue">
         {(["import", "coherence", "distribution"] as const).map((key) => {
-          const labels = { import: "⬇ Importer", coherence: `⚙ Cohérence${catalogIssues.length ? ` · ${catalogIssues.length}` : ""}`, distribution: "✦ Répartition & délais" };
+          const labels = { import: "⬇ Importer", coherence: "⚙ Cohérence", distribution: "✦ Répartition & délais" };
           return <button key={key} type="button" onClick={() => setSection(key)} className={`rounded-lg px-4 py-2 text-sm font-semibold transition ${section === key ? "border border-amber-700 bg-amber-950/70 text-amber-200 shadow-[inset_0_1px_0_rgba(251,191,36,.1)]" : "text-gray-400 hover:bg-gray-800 hover:text-white"}`}>{labels[key]}</button>;
         })}
       </nav>
@@ -596,23 +597,16 @@ export default function AdminGamesPage() {
         <p className="mt-2 text-xs text-gray-400">{seedMessage}</p>
       </div>}
 
-      <div className="flex flex-wrap gap-6">
-        {games.map((g) => (
-          <GameCard key={g.id} id={g.id} name={g.name} headerImage={g.headerImage} description={g.description}
-            atk={g.atk} def={g.def} rarity={g.rarity} tags={g.tags} developers={g.developers} reviewScore={g.reviewScore}
-            peakCcu={g.peakCcu} ownerEstimate={g.ownerEstimate} priceCents={g.priceCents} isFree={g.isFree} contentType={g.contentType} />
-        ))}
-      </div>
-      </>}
-
-      {section === "coherence" && <>
+      <details className="mb-5 max-w-6xl rounded-xl border border-gray-800 bg-gray-900/40 p-4">
+        <summary className="cursor-pointer text-sm font-semibold text-gray-300">Actions Steam séparées (imports et synchronisations externes)</summary>
+        <p className="mt-2 text-xs text-gray-500">Ces outils consultent Steam et ne font pas partie du scan SQL de cohérence.</p>
 
       <div className="bg-gray-900 border border-amber-900 rounded-xl p-4 mb-4 max-w-2xl">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div>
-            <h2 className="text-white font-semibold">Scanner &amp; réparer toute la base</h2>
+            <h2 className="text-white font-semibold">Réparation étendue avec synchronisation Steam</h2>
             <p className="text-gray-500 text-xs mt-1">
-              Répare les liens jeux–studios–DLC, les données locales et les images; complète les jeux manquants des studios puis vérifie les DLC de tout le catalogue. Les échecs non récupérables restent archivés.
+              Cette action complète le contrôle local par des appels Steam, importe des fiches et peut durer plusieurs minutes. Pour les liens locaux seuls, utilise le bouton au-dessus.
             </p>
           </div>
           <button
@@ -691,7 +685,18 @@ export default function AdminGamesPage() {
           {visibleIssues.length ? <table className="w-full text-left text-xs"><thead className="sticky top-0 bg-gray-950 text-gray-500"><tr><th className="px-3 py-2">Type / cible</th><th className="px-3 py-2">Motif mémorisé</th><th className="px-3 py-2">Tentatives</th><th className="px-3 py-2">Dernière détection</th></tr></thead><tbody>{visibleIssues.map((issue) => <tr key={`${issue.scope}:${issue.itemId}`} className="border-t border-gray-800"><td className="px-3 py-2 text-amber-200">{issue.scope} · {issue.name}<span className="block font-mono text-gray-600">{issue.itemId}{issue.parentId ? ` ← ${issue.parentId}` : ""}</span></td><td className="max-w-md px-3 py-2 text-gray-300">{issue.reason}</td><td className="px-3 py-2 text-gray-400">{issue.attempts}</td><td className="whitespace-nowrap px-3 py-2 text-gray-500">{new Date(issue.lastSeen).toLocaleString("fr-FR")}</td></tr>)}</tbody></table> : <p className="p-5 text-center text-sm text-gray-500">Aucun échec ou lien non résolu mémorisé.</p>}
         </div>
       </section>
+      </details>
+
+      <div className="flex flex-wrap gap-6">
+        {games.map((g) => (
+          <GameCard key={g.id} id={g.id} name={g.name} headerImage={g.headerImage} description={g.description}
+            atk={g.atk} def={g.def} rarity={g.rarity} tags={g.tags} developers={g.developers} reviewScore={g.reviewScore}
+            peakCcu={g.peakCcu} ownerEstimate={g.ownerEstimate} priceCents={g.priceCents} isFree={g.isFree} contentType={g.contentType} />
+        ))}
+      </div>
       </>}
+
+      {section === "coherence" && <CoherencePanel externalBusy={loading || seeding || scanningDlcs || syncingStudios || repairing} />}
 
       {section === "distribution" && <section className="max-w-5xl space-y-5">
         <div className="rounded-xl border border-amber-900/60 bg-gradient-to-br from-gray-900 via-gray-900 to-amber-950/20 p-5">

@@ -20,6 +20,7 @@ const NAV: { href: string; label: string; icon: SteamMenuIconName; active: boole
   { href: "/succes", label: "Succès", icon: "achievements", active: false },
   { href: "/classement", label: "Classement", icon: "ranking", active: false },
   { href: "/parametres", label: "Paramètres", icon: "settings", active: false },
+  { href: "/bug-report", label: "Bug Report", icon: "bug", active: true },
 ];
 
 const STORAGE_KEY = "sm_sidebar_collapsed";
