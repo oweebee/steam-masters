@@ -16,6 +16,11 @@ export async function GET() {
     include: {
       game: true,
       studio: true,
+      categories: {
+        where: { category: { userId } },
+        include: { category: { select: { id: true, name: true, color: true } } },
+        orderBy: { category: { name: "asc" } },
+      },
       tradeCards: {
         where: { trade: activeTradeWhere() },
         select: { id: true },
@@ -49,8 +54,9 @@ export async function GET() {
     cards.flatMap((c) => c.studio?.name ? [c.studio.name] : [])
   );
 
-  const out = cards.map(({ tradeCards, auctions, ...card }) => ({
+  const out = cards.map(({ tradeCards, auctions, categories, ...card }) => ({
     ...card,
+    categories: categories.map(({ category }) => category),
     sellable: tradeCards.length === 0 && auctions.length === 0 && !stakedIds.has(card.id) && !playingIds.has(card.id),
     staked: stakedIds.has(card.id),
     studio: card.studio

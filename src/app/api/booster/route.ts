@@ -65,6 +65,9 @@ async function selectDrawSource(gamePoolSize: number, studioPoolSize: number): P
 
 function rarityForSource(source: DrawSource, weights: Awaited<ReturnType<typeof getRarityWeights>>): Rarity {
   let rarity = rollCardRarity(weights);
+  if (source.game?.contentType === "DLC") {
+    return rarity === "LEGENDARY" || rarity === "EPIC" ? "RARE" : rarity;
+  }
   if (rarity === "LEGENDARY" && (!source.game || !isLegendaryGameEligible(source.game.ownerEstimate, source.game.rarity))) rarity = "EPIC";
   if (rarity === "EPIC" && !(source.game ? isEpicGameEligible(source.game.ownerEstimate, source.game.rarity) : source.studioEpicEligible)) rarity = "RARE";
   return rarity;

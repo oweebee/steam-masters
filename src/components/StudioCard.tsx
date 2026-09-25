@@ -4,6 +4,7 @@ import { FlipCard } from "./FlipCard";
 import { GameCard } from "./GameCard";
 import { CardOrnaments } from "./CardOrnaments";
 import { FlameDial } from "./FlameDial";
+import { CardCategoryPills, PrivateCategoryLabels, type PrivateCardCategory } from "./CardCategoryPills";
 import { RARITY_STYLES, type Rarity } from "@/lib/rarityStyles";
 
 type GameLink = { name: string; appid: string | null; hasCard: boolean; headerImage?: string | null };
@@ -24,6 +25,7 @@ export function StudioCard({
   avatarUrl,
   coverImage,
   onFlipChange,
+  privateCategories = [],
 }: {
   name: string;
   gameCount: number;
@@ -35,6 +37,7 @@ export function StudioCard({
   avatarUrl?: string | null;
   coverImage?: string | null;
   onFlipChange?: (flipped: boolean) => void;
+  privateCategories?: PrivateCardCategory[];
 }) {
   const style = RARITY_STYLES[rarity];
   const [resolvedGames, setResolvedGames] = useState<GameLink[]>(games);
@@ -167,6 +170,7 @@ export function StudioCard({
             <span className="text-4xl">🏢</span>
           )}
           <FlameDial rarity={rarity} />
+          <CardCategoryPills categories={privateCategories} studio />
         </div>
 
         <div className="steam-statbar flex justify-between items-center pt-2 border-t border-gray-800">
@@ -195,6 +199,7 @@ export function StudioCard({
       <div className="steam-card-nameplate">
         <h3 className="steam-card-title text-white font-bold text-base leading-tight truncate">{name}</h3>
       </div>
+      <PrivateCategoryLabels categories={privateCategories} />
       {about && (
         <p className="text-gray-400 text-xs leading-snug line-clamp-3 border-b border-gray-800 pb-2">{about}</p>
       )}

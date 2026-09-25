@@ -3,6 +3,7 @@ import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { GameCard } from "@/components/GameCard";
 import { StudioCard } from "@/components/StudioCard";
+import type { PrivateCardCategory } from "@/components/CardCategoryPills";
 
 type Rarity = "COMMON" | "UNCOMMON" | "RARE" | "EPIC" | "LEGENDARY";
 type Player = { id: string; username: string; isSelf: boolean };
@@ -50,6 +51,7 @@ type Card = {
     about: string | null;
     avatarUrl: string | null;
   } | null;
+  categories: PrivateCardCategory[];
 };
 
 function OwnedCardActions({ card, players, onChanged }: {
@@ -125,7 +127,7 @@ export function CollectionClient() {
   const router = useRouter();
   const [cards, setCards] = useState<Card[]>([]);
   const [loaded, setLoaded] = useState(false);
-  const [saleMode, setSaleMode] = useState(false);
+  const [selectionMode, setSelectionMode] = useState(false);
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
   const [selling, setSelling] = useState(false);
   const [saleMessage, setSaleMessage] = useState("");
@@ -139,12 +141,22 @@ export function CollectionClient() {
   const [workingOfferId, setWorkingOfferId] = useState<string | null>(null);
   const [offerError, setOfferError] = useState("");
   const [selfId, setSelfId] = useState("");
+  const [categories, setCategories] = useState<(PrivateCardCategory & { cardCount?: number })[]>([]);
+  const [categoryModal, setCategoryModal] = useState(false);
+  const [categoryName, setCategoryName] = useState("");
+  const [categoryColor, setCategoryColor] = useState("#c8874a");
+  const [selectedCategoryId, setSelectedCategoryId] = useState("");
+  const [editingCategoryId, setEditingCategoryId] = useState<string | null>(null);
+  const [categoryBusy, setCategoryBusy] = useState(false);
+  const [categoryError, setCategoryError] = useState("");
+  const [categoryMessage, setCategoryMessage] = useState("");
 
   async function refreshAll() {
-    const [collectionResponse, playersResponse, offersResponse] = await Promise.all([
+    const [collectionResponse, playersResponse, offersResponse, categoriesResponse] = await Promise.all([
       fetch("/api/collection", { cache: "no-store" }),
       fetch("/api/joueurs", { cache: "no-store" }),
       fetch("/api/envois", { cache: "no-store" }),
+      fetch("/api/collection/categories", { cache: "no-store" }),
     ]);
     if (collectionResponse.ok) setCards(await collectionResponse.json());
     if (playersResponse.ok) {
@@ -153,6 +165,7 @@ export function CollectionClient() {
       setSelfId(users.find((user) => user.isSelf)?.id ?? "");
     }
     if (offersResponse.ok) setDeliveries(await offersResponse.json());
+    if (categoriesResponse.ok) setCategories(await categoriesResponse.json());
     setLoaded(true);
   }
 
@@ -215,20 +228,23 @@ export function CollectionClient() {
   }
 
   function toggleCard(card: Card) {
-    if (!card.sellable) return;
     setSelectedIds((current) => current.includes(card.id)
       ? current.filter((id) => id !== card.id)
       : [...current, card.id]);
   }
 
   function closeSaleMode() {
-    setSaleMode(false);
+    setSelectionMode(false);
     setSelectedIds([]);
     setSaleError("");
   }
 
   async function sellSelected() {
     if (selectedIds.length === 0 || selling) return;
+    if (cards.some((card) => selectedIds.includes(card.id) && !card.sellable)) {
+      setSaleError("Retire de la sélection les cartes déjà engagées avant de les vendre.");
+      return;
+    }
     const confirmed = window.confirm(
       `Vendre ${selectedIds.length} carte${selectedIds.length > 1 ? "s" : ""} pour ${selectedIds.length} pièce${selectedIds.length > 1 ? "s" : ""} ?`
     );
@@ -255,27 +271,75 @@ export function CollectionClient() {
   }
 
   const sellableIds = cards.filter((card) => card.sellable).map((card) => card.id);
+  const selectedCardsAreSellable = selectedIds.every((id) => cards.find((card) => card.id === id)?.sellable);
+
+  async function assignCategory(categoryId: string, action: "assign" | "unassign") {
+    setCategoryBusy(true); setCategoryError(""); setCategoryMessage("");
+    try {
+      const response = await fetch("/api/collection/categories", {
+        method: "POST", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action, categoryId, cardIds: selectedIds }),
+      });
+      const data = await response.json();
+      if (!response.ok) throw new Error(data.error ?? "Mise à jour impossible.");
+      setCategoryMessage(action === "assign" ? "Catégorie ajoutée aux cartes sélectionnées." : "Catégorie retirée des cartes sélectionnées.");
+      await refreshAll();
+    } catch (reason) { setCategoryError(reason instanceof Error ? reason.message : "Mise à jour impossible."); }
+    finally { setCategoryBusy(false); }
+  }
+
+  async function createCategory() {
+    setCategoryBusy(true); setCategoryError(""); setCategoryMessage("");
+    try {
+      const response = await fetch("/api/collection/categories", {
+        method: "POST", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action: "create", name: categoryName, color: categoryColor }),
+      });
+      const data = await response.json();
+      if (!response.ok) throw new Error(data.error ?? "Création impossible.");
+      setCategories((current) => [...current, data].sort((a, b) => a.name.localeCompare(b.name, "fr")));
+      setCategoryName(""); setSelectedCategoryId(data.id);
+      if (selectedIds.length) await assignCategory(data.id, "assign");
+      else setCategoryMessage("Catégorie créée.");
+    } catch (reason) { setCategoryError(reason instanceof Error ? reason.message : "Création impossible."); }
+    finally { setCategoryBusy(false); }
+  }
+
+  async function updateCategory(category: PrivateCardCategory, action: "save" | "delete") {
+    if (action === "delete" && !window.confirm(`Supprimer la catégorie « ${category.name} » ? Les cartes resteront dans ta collection.`)) return;
+    setCategoryBusy(true); setCategoryError(""); setCategoryMessage("");
+    try {
+      const response = await fetch("/api/collection/categories", {
+        method: "PATCH", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(action === "delete" ? { action, id: category.id } : { id: category.id, name: categoryName, color: categoryColor }),
+      });
+      const data = await response.json();
+      if (!response.ok) throw new Error(data.error ?? "Mise à jour impossible.");
+      setEditingCategoryId(null); setCategoryMessage(action === "delete" ? "Catégorie supprimée." : "Catégorie modifiée.");
+      await refreshAll();
+    } catch (reason) { setCategoryError(reason instanceof Error ? reason.message : "Mise à jour impossible."); }
+    finally { setCategoryBusy(false); }
+  }
 
   return (
     <div>
-      {(flippedIds.length > 0 || returningId) && !saleMode && <div className="steam-owned-backdrop" aria-hidden="true" />}
+      {(flippedIds.length > 0 || returningId || categoryModal) && <div className="steam-owned-backdrop" aria-hidden="true" onClick={() => setCategoryModal(false)} />}
       <div className="steam-collection-toolbar">
         <div>
-          <h1 className="text-2xl font-bold text-white">Ma collection ({cards.length})</h1>
+          <h1 className="text-2xl font-bold text-white">Mes collections ({cards.length})</h1>
           <p className="text-gray-500 text-xs mt-1">Chaque carte revendue rapporte 1 pièce et retourne dans la pioche.</p>
         </div>
-        {!saleMode ? (
+        {!selectionMode ? (
           <button
             type="button"
             onClick={() => {
-              setSaleMode(true);
+              setSelectionMode(true);
               setSaleMessage("");
             }}
-            disabled={sellableIds.length === 0}
             className="steam-sale-start"
           >
             <span aria-hidden="true">⚙</span>
-            Vendre des cartes
+            Sélectionner des cartes
           </button>
         ) : (
           <div className="steam-sale-actions">
@@ -284,17 +348,19 @@ export function CollectionClient() {
               onClick={() => setSelectedIds(selectedIds.length === sellableIds.length ? [] : sellableIds)}
               className="steam-sale-secondary"
             >
-              {selectedIds.length === sellableIds.length ? "Tout désélectionner" : "Tout sélectionner"}
+              {selectedIds.length === sellableIds.length ? "Tout désélectionner" : "Sélectionner les cartes vendables"}
             </button>
-            <button type="button" onClick={closeSaleMode} className="steam-sale-secondary">Annuler</button>
+            <button type="button" onClick={() => setCategoryModal(true)} disabled={!selectedIds.length} className="steam-sale-secondary">⚑ Catégories</button>
+            <button type="button" onClick={() => router.push(`/echanges?cardIds=${encodeURIComponent(selectedIds.join(","))}`)} disabled={!selectedIds.length || !selectedCardsAreSellable} className="steam-sale-secondary">⚒ Échanger</button>
             <button
               type="button"
               onClick={sellSelected}
-              disabled={selectedIds.length === 0 || selling}
+              disabled={selectedIds.length === 0 || selling || !selectedCardsAreSellable}
               className="steam-sale-confirm"
             >
               {selling ? "Vente…" : `Vendre ${selectedIds.length} · +${selectedIds.length} pièce${selectedIds.length > 1 ? "s" : ""}`}
             </button>
+            <button type="button" onClick={closeSaleMode} className="steam-sale-secondary">Terminer</button>
           </div>
         )}
       </div>
@@ -324,7 +390,7 @@ export function CollectionClient() {
           const selected = selectedIds.includes(c.id);
           return (
             <div key={c.id} className="steam-owned-slot">
-              <div ref={(element) => { if (element) frameRefs.current.set(c.id, element); else frameRefs.current.delete(c.id); }} className={`steam-sale-card steam-owned-frame ${selected ? "steam-sale-card-selected" : ""} ${flippedIds.includes(c.id) && !saleMode ? "is-flipped" : ""} ${returningId === c.id ? "is-returning" : ""}`}>
+              <div ref={(element) => { if (element) frameRefs.current.set(c.id, element); else frameRefs.current.delete(c.id); }} className={`steam-sale-card steam-owned-frame ${selected ? "steam-sale-card-selected" : ""} ${flippedIds.includes(c.id) && !selectionMode ? "is-flipped" : ""} ${returningId === c.id ? "is-returning" : ""}`}>
               {c.game ? (
             <GameCard
               id={c.game.id}
@@ -342,6 +408,7 @@ export function CollectionClient() {
               priceCents={c.game.priceCents}
               isFree={c.game.isFree}
               contentType={c.game.contentType}
+              privateCategories={c.categories}
               onFlipChange={(flipped) => handleCardFlip(c.id, flipped)}
             />
           ) : c.studio ? (
@@ -354,20 +421,20 @@ export function CollectionClient() {
               games={c.studio.games}
               about={c.studio.about}
               avatarUrl={c.studio.avatarUrl}
+              privateCategories={c.categories}
               onFlipChange={(flipped) => handleCardFlip(c.id, flipped)}
             />
           ) : null}
-              {flippedIds.includes(c.id) && !saleMode && <OwnedCardActions card={c} players={players} onChanged={() => { void refreshAll(); }} />}
-              {saleMode && (
+              {flippedIds.includes(c.id) && !selectionMode && <OwnedCardActions card={c} players={players} onChanged={() => { void refreshAll(); }} />}
+              {selectionMode && (
                 <button
                   type="button"
                   onClick={() => toggleCard(c)}
-                  disabled={!c.sellable}
                   className={`steam-sale-card-target ${selected ? "is-selected" : ""} ${!c.sellable ? "is-locked" : ""}`}
-                  aria-label={c.sellable ? `${selected ? "Désélectionner" : "Sélectionner"} la carte` : "Carte engagée, vente impossible"}
+                  aria-label={`${selected ? "Désélectionner" : "Sélectionner"} la carte${c.sellable ? "" : " (vente et échange indisponibles)"}`}
                   aria-pressed={selected}
                 >
-                  <span>{c.sellable ? (selected ? "✓" : "+") : "🔒"}</span>
+                  <span>{selected ? "✓" : c.sellable ? "+" : "⚑"}</span>
                 </button>
               )}
               </div>
@@ -378,6 +445,36 @@ export function CollectionClient() {
           <p className="text-gray-500 text-sm">Aucune carte pour l&apos;instant — ouvre un paquet !</p>
         )}
       </div>
+      {categoryModal && <section className="steam-category-modal" role="dialog" aria-modal="true" aria-labelledby="steam-category-title">
+        <header>
+          <div><small>ATELIER PERSONNEL</small><h2 id="steam-category-title">Catégories de cartes</h2></div>
+          <button type="button" onClick={() => setCategoryModal(false)} aria-label="Fermer">×</button>
+        </header>
+        <p>Ces étiquettes sont privées : seul ton compte les voit. Elles ne modifient pas les cartes des autres joueurs.</p>
+        {selectedIds.length > 0 && <div className="steam-category-selected-count">{selectedIds.length} carte{selectedIds.length > 1 ? "s" : ""} sélectionnée{selectedIds.length > 1 ? "s" : ""}</div>}
+        <div className="steam-category-create">
+          <label>Nom <input value={categoryName} onChange={(event) => setCategoryName(event.target.value)} maxLength={24} placeholder="Ex. À échanger" /></label>
+          <label className="steam-category-color">Couleur <input aria-label="Couleur de la catégorie" type="color" value={categoryColor} onChange={(event) => setCategoryColor(event.target.value)} /></label>
+          <button type="button" disabled={categoryBusy || !categoryName.trim()} onClick={editingCategoryId
+            ? () => { const category = categories.find((item) => item.id === editingCategoryId); if (category) void updateCategory(category, "save"); }
+            : () => void createCategory()}>{editingCategoryId ? "Enregistrer" : "Créer"}</button>
+          {editingCategoryId && <button type="button" className="steam-sale-secondary" onClick={() => { setEditingCategoryId(null); setCategoryName(""); }}>Annuler</button>}
+        </div>
+        <div className="steam-category-list">
+          {categories.map((category) => <article key={category.id}>
+            <span className="steam-category-swatch" style={{ backgroundColor: category.color }} />
+            <span className="steam-category-name">{category.name}<small>{category.cardCount ?? 0} carte{category.cardCount === 1 ? "" : "s"}</small></span>
+            <button type="button" disabled={categoryBusy || !selectedIds.length} onClick={() => void assignCategory(category.id, "assign")}>Ajouter</button>
+            <button type="button" disabled={categoryBusy || !selectedIds.length} onClick={() => void assignCategory(category.id, "unassign")}>Retirer</button>
+            <button type="button" aria-label={`Modifier ${category.name}`} onClick={() => { setEditingCategoryId(category.id); setCategoryName(category.name); setCategoryColor(category.color); }}>✎</button>
+            <button type="button" aria-label={`Supprimer ${category.name}`} disabled={categoryBusy} onClick={() => void updateCategory(category, "delete")}>×</button>
+          </article>)}
+          {categories.length === 0 && <span className="steam-category-empty">Crée ta première catégorie pour ranger tes cartes.</span>}
+        </div>
+        {categoryMessage && <p className="steam-category-feedback">{categoryMessage}</p>}
+        {categoryError && <p className="steam-category-error" role="alert">{categoryError}</p>}
+        <footer><button type="button" onClick={() => setCategoryModal(false)}>Terminé</button></footer>
+      </section>}
     </div>
   );
 }

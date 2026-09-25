@@ -122,6 +122,8 @@ export async function recalculateCatalogRarity() {
     } else if (expected === "EPIC" && item.ownerEstimate < EPIC_MIN_OWNER_ESTIMATE) {
       expected = "RARE";
     }
+    // Les DLC peuvent être COMMON, UNCOMMON ou RARE, jamais EPIC/LEGENDARY.
+    if (item.contentType === "DLC" && (expected === "EPIC" || expected === "LEGENDARY")) expected = "RARE";
     if (expected !== (item.rarity as Rarity)) {
       (item.contentType === "DLC" ? dlcUpdates : gameUpdates).push({ id: item.id, rarity: expected });
     }
@@ -166,6 +168,12 @@ export async function recalculateCatalogRarity() {
   });
   const cardUpdates: { id: string; rarity: Rarity; atk: number }[] = [];
   for (const card of cards) {
+    if (card.game?.contentType === "DLC") {
+      if (card.rarity === "EPIC" || card.rarity === "LEGENDARY") {
+        cardUpdates.push({ id: card.id, rarity: "RARE", atk: rollAtkForRarity("RARE") });
+      }
+      continue;
+    }
     const legendaryEligible = card.game && isLegendaryGameEligible(card.game.ownerEstimate, card.game.rarity);
     if (card.rarity === "LEGENDARY" && legendaryEligible) continue;
     const epicEligible = card.game

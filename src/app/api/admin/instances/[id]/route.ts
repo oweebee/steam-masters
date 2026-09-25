@@ -26,6 +26,10 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
     if (!VALID.includes(body.rarity)) {
       return NextResponse.json({ error: "Rareté invalide" }, { status: 400 });
     }
+    const existing = await prisma.card.findUnique({ where: { id }, select: { game: { select: { contentType: true } } } });
+    if (existing?.game?.contentType === "DLC" && (body.rarity === "EPIC" || body.rarity === "LEGENDARY")) {
+      return NextResponse.json({ error: "Une carte DLC ne peut pas dépasser la rareté Rare (bleue)." }, { status: 400 });
+    }
     data.rarity = body.rarity as Rarity;
     data.atk = rollAtkForRarity(body.rarity as Rarity);
   }

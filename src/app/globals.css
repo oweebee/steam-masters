@@ -424,6 +424,49 @@ a.bg-purple-600 {
   bottom: auto;
 }
 
+.steam-private-card-tags {
+  position: absolute;
+  inset: auto 0 -1px;
+  z-index: 8;
+  height: 0;
+  pointer-events: none;
+}
+.steam-private-card-tags.is-studio { inset: -1px 0 auto; }
+.steam-private-card-tag {
+  position: absolute;
+  top: -0.72rem;
+  display: block;
+  width: 1.45rem;
+  height: 1.45rem;
+  padding: .2rem;
+  border: 2px solid #b08047;
+  border-radius: 50%;
+  background: radial-gradient(circle at 35% 25%, #f0d195, #76502d 35%, #21150e 72%);
+  box-shadow: 0 2px 5px rgba(0,0,0,.85), inset 0 1px 1px rgba(255,235,185,.65), 0 0 0 1px #28180e;
+}
+.steam-private-card-tag::before,
+.steam-private-card-tag::after {
+  content: "";
+  position: absolute;
+  top: .49rem;
+  width: 2px;
+  height: 2px;
+  border-radius: 50%;
+  background: #f2cc82;
+  box-shadow: 0 0 2px #ffdf9a;
+}
+.steam-private-card-tag::before { left: 1px; }
+.steam-private-card-tag::after { right: 1px; }
+.steam-private-card-tag svg { display: block; width: 100%; height: 100%; overflow: visible; filter: drop-shadow(0 0 2px var(--gem-color)); }
+.steam-private-gem-shadow { fill: #21140d; stroke: #e3bd7a; stroke-width: .7; }
+.steam-private-gem-face { fill: var(--gem-color); stroke: rgba(255,255,255,.55); stroke-width: .55; }
+.steam-private-gem-facet { fill: rgba(255,255,255,.4); }
+.steam-private-gem-shine { fill: rgba(255,255,255,.2); }
+.steam-private-card-tag.is-left { transform: rotate(-8deg); }
+.steam-private-card-tag.is-right { transform: rotate(8deg); }
+.steam-private-category-labels { display: flex; flex-wrap: wrap; gap: .28rem; }
+.steam-private-category-labels span { max-width: 100%; overflow: hidden; padding: .17rem .42rem; border: 1px solid; border-radius: .3rem; background: linear-gradient(180deg, rgba(255,255,255,.07), rgba(0,0,0,.28)), #211912; box-shadow: inset 0 1px 0 rgba(255,255,255,.08), 0 2px 5px rgba(0,0,0,.32); font: 700 .58rem/1.25 Arial,sans-serif; text-overflow: ellipsis; white-space: nowrap; }
+
 .steam-studio-mosaic {
   display: grid;
   width: 100%;
@@ -801,6 +844,52 @@ a.bg-purple-600 {
 .steam-sale-actions { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 0.45rem; }
 .steam-sale-message { margin: -0.5rem 0 1rem; color: #dfad65; font-size: 0.82rem; }
 
+.steam-category-modal {
+  position: fixed;
+  z-index: 70;
+  top: 50%;
+  left: 50%;
+  width: min(37rem, calc(100vw - 2rem));
+  max-height: min(85vh, 44rem);
+  overflow-y: auto;
+  transform: translate(-50%, -50%);
+  padding: 1.2rem;
+  border: 1px solid #875c36;
+  border-radius: 1rem;
+  color: #e9dcc9;
+  background: radial-gradient(ellipse at top left, rgba(190,113,45,.12), transparent 55%), #17120f;
+  box-shadow: 0 24px 80px rgba(0,0,0,.85), inset 0 1px 0 rgba(255,215,160,.12);
+}
+.steam-category-modal > header,
+.steam-category-modal > footer { display: flex; align-items: center; justify-content: space-between; gap: .75rem; }
+.steam-category-modal > header { border-bottom: 1px solid #4d3624; padding-bottom: .75rem; }
+.steam-category-modal > header small { color: #c08b52; font-size: .58rem; letter-spacing: .17em; }
+.steam-category-modal h2 { margin: .15rem 0 0; color: #fff0dc; font: 700 1.15rem Georgia,serif; }
+.steam-category-modal > header button { color: #c9b49b; font-size: 1.5rem; line-height: 1; }
+.steam-category-modal > p { margin: .75rem 0; color: #a99a89; font-size: .72rem; }
+.steam-category-selected-count { margin: .6rem 0; color: #e3b875; font-size: .7rem; }
+.steam-category-create { display: flex; align-items: end; flex-wrap: wrap; gap: .5rem; padding: .75rem; border: 1px solid #4a3524; border-radius: .65rem; background: #211912; }
+.steam-category-create label { display: grid; flex: 1 1 10rem; gap: .3rem; color: #b9a78f; font-size: .65rem; }
+.steam-category-create input:not([type="color"]) { min-width: 0; border: 1px solid #62472f; border-radius: .4rem; padding: .48rem .55rem; color: #fff; background: #120f0d; font-size: .75rem; }
+.steam-category-color { flex: 0 0 auto !important; }
+.steam-category-color input { width: 2.4rem; height: 2rem; border: 1px solid #62472f; border-radius: .35rem; background: #120f0d; }
+.steam-category-create > button,
+.steam-category-list article > button,
+.steam-category-modal > footer button { border: 1px solid #79512f; border-radius: .4rem; padding: .45rem .65rem; color: #f5d7ad; background: linear-gradient(#352519,#21160f); font-size: .65rem; font-weight: 700; }
+.steam-category-create > button:first-of-type,
+.steam-category-modal > footer button { border-color: #a54432; background: linear-gradient(#a63327,#651b17); color: #fff1dd; }
+.steam-category-list { display: grid; gap: .35rem; margin-top: .75rem; }
+.steam-category-list article { display: flex; align-items: center; gap: .38rem; min-width: 0; padding: .45rem; border: 1px solid #3e3024; border-radius: .55rem; background: rgba(9,7,5,.35); }
+.steam-category-swatch { flex: 0 0 .8rem; width: .8rem; height: .8rem; border: 1px solid rgba(255,255,255,.35); border-radius: 50%; box-shadow: 0 0 8px currentColor; }
+.steam-category-name { flex: 1; min-width: 0; overflow: hidden; color: #eadbc8; font-size: .72rem; text-overflow: ellipsis; white-space: nowrap; }
+.steam-category-name small { display: block; color: #887865; font-size: .58rem; }
+.steam-category-list article > button { flex: 0 0 auto; padding: .35rem .45rem; }
+.steam-category-list button:disabled, .steam-category-create button:disabled { opacity: .4; cursor: not-allowed; }
+.steam-category-empty { padding: .75rem; color: #8b7a67; font-size: .7rem; }
+.steam-category-feedback { color: #c9df9b !important; }
+.steam-category-error { color: #ff9b8e !important; }
+.steam-category-modal > footer { justify-content: flex-end; margin-top: .8rem; padding-top: .6rem; border-top: 1px solid #4d3624; }
+
 .steam-sale-card { position: relative; border-radius: 1rem; transition: transform 160ms ease, box-shadow 160ms ease; }
 .steam-sale-card-selected { transform: translateY(-4px); box-shadow: 0 0 0 3px #cc6a3d, 0 0 24px rgba(191,65,40,0.38); }
 .steam-sale-card-target {
@@ -898,6 +987,8 @@ a.bg-purple-600 {
   .steam-collection-toolbar { align-items: stretch; flex-direction: column; }
   .steam-sale-actions { justify-content: stretch; }
   .steam-sale-actions button { flex: 1 1 auto; }
+  .steam-category-modal { padding: .9rem; }
+  .steam-category-list article { flex-wrap: wrap; }
 }
 
 /* Rapport détaillé de l'aspiration Steam. */
@@ -1122,8 +1213,18 @@ a.bg-purple-600 {
 .steam-market-cancel { width:100%; height:2.3rem; border:1px solid #714229; border-radius:.4rem; color:#c98d63; font-size:.72rem; background:#24150f; }.steam-market-cancel:disabled { color:#6f6254; border-color:#46382d; opacity:.7; }
 .steam-market-empty { grid-column:1/-1; padding:3rem 1rem; border:1px dashed #4c3523; border-radius:.8rem; color:#806d59; text-align:center; background:rgba(20,15,12,.65); }
 
+.steam-market-header-actions { display:flex; align-items:center; gap:.85rem; }
+.steam-market-create-trigger { display:flex; align-items:center; gap:.7rem; min-height:4rem; padding:.65rem 1rem; border:2px solid #e2a45e; border-radius:.75rem; color:#fff0d8; text-align:left; font-family:Georgia,serif; font-weight:700; background:linear-gradient(180deg,#d84935 0%,#9e241e 55%,#661713 100%); box-shadow:inset 0 1px rgba(255,238,193,.5),inset 0 -4px rgba(44,10,7,.4),0 0 0 3px #321a11,0 7px 18px #0009; transition:filter .16s,transform .16s; }
+.steam-market-create-trigger:hover { filter:brightness(1.18); transform:translateY(-1px); }
+.steam-market-create-trigger > span:first-child { display:grid; width:2.2rem; height:2.2rem; place-items:center; border:1px solid #f1c079; border-radius:50%; color:#ffd487; font-size:1.2rem; background:radial-gradient(circle at 35% 28%,#704b2c,#21140d 72%); box-shadow:inset 0 0 0 3px #130d09,0 0 8px #f0984266; }
+.steam-market-modal-backdrop { position:fixed; inset:0; z-index:100; display:grid; place-items:center; overflow-y:auto; padding:1rem; background:rgba(4,3,3,.82); backdrop-filter:blur(7px); -webkit-backdrop-filter:blur(7px); }
+.steam-market-modal { position:relative; width:min(100%,58rem); max-height:min(92vh,58rem); overflow-y:auto; margin:auto; padding:1.25rem; border-color:#95643b; box-shadow:inset 0 1px rgba(255,202,125,.12),0 0 0 3px #120d09,0 20px 70px #000; }
+.steam-market-modal-close { position:absolute; z-index:8; top:.65rem; right:.65rem; display:grid; width:2.25rem; height:2.25rem; place-items:center; border:1px solid #785133; border-radius:.5rem; color:#e7c293; font-size:1.6rem; line-height:1; background:#211710; }
+.steam-market-modal-close:hover { color:#fff; border-color:#d09252; background:#392319; }
+
 @media (max-width: 1050px) { .steam-market-controls { grid-template-columns:1fr 1fr; }.steam-market-scopes { grid-column:1/-1; }.steam-market-controls input { grid-column:1/-1; } }
-@media (max-width: 640px) { .steam-main { padding:0.75rem; padding-bottom:calc(4.5rem + env(safe-area-inset-bottom,0px)); } .steam-owned-slot { flex:none; width:100%; height:22rem; } .steam-owned-slot .steam-card-wrap { width:100%; height:22rem; } .steam-owned-frame { width:100%; }.steam-market-header { min-height:7rem; padding:1rem; }.steam-market-gauge { width:3.8rem;height:3.8rem;font-size:1.7rem;border-width:5px; }.steam-market-header p { display:none; }.steam-market-picker-controls,.steam-market-picker-grid,.steam-market-auction-settings,.steam-market-controls { grid-template-columns:1fr; }.steam-market-scopes,.steam-market-controls input { grid-column:auto; }.steam-market-scopes button { flex:1; }.steam-market-grid { grid-template-columns:1fr; } }
+@media (max-width: 640px) { .steam-main { padding:0.75rem; padding-bottom:calc(4.5rem + env(safe-area-inset-bottom,0px)); } .steam-owned-slot { flex:none; width:100%; height:22rem; } .steam-owned-slot .steam-card-wrap { width:100%; height:22rem; } .steam-owned-frame { width:100%; }.steam-market-header { min-height:7rem; padding:1rem; }.steam-market-gauge { width:3.8rem;height:3.8rem;font-size:1.7rem;border-width:5px; }.steam-market-header p { display:none; }.steam-market-picker-controls,.steam-market-auction-settings,.steam-market-controls { grid-template-columns:1fr; }.steam-market-picker-grid { grid-template-columns:1fr; }.steam-market-scopes,.steam-market-controls input { grid-column:auto; }.steam-market-scopes button { flex:1; }.steam-market-grid { grid-template-columns:repeat(2,minmax(0,1fr));gap:.55rem; }.steam-market-card-topline { padding:.5rem .45rem .4rem;font-size:.49rem;letter-spacing:.06em; }.steam-market-card-image { height:5.5rem; }.steam-market-card-body { padding:.55rem; }.steam-market-card-body h3 { font-size:.8rem; }.steam-market-card-body > p { font-size:.57rem; }.steam-market-stats { gap:.25rem;margin:.45rem 0; }.steam-market-stats span { min-width:0;flex:1;padding:.28rem .2rem;font-size:.72rem; }.steam-market-stats small { margin-right:.2rem;font-size:.5rem; }.steam-market-price { gap:.25rem;padding:.4rem; }.steam-market-price small { font-size:.46rem; }.steam-market-price strong { font-size:.66rem; }.steam-market-bids { min-height:1.4rem;font-size:.56rem; }.steam-market-bidbox { grid-template-columns:minmax(0,1fr) auto;gap:.25rem; }.steam-market-bidbox input,.steam-market-bidbox button,.steam-market-cancel { height:2.1rem;min-width:0;padding:0 .4rem;font-size:.62rem; }.steam-market-header-actions { gap:.45rem; }.steam-market-header-actions .steam-market-gauge { width:3rem;height:3rem;font-size:1.4rem; }.steam-market-create-trigger { min-height:3rem;padding:.4rem .55rem;gap:.35rem;font-family:Arial,sans-serif;font-size:.63rem; }.steam-market-create-trigger > span:first-child { width:1.75rem;height:1.75rem;font-size:1rem; }.steam-market-modal-backdrop { padding:.5rem; }.steam-market-modal { max-height:calc(100dvh - 1rem);padding:.9rem; }.steam-market-modal .steam-market-picker-grid { grid-template-columns:1fr; } }
+@media (display-mode:standalone) and (max-width:900px) { .steam-market-grid { grid-template-columns:repeat(2,minmax(0,1fr));gap:.55rem; } }
 /* Nav mobile (bottom bar PWA) */
 .steam-bottom-nav { background:linear-gradient(180deg,#1a1410 0%,#110e0b 100%); border-top:1px solid #63462c; box-shadow:0 -4px 16px rgba(0,0,0,.4); padding-bottom:env(safe-area-inset-bottom,0px); }
 .steam-bottom-nav a { -webkit-tap-highlight-color:transparent; outline:none; }

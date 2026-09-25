@@ -60,6 +60,7 @@ export function MarcheClient({ userId }: { userId: string }) {
   const [working, setWorking] = useState(false);
   const [message, setMessage] = useState("");
   const [error, setError] = useState("");
+  const [createModalOpen, setCreateModalOpen] = useState(false);
   const [query, setQuery] = useState("");
   const [type, setType] = useState<"ALL" | "GAME" | "DLC" | "STUDIO">("ALL");
   const [rarity, setRarity] = useState<Rarity | "ALL">("ALL");
@@ -90,6 +91,7 @@ export function MarcheClient({ userId }: { userId: string }) {
       if (requestedCard) {
         setCardSearch(cardName(requestedCard));
         setSelectedCardId(requestedCard.id);
+        setCreateModalOpen(true);
         window.history.replaceState(window.history.state, "", window.location.pathname);
       } else if (requested) {
         setError("La carte demandée n’est plus disponible pour une enchère.");
@@ -112,6 +114,14 @@ export function MarcheClient({ userId }: { userId: string }) {
     const interval = window.setInterval(() => setNow(Date.now()), 1000);
     return () => window.clearInterval(interval);
   }, []);
+  useEffect(() => {
+    if (!createModalOpen) return;
+    const onKeyDown = (event: KeyboardEvent) => { if (event.key === "Escape" && !working) setCreateModalOpen(false); };
+    document.addEventListener("keydown", onKeyDown);
+    const previousOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    return () => { document.removeEventListener("keydown", onKeyDown); document.body.style.overflow = previousOverflow; };
+  }, [createModalOpen, working]);
   useEffect(() => {
     if (auctions.length === 0) return;
     const nextEnd = Math.min(...auctions.map((auction) => new Date(auction.endsAt).getTime()));
@@ -174,7 +184,7 @@ export function MarcheClient({ userId }: { userId: string }) {
   async function createAuction(event: React.FormEvent) {
     event.preventDefault();
     const result = await action("/api/marche", { cardId: selectedCardId, startPrice: Number(startPrice), durationMinutes: Number(durationMinutes) });
-    if (result) setMessage("Carte mise aux enchères.");
+    if (result) { setMessage("Carte mise aux enchères."); setCreateModalOpen(false); }
   }
 
   async function bid(auction: Auction) {
@@ -193,11 +203,13 @@ export function MarcheClient({ userId }: { userId: string }) {
     <div className="steam-market">
       <header className="steam-market-header">
         <div><span className="steam-market-eyebrow">Hôtel des ventes</span><h1>Marché des cartes</h1><p>Dépose une carte, surenchéris et remporte l’exemplaire à la fin du compte à rebours.</p></div>
-        <div className="steam-market-gauge" aria-hidden="true"><span>⚙</span></div>
+        <div className="steam-market-header-actions"><div className="steam-market-gauge" aria-hidden="true"><span>⚙</span></div><button type="button" onClick={() => { setError(""); setMessage(""); setCreateModalOpen(true); }} className="steam-market-create-trigger"><span aria-hidden="true">⚒</span><span>Mettre une carte<br/>aux enchères</span></button></div>
       </header>
 
-      <section className="steam-market-sellbox">
-        <div className="steam-market-section-title"><span className="steam-market-icon">⚒</span><div><h2>Mettre une carte aux enchères</h2><p>Annulation possible uniquement avant la première enchère.</p></div></div>
+      {createModalOpen && <div className="steam-market-modal-backdrop" role="presentation" onMouseDown={(event) => { if (event.target === event.currentTarget && !working) setCreateModalOpen(false); }}>
+      <section className="steam-market-sellbox steam-market-modal" role="dialog" aria-modal="true" aria-labelledby="auction-modal-title">
+        <button type="button" aria-label="Fermer" disabled={working} onClick={() => setCreateModalOpen(false)} className="steam-market-modal-close">×</button>
+        <div className="steam-market-section-title"><span className="steam-market-icon">⚒</span><div><h2 id="auction-modal-title">Mettre une carte aux enchères</h2><p>Annulation possible uniquement avant la première enchère.</p></div></div>
         <form onSubmit={createAuction} className="steam-market-sellform">
           {selectedCard && <div className="steam-market-selected-card" aria-live="polite">
             <span>Carte prête pour l’enchère</span><strong>{cardName(selectedCard)}</strong>
@@ -231,6 +243,7 @@ export function MarcheClient({ userId }: { userId: string }) {
           </div>
         </form>
       </section>
+      </div>}
 
       {(message || error) && <div className={`steam-market-notice ${error ? "is-error" : ""}`}>{error || message}</div>}
 

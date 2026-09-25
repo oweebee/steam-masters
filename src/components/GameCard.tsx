@@ -2,6 +2,7 @@
 import { FlipCard } from "./FlipCard";
 import { CardOrnaments } from "./CardOrnaments";
 import { FlameDial } from "./FlameDial";
+import { CardCategoryPills, PrivateCategoryLabels, type PrivateCardCategory } from "./CardCategoryPills";
 import { RARITY_STYLES, type Rarity } from "@/lib/rarityStyles";
 
 function formatOwners(n: number) {
@@ -33,6 +34,7 @@ export function GameCard({
   isFree,
   contentType = "GAME",
   onFlipChange,
+  privateCategories = [],
 }: {
   id?: string;
   name: string;
@@ -50,6 +52,7 @@ export function GameCard({
   isFree?: boolean;
   contentType?: "GAME" | "DLC";
   onFlipChange?: (flipped: boolean) => void;
+  privateCategories?: PrivateCardCategory[];
 }) {
   const style = RARITY_STYLES[rarity];
   const canFlip = !!id;
@@ -63,6 +66,7 @@ export function GameCard({
       <div className="steam-card-visual">
         <img src={headerImage} alt={name} className="w-full h-36 object-cover" />
         <FlameDial rarity={rarity} />
+        <CardCategoryPills categories={privateCategories} />
       </div>
 
       <div className="steam-card-content p-4 flex flex-col gap-2 flex-1">
@@ -109,6 +113,7 @@ export function GameCard({
       <div className="steam-card-nameplate">
         <h3 className="steam-card-title text-white font-bold text-base leading-tight truncate">{name}</h3>
       </div>
+      <PrivateCategoryLabels categories={privateCategories} />
 
       <div className="grid grid-cols-2 gap-2 text-xs">
         <div className="steam-info-panel bg-gray-800 rounded-lg p-2">

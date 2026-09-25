@@ -12,6 +12,7 @@ import { persistRemoteImage } from "@/lib/storedImages";
 import { writeAppLog } from "@/lib/appLog";
 import { cardDefense } from "@/lib/cardDefense";
 import { archiveCatalogIssue } from "@/lib/catalogIssueArchive";
+import { readCatalogSubmission, writeCatalogSubmission } from "@/lib/catalogSubmission";
 
 async function requireAdmin() {
   const session = await auth();
@@ -28,11 +29,24 @@ export async function GET() {
 }
 
 export async function POST(req: NextRequest) {
-  try { await requireAdmin(); } catch { return NextResponse.json({ error: "Unauthorized" }, { status: 401 }); }
   const body = await req.json().catch(() => null);
   const name = typeof body?.name === "string" ? body.name.trim() : "";
-  const runId = typeof body?.runId === "string" ? body.runId : null;
   if (!name) return NextResponse.json({ error: "Nom de studio requis" }, { status: 400 });
+  const session = await auth();
+  const sessionUser = session?.user as { id?: string; role?: string } | undefined;
+  const isAdmin = sessionUser?.role === "ADMIN";
+  const submissionId = typeof body?.submissionId === "string" ? body.submissionId : "";
+  let playerSubmission = null;
+  if (submissionId) {
+    if (!sessionUser?.id) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    playerSubmission = await readCatalogSubmission(submissionId);
+    if (!playerSubmission || (!isAdmin && playerSubmission.userId !== sessionUser.id) || playerSubmission.phase !== "STUDIOS" || playerSubmission.developers[playerSubmission.studioIndex] !== name) {
+      return NextResponse.json({ error: "Ce studio ne fait pas partie de cette soumission ou a déjà été traité." }, { status: 403 });
+    }
+  } else if (!isAdmin) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+  const runId = playerSubmission?.id ?? (typeof body?.runId === "string" ? body.runId : null);
 
   const studio = await prisma.studio.findUnique({ where: { name }, select: { id: true } });
   if (!studio) return NextResponse.json({ error: "Studio introuvable" }, { status: 404 });
@@ -138,6 +152,16 @@ export async function POST(req: NextRequest) {
 
   await upsertStudiosForDevelopers(Array.from(affectedDevelopers));
   await recalculateCatalogRarity();
+  if (playerSubmission) {
+    const cataloguedIds = await prisma.steamGame.findMany({
+      where: { id: { in: officialGames.map((game) => game.appid) }, contentType: "GAME" },
+      select: { id: true },
+    });
+    playerSubmission.gameIds = Array.from(new Set([...playerSubmission.gameIds, ...cataloguedIds.map((game) => game.id)]));
+    playerSubmission.studioIndex += 1;
+    if (playerSubmission.studioIndex >= playerSubmission.developers.length) playerSubmission.phase = "DLC";
+    await writeCatalogSubmission(playerSubmission);
+  }
   await writeAppLog({
     runId,
     category: "SYNC",
@@ -155,5 +179,7 @@ export async function POST(req: NextRequest) {
     dlcsChecked: studioDlcs.length,
     dlcsLinked,
     dlcsMissing: missingDlcIds.size,
+    submissionIndex: playerSubmission?.studioIndex ?? null,
+    submissionPhase: playerSubmission?.phase ?? null,
   });
 }

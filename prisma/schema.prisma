@@ -12,11 +12,13 @@ enum Role {
   USER
   ADMIN
 }
+
 enum Status {
   PENDING
   ACTIVE
   REJECTED
 }
+
 enum Rarity {
   COMMON
   UNCOMMON
@@ -24,30 +26,36 @@ enum Rarity {
   EPIC
   LEGENDARY
 }
+
 enum SteamContentType {
   GAME
   DLC
 }
+
 enum TradeStatus {
   PENDING
   ACCEPTED
   DECLINED
   CANCELLED
 }
+
 enum TradeSide {
   OFFER
   WANT
 }
+
 enum AuctionStatus {
   ACTIVE
   ENDED
   CANCELLED
 }
+
 enum GuildRole {
   OWNER
   ADMIN
   MEMBER
 }
+
 enum FriendStatus {
   PENDING
   ACCEPTED
@@ -55,30 +63,31 @@ enum FriendStatus {
 }
 
 model User {
-  id        String   @id @default(cuid())
-  username  String   @unique
-  email     String   @unique
-  password  String
-  role      Role     @default(USER)
-  status    Status   @default(PENDING)
-  xp        Int      @default(0)
-  coins     Int      @default(100)
+  id            String    @id @default(cuid())
+  username      String    @unique
+  email         String    @unique
+  password      String
+  role          Role      @default(USER)
+  status        Status    @default(PENDING)
+  xp            Int       @default(0)
+  coins         Int       @default(100)
   lastBoosterAt DateTime?
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
 
-  cards          Card[]
-  sentTrades     Trade[]       @relation("TradeFrom")
-  receivedTrades Trade[]       @relation("TradeTo")
-  bids           Bid[]
-  auctions       Auction[]
-  guild          GuildMember?
-  messages       Message[]
-  friendsFrom    Friend[]      @relation("FriendFrom")
-  friendsTo      Friend[]      @relation("FriendTo")
-  battlesStarted Battle[]      @relation("BattleChallenger")
-  battlesReceived Battle[]     @relation("BattleOpponent")
-  battleRewards  BattleReward[]
+  cards           Card[]
+  cardCategories  CardCategory[]
+  sentTrades      Trade[]        @relation("TradeFrom")
+  receivedTrades  Trade[]        @relation("TradeTo")
+  bids            Bid[]
+  auctions        Auction[]
+  guild           GuildMember?
+  messages        Message[]
+  friendsFrom     Friend[]       @relation("FriendFrom")
+  friendsTo       Friend[]       @relation("FriendTo")
+  battlesStarted  Battle[]       @relation("BattleChallenger")
+  battlesReceived Battle[]       @relation("BattleOpponent")
+  battleRewards   BattleReward[]
 }
 
 enum BattleStatus {
@@ -89,31 +98,31 @@ enum BattleStatus {
 }
 
 model Battle {
-  id              String       @id @default(cuid())
-  challengerId    String
-  opponentId      String
-  status          BattleStatus @default(PENDING)
-  rulesVersion    Int          @default(2)
-  challengerDeck  Json
-  opponentDeck    Json?
-  challengerIndex Int          @default(0)
-  opponentIndex   Int          @default(0)
-  challengerHp    Int          @default(0)
-  opponentHp      Int          @default(0)
-  currentTurnId   String?
-  question        Json?
-  answerIndex     Int?
-  turnCount       Int          @default(0)
-  challengerScore Int          @default(0)
-  opponentScore   Int          @default(0)
-  challengerStakeCoins Int     @default(0)
-  opponentStakeCoins   Int     @default(0)
+  id                    String       @id @default(cuid())
+  challengerId          String
+  opponentId            String
+  status                BattleStatus @default(PENDING)
+  rulesVersion          Int          @default(2)
+  challengerDeck        Json
+  opponentDeck          Json?
+  challengerIndex       Int          @default(0)
+  opponentIndex         Int          @default(0)
+  challengerHp          Int          @default(0)
+  opponentHp            Int          @default(0)
+  currentTurnId         String?
+  question              Json?
+  answerIndex           Int?
+  turnCount             Int          @default(0)
+  challengerScore       Int          @default(0)
+  opponentScore         Int          @default(0)
+  challengerStakeCoins  Int          @default(0)
+  opponentStakeCoins    Int          @default(0)
   challengerStakeCardId String?
   opponentStakeCardId   String?
-  winnerId        String?
-  createdAt       DateTime     @default(now())
-  updatedAt       DateTime     @updatedAt
-  finishedAt      DateTime?
+  winnerId              String?
+  createdAt             DateTime     @default(now())
+  updatedAt             DateTime     @updatedAt
+  finishedAt            DateTime?
 
   challenger User           @relation("BattleChallenger", fields: [challengerId], references: [id])
   opponent   User           @relation("BattleOpponent", fields: [opponentId], references: [id])
@@ -167,9 +176,9 @@ model AppLog {
 }
 
 model SteamGame {
-  id            String   @id
+  id            String           @id
   name          String
-  description   String   @db.Text
+  description   String           @db.Text
   headerImage   String
   reviewScore   Int
   peakCcu       Int
@@ -179,17 +188,17 @@ model SteamGame {
   def           Int
   tags          String[]
   developers    String[]
-  priceCents    Int?     // prix Steam en centimes (devise EUR), null si non récupéré
-  isFree        Boolean  @default(false)
+  priceCents    Int? // prix Steam en centimes (devise EUR), null si non récupéré
+  isFree        Boolean          @default(false)
   contentType   SteamContentType @default(GAME)
   parentGameId  String?
-  dlcAppIds     String[] @default([])
-  updatedAt     DateTime @updatedAt
+  dlcAppIds     String[]         @default([])
+  updatedAt     DateTime         @updatedAt
 
   parentGame SteamGame?  @relation("GameDlc", fields: [parentGameId], references: [id], onDelete: SetNull)
   dlcGames   SteamGame[] @relation("GameDlc")
-  cards    Card[]
-  auctions Auction[]
+  cards      Card[]
+  auctions   Auction[]
 
   @@index([name])
   @@index([contentType, parentGameId])
@@ -204,7 +213,7 @@ model Studio {
   totalOwnerEstimate Int      @default(0)
   games              String[] @default([]) // noms réels des jeux (SteamGame.name) où ce dev apparaît dans developers[]
   about              String?  @db.Text // saisi manuellement par un admin (aucune API Steam/SteamSpy ne fournit de bio studio)
-  avatarUrl          String?  // saisi manuellement par un admin (aucune API publique de logo studio)
+  avatarUrl          String? // saisi manuellement par un admin (aucune API publique de logo studio)
   rarity             Rarity
   atk                Int
   def                Int
@@ -215,7 +224,7 @@ model Studio {
 }
 
 model Card {
-  id        String    @id @default(cuid())
+  id        String   @id @default(cuid())
   userId    String
   gameId    String?
   studioId  String?
@@ -225,26 +234,53 @@ model Card {
   // Un même jeu/studio peut désormais être tiré plusieurs fois (plus d'unicité
   // globale) avec une rareté différente à chaque exemplaire. Modifiable ensuite
   // UNIQUEMENT par un admin (voir /api/admin/instances/[id]).
-  rarity    Rarity    @default(COMMON)
+  rarity    Rarity   @default(COMMON)
   // ATK PROPRE à cet exemplaire, roulé dans la bande % de sa rareté au moment du
   // pull (même logique de tirage/fixation que `rarity`), remplace l'ATK
   // catalogue (SteamGame.atk/Studio, inchangé) sur l'affichage de CETTE carte.
   // Bandes (sur l'échelle ATK 0-100 existante) : LEGENDARY 98-100 / EPIC 96-97 /
   // RARE 91-95 / UNCOMMON 85-90 / COMMON 0-84. Modifiable ensuite UNIQUEMENT par
   // un admin (voir /api/admin/instances/[id]).
-  atk       Int       @default(0)
-  createdAt DateTime  @default(now())
-  isPinned  Boolean   @default(false)
+  atk       Int      @default(0)
+  createdAt DateTime @default(now())
+  isPinned  Boolean  @default(false)
 
-  user          User       @relation(fields: [userId], references: [id])
-  game          SteamGame? @relation(fields: [gameId], references: [id])
-  studio        Studio?    @relation(fields: [studioId], references: [id])
-  tradeCards    TradeCard[]
-  auctions      Auction[]
+  user       User                     @relation(fields: [userId], references: [id])
+  game       SteamGame?               @relation(fields: [gameId], references: [id])
+  studio     Studio?                  @relation(fields: [studioId], references: [id])
+  tradeCards TradeCard[]
+  auctions   Auction[]
+  categories CardCategoryAssignment[]
 
   @@index([userId, createdAt])
   @@index([gameId, rarity])
   @@index([studioId, rarity])
+}
+
+model CardCategory {
+  id        String   @id @default(cuid())
+  userId    String
+  name      String
+  color     String   @default("#c8874a")
+  createdAt DateTime @default(now())
+
+  user  User                     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  cards CardCategoryAssignment[]
+
+  @@unique([userId, name])
+  @@index([userId])
+}
+
+model CardCategoryAssignment {
+  cardId     String
+  categoryId String
+  createdAt  DateTime @default(now())
+
+  card     Card         @relation(fields: [cardId], references: [id], onDelete: Cascade)
+  category CardCategory @relation(fields: [categoryId], references: [id], onDelete: Cascade)
+
+  @@id([cardId, categoryId])
+  @@index([categoryId])
 }
 
 model Trade {
@@ -260,7 +296,7 @@ model Trade {
   resolvedAt DateTime?
 
   fromUser User        @relation("TradeFrom", fields: [fromUserId], references: [id])
-  toUser   User        @relation("TradeTo",   fields: [toUserId],   references: [id])
+  toUser   User        @relation("TradeTo", fields: [toUserId], references: [id])
   cards    TradeCard[]
 
   @@index([status, expiresAt])
@@ -275,7 +311,7 @@ model TradeCard {
   side    TradeSide
 
   trade Trade @relation(fields: [tradeId], references: [id])
-  card  Card  @relation(fields: [cardId],  references: [id])
+  card  Card  @relation(fields: [cardId], references: [id])
 
   @@index([cardId])
   @@index([tradeId])
@@ -293,10 +329,10 @@ model Auction {
   status     AuctionStatus @default(ACTIVE)
   createdAt  DateTime      @default(now())
 
-  card   Card?     @relation(fields: [cardId],   references: [id], onDelete: SetNull)
-  seller User      @relation(fields: [sellerId], references: [id])
+  card   Card?      @relation(fields: [cardId], references: [id], onDelete: SetNull)
+  seller User       @relation(fields: [sellerId], references: [id])
   game   SteamGame? @relation(fields: [gameId], references: [id], onDelete: SetNull)
-  studio Studio?   @relation(fields: [studioId], references: [id], onDelete: SetNull)
+  studio Studio?    @relation(fields: [studioId], references: [id], onDelete: SetNull)
   bids   Bid[]
 
   @@index([status, endsAt])
@@ -311,7 +347,7 @@ model Bid {
   createdAt DateTime @default(now())
 
   auction Auction @relation(fields: [auctionId], references: [id])
-  user    User    @relation(fields: [userId],    references: [id])
+  user    User    @relation(fields: [userId], references: [id])
 
   @@index([auctionId, amount])
 }
@@ -332,7 +368,7 @@ model GuildMember {
   role    GuildRole @default(MEMBER)
   xp      Int       @default(0)
 
-  user  User  @relation(fields: [userId],  references: [id])
+  user  User  @relation(fields: [userId], references: [id])
   guild Guild @relation(fields: [guildId], references: [id])
 }
 
@@ -359,7 +395,7 @@ model Friend {
   createdAt  DateTime     @default(now())
 
   from User @relation("FriendFrom", fields: [fromUserId], references: [id])
-  to   User @relation("FriendTo",   fields: [toUserId],   references: [id])
+  to   User @relation("FriendTo", fields: [toUserId], references: [id])
 
   @@unique([fromUserId, toUserId])
 }

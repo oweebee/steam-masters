@@ -185,8 +185,10 @@ export function EchangesClient({ myUserId }: { myUserId: string }) {
             type: c.game?.contentType ?? "STUDIO",
           }))
         );
-        const requested = new URLSearchParams(window.location.search).get("cardId");
-        if (requested && available.some((card) => card.id === requested)) setOfferCardIds([requested]);
+        const params = new URLSearchParams(window.location.search);
+        const requestedIds = [...params.getAll("cardId"), ...params.getAll("cardIds")].flatMap((value) => value.split(",")).filter(Boolean);
+        const validIds = [...new Set(requestedIds)].filter((id) => available.some((card) => card.id === id));
+        if (validIds.length) setOfferCardIds(validIds);
       });
     loadTrades();
   }, []);

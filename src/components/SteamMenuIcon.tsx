@@ -1,7 +1,7 @@
 export type SteamMenuIconName =
   | "packs" | "collection" | "exchange" | "market" | "profile" | "guild"
   | "players" | "messages" | "battle" | "achievements" | "ranking" | "settings"
-  | "admin" | "home" | "users" | "cards" | "import" | "logs" | "configuration";
+  | "admin" | "home" | "users" | "cards" | "import" | "logs" | "configuration" | "submit";
 
 export function SteamMenuIcon({ name, className = "" }: { name: SteamMenuIconName; className?: string }) {
   return (
@@ -27,6 +27,7 @@ export function SteamMenuIcon({ name, className = "" }: { name: SteamMenuIconNam
         {name === "users" && <><circle cx="12" cy="12" r="2.4" stroke="#f0c785"/><circle cx="20" cy="12" r="2.4" stroke="#f0c785"/><path d="M8 22c.3-3.3 1.6-5 4-5 1.6 0 2.8.7 3.5 2m1 3c.3-3.3 1.6-5 4-5 2.4 0 3.7 1.7 4 5" stroke="#d59a59" strokeWidth="1.3"/></>}
         {name === "cards" && <><path d="M10 11h10v13H10zM13 8h10v13M16 5h9v13" fill="#4e5c60" stroke="#e4bd80" strokeWidth="1.1"/><path d="M12 15h5m-5 3h5" stroke="#c94b37" strokeWidth="1"/></>}
         {name === "import" && <><path d="M9 20h14v4H9zM16 7v11m-4-4 4 4 4-4" stroke="#e5c182" strokeWidth="1.5"/><path d="M11 10V7h10v3" stroke="#d6503b" strokeWidth="1.2"/></>}
+        {name === "submit" && <><circle cx="15" cy="15" r="6" stroke="#e5c182" strokeWidth="1.5"/><path d="m19.5 19.5 5 5M15 11v8m-4-4h8" stroke="#d6503b" strokeWidth="1.7"/><path d="M11 8h10V6H11z" fill="#566267" stroke="#9b7044" strokeWidth=".8"/></>}
         {name === "logs" && <><path d="M10 8h13v16H10zM8 6h13" stroke="#e6bd7e" strokeWidth="1.2"/><path d="M13 12h7m-7 3h7m-7 3h5" stroke="#85bac4" strokeWidth="1.1"/><circle cx="8" cy="9" r="1" fill="#e65b3d" stroke="none"/></>}
         {name === "configuration" && <><circle cx="16" cy="16" r="5.5" stroke="#e1b775" strokeWidth="1.4"/><circle cx="16" cy="16" r="2" fill="#d6533d" stroke="#f2cc83"/><path d="M16 8V6m0 20v-2m8-8h2M6 16H4m17.7-5.7 1.4-1.4M8.9 23.1l1.4-1.4m11.4 1.4-1.4-1.4M8.9 8.9l1.4 1.4" stroke="#e5c082" strokeWidth="1.4"/></>}
         <circle cx="6.5" cy="9.5" r=".8" fill="#f4c16c" stroke="none" />

@@ -8,13 +8,14 @@ import { SteamMenuIcon, type SteamMenuIconName } from "@/components/SteamMenuIco
 // Affichées barrées dans le menu tant qu'elles ne sont pas développées.
 const NAV: { href: string; label: string; icon: SteamMenuIconName; active: boolean }[] = [
   { href: "/dashboard", label: "Paquets", icon: "packs", active: true },
-  { href: "/collection", label: "Collection", icon: "collection", active: true },
+  { href: "/collection", label: "Mes collections", icon: "collection", active: true },
   { href: "/echanges", label: "Échanges", icon: "exchange", active: true },
   { href: "/marche", label: "Marché", icon: "market", active: true },
   { href: "/profil", label: "Profil", icon: "profile", active: false },
   { href: "/guilde", label: "Guilde", icon: "guild", active: false },
   { href: "/joueurs", label: "Joueurs", icon: "players", active: true },
   { href: "/messages", label: "Messages", icon: "messages", active: true },
+  { href: "/ajouter-jeu", label: "Ajouter un jeu", icon: "submit", active: true },
   { href: "/bataille", label: "Bataille", icon: "battle", active: true },
   { href: "/succes", label: "Succès", icon: "achievements", active: false },
   { href: "/classement", label: "Classement", icon: "ranking", active: false },
