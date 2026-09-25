@@ -1,6 +1,7 @@
 "use client";
 import { useEffect, useState } from "react";
 import Link from "next/link";
+import { SteampunkStudioPlaceholder } from "@/components/SteampunkStudioPlaceholder";
 
 type Joueur = { id: string; username: string; isSelf: boolean; xp: number; cardCount: number; createdAt: string };
 type LibraryCard = {
@@ -154,16 +155,25 @@ export function JoueursClient() {
 
             <div className="steam-library-grid">
               {library.map((card) => (
-                <article key={card.id} className={`steam-library-card border-2 ${RARITY_BORDER[card.rarity]}`}>
+                <article key={card.id} className={`steam-library-card border-2 ${RARITY_BORDER[card.rarity]} relative group`}>
                   {card.headerImage ? (
                     <img src={card.headerImage} alt="" />
                   ) : (
-                    <div className="steam-library-studio" aria-hidden="true">🏭</div>
+                    <SteampunkStudioPlaceholder className="w-full h-10 object-cover rounded-sm" />
                   )}
                   <div>
                     <strong title={card.label}>{card.label}</strong>
                     <small>{card.type === "DLC" ? "DLC" : card.type === "GAME" ? "Jeu" : "Studio"}</small>
                   </div>
+                  {!selectedPlayer.isSelf && (
+                    <Link
+                      href={`/echanges?with=${selectedPlayer.id}&wantCard=${card.id}`}
+                      onClick={() => setSelectedPlayer(null)}
+                      className="absolute inset-0 flex items-center justify-center bg-black/70 opacity-0 group-hover:opacity-100 transition-opacity rounded text-xs font-bold text-amber-300 text-center leading-tight"
+                    >
+                      🔄 Proposer<br/>un échange
+                    </Link>
+                  )}
                 </article>
               ))}
               {libraryLoading && <div className="steam-library-empty">Chargement des cartes…</div>}

@@ -99,9 +99,7 @@ export async function POST(req: Request) {
     sources.push(source);
   }
 
-  const nextLastBoosterAt = user.lastBoosterAt
-    ? new Date(user.lastBoosterAt.getTime() + quantity * cooldownMs)
-    : new Date(now);
+  const nextLastBoosterAt = new Date(now - (status.readyCount - quantity) * cooldownMs);
 
   const cards = await prisma.$transaction(async (tx) => {
     const claimed = await tx.user.updateMany({

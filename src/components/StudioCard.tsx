@@ -6,6 +6,7 @@ import { CardOrnaments } from "./CardOrnaments";
 import { FlameDial } from "./FlameDial";
 import { CardCategoryPills, PrivateCategoryLabels, type PrivateCardCategory } from "./CardCategoryPills";
 import { RARITY_STYLES, type Rarity } from "@/lib/rarityStyles";
+import { SteampunkStudioPlaceholder } from "./SteampunkStudioPlaceholder";
 
 type GameLink = { name: string; appid: string | null; hasCard: boolean; headerImage?: string | null };
 type GamePreview = {
@@ -169,7 +170,7 @@ export function StudioCard({
           ) : displayImage ? (
             <img src={displayImage} alt={name} />
           ) : (
-            <span className="text-4xl">🏢</span>
+            <SteampunkStudioPlaceholder className="w-full h-full object-cover" />
           )}
           <FlameDial rarity={rarity} />
           <CardCategoryPills categories={privateCategories} studio />

@@ -1,5 +1,6 @@
 "use client";
 import { useEffect, useMemo, useRef, useState } from "react";
+import { SteampunkStudioPlaceholder } from "@/components/SteampunkStudioPlaceholder";
 
 type Rarity = "COMMON" | "UNCOMMON" | "RARE" | "EPIC" | "LEGENDARY";
 
@@ -129,7 +130,7 @@ function CardSelector({
               {card.headerImage ? (
                 <img src={card.headerImage} alt="" className="w-16 h-9 rounded object-cover shrink-0" />
               ) : (
-                <span className="steam-trade-studio-icon">🏭</span>
+                <SteampunkStudioPlaceholder className="w-16 h-9 rounded shrink-0" />
               )}
               <span className="min-w-0 flex-1 text-left">
                 <span className="block text-sm text-white truncate">{card.label}</span>
@@ -204,6 +205,8 @@ export function EchangesClient({ myUserId }: { myUserId: string }) {
         const requestedIds = [...params.getAll("cardId"), ...params.getAll("cardIds")].flatMap((value) => value.split(",")).filter(Boolean);
         const validIds = [...new Set(requestedIds)].filter((id) => available.some((card) => card.id === id));
         if (validIds.length) setOfferCardIds(validIds);
+        const withUserId = params.get("with");
+        if (withUserId) setTargetId(withUserId);
       });
     loadTrades();
   }, []);
@@ -217,7 +220,13 @@ export function EchangesClient({ myUserId }: { myUserId: string }) {
       if (!targetId) return;
       fetch(`/api/joueurs/${targetId}/collection`, { signal: controller.signal })
         .then((r) => (r.ok ? r.json() : []))
-        .then((cards: CardOption[]) => { if (!controller.signal.aborted) setTargetCollection(cards); })
+        .then((cards: CardOption[]) => {
+          if (!controller.signal.aborted) {
+            setTargetCollection(cards);
+            const wantCard = new URLSearchParams(window.location.search).get("wantCard");
+            if (wantCard && cards.some((c) => c.id === wantCard)) setWantCardIds([wantCard]);
+          }
+        })
         .catch(() => { if (!controller.signal.aborted) setTargetCollection([]); })
         .finally(() => { if (!controller.signal.aborted) setTargetLoading(false); });
     }, 0);
