@@ -42,7 +42,13 @@ export function AdminTabs() {
             );
           })}
         </div>
-        <div className="flex gap-1 shrink-0">
+        <div className="flex items-center gap-2 shrink-0">
+          <Link
+            href="/dashboard"
+            className="flex items-center gap-1.5 px-3 py-1.5 my-2 text-xs rounded-lg border border-amber-800 bg-amber-950/40 text-amber-300 hover:bg-amber-900/50 hover:text-amber-100 whitespace-nowrap transition font-medium"
+          >
+            ← Quitter l&apos;admin
+          </Link>
           {SHORTCUTS.map((s) => (
             <Link
               key={s.href}
