@@ -24,6 +24,7 @@ export function CoherencePanel({ externalBusy }: { externalBusy: boolean }) {
   const [selected, setSelected] = useState<string[]>([]);
   const [page, setPage] = useState(0);
   const [detail, setDetail] = useState<Issue | null>(null);
+  const [importProgress, setImportProgress] = useState<{ index: number; total: number; current: string } | null>(null);
   const stopped = useRef(false);
   const mounted = useRef(true);
   const locked = busy || importing || externalBusy;
@@ -68,11 +69,13 @@ export function CoherencePanel({ externalBusy }: { externalBusy: boolean }) {
   async function importSelection() {
     if (locked || !steamSelected.length) return;
     setImporting(true); setError(""); stopped.current = false;
+    setImportProgress({ index: 0, total: steamSelected.length, current: "" });
     let resolved = 0; let failed = 0;
     try {
       for (let index = 0; index < steamSelected.length && !stopped.current; index++) {
         const issue = steamSelected[index];
         setMessage(`${index + 1}/${steamSelected.length} · ${issue.sourceName} → ${issue.targetName}`);
+        setImportProgress({ index: index + 1, total: steamSelected.length, current: `${issue.sourceName} → ${issue.targetName}` });
         const response = await fetch("/api/admin/coherence/import", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ key: issue.key }), signal: AbortSignal.timeout(300_000) });
         const result = await response.json();
         if (result.resolved) resolved++; else failed++;
@@ -85,7 +88,7 @@ export function CoherencePanel({ externalBusy }: { externalBusy: boolean }) {
     } catch (e) { if (mounted.current) setError(`Traitement interrompu : ${e instanceof Error ? e.message : "connexion perdue"}. Le résultat de l’élément en cours sera visible au prochain scan.`); }
     finally {
       if (mounted.current) {
-        setImporting(false); setMessage(`${resolved} lien(s) validé(s), ${failed} échec(s). ${stopped.current ? "Traitement arrêté." : "Traitement terminé."}`);
+        setImporting(false); setImportProgress(null); setMessage(`${resolved} lien(s) validé(s), ${failed} échec(s). ${stopped.current ? "Traitement arrêté." : "Traitement terminé."}`);
         await refresh().catch(() => setError("Impossible d’actualiser le résultat. Relance le scan local."));
       }
     }
@@ -97,6 +100,7 @@ export function CoherencePanel({ externalBusy }: { externalBusy: boolean }) {
     <div className="rounded-2xl border border-amber-900/80 bg-gradient-to-br from-stone-900 to-stone-950 p-4 sm:p-5">
       <div className="flex flex-wrap items-start justify-between gap-4"><div><h2 className="text-xl font-semibold text-amber-100">Atelier de cohérence</h2><p className="mt-1 text-sm text-stone-400">Contrôle des relations déjà enregistrées dans la base. Aucun appel Steam pendant le scan.</p></div><a href="/admin/logs" className="text-sm text-amber-300 underline">Journal de l’application</a></div>
       <div className="mt-4 flex flex-wrap gap-2"><button className={button} disabled={locked} onClick={() => void local("scan")}>{busy ? "Traitement local…" : "Scanner la base locale"}</button><button className={`${button} !border-amber-600`} disabled={locked} onClick={() => void local("repair-existing-links")}>⚙ Réparer les liens des cartes existantes</button></div>
+      {busy && !importing && <div className="mt-3 flex items-center gap-2 rounded-lg border border-amber-800/50 bg-amber-950/30 px-3 py-2"><span className="relative flex h-2 w-2"><span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-amber-400 opacity-75" /><span className="relative inline-flex h-2 w-2 rounded-full bg-amber-500" /></span><span className="text-xs text-amber-200">Analyse de la base locale en cours…</span></div>}{importing && importProgress && <div className="mt-3 space-y-2 rounded-lg border border-amber-900/60 bg-gradient-to-br from-stone-900 to-stone-950 px-3 py-3"><div className="flex items-center justify-between text-xs text-amber-200"><span className="font-medium">Import Steam · {importProgress.index}/{importProgress.total}</span><span className="tabular-nums font-mono">{importProgress.total > 0 ? Math.round(importProgress.index / importProgress.total * 100) : 0} %</span></div><div className="h-1 overflow-hidden rounded-full bg-stone-800"><div className="h-full rounded-full bg-gradient-to-r from-amber-700 to-amber-400 transition-all duration-300" style={{ width: `${importProgress.total > 0 ? importProgress.index / importProgress.total * 100 : 0}%` }} /></div>{importProgress.current && <p className="truncate text-xs text-stone-400">▶︎ {importProgress.current}</p>}</div>}
       <p className="mt-2 text-xs text-stone-500">La réparation relie les fiches existantes lorsque les données permettent une association certaine. Les cas ambigus restent à examiner.</p>
       {report && <p className="mt-3 text-xs text-stone-400">{report.counts.games} jeux · {report.counts.studios} studios · {report.counts.dlcs} DLC · {report.ignoredCount} liens retirés · scan du {new Date(report.scannedAt).toLocaleString("fr-FR")}</p>}
     </div>
@@ -106,7 +110,7 @@ export function CoherencePanel({ externalBusy }: { externalBusy: boolean }) {
       <div className="flex flex-wrap items-center gap-2 border-b border-stone-800 p-3"><button className={button} disabled={locked} onClick={() => setSelected((current) => [...new Set([...current, ...visible.map((i) => i.key)])].slice(0, 200))}>Sélectionner cette page</button><button className={button} disabled={locked} onClick={() => setSelected([])}>Vider la sélection</button><span className="text-xs text-stone-400">{selected.length}/200 sélectionnés</span></div>
       <div className="flex flex-wrap gap-2 border-b border-stone-800 p-3"><button className={button} disabled={locked || !studioSelected.length} onClick={() => void local("create-studios")}>Créer {studioSelected.length || "les"} studios localement</button><button className={`${button} !border-blue-800`} disabled={locked || !steamSelected.length} onClick={() => void importSelection()}>Créer / vérifier via Steam ({steamSelected.length})</button><button className={`${button} !border-red-900 !text-red-300`} disabled={locked || !selected.length} onClick={() => void local("ignore")}>Retirer définitivement les liens</button>{importing && <button className={button} onClick={() => { stopped.current = true; setMessage("Arrêt demandé après l’élément en cours…"); }}>Interrompre après cette carte</button>}</div>
       <p className="px-3 py-2 text-xs text-stone-500">Les imports Steam sont déclenchés uniquement ici, un par un. Une limitation Steam met le lot en pause. Les échecs sont conservés sur le serveur.</p>
-      {message && <p role="status" className="px-3 py-2 text-sm text-amber-200">{message}</p>}{error && <p role="alert" className="border-y border-red-900 bg-red-950/40 px-3 py-3 text-sm text-red-200">{error}</p>}
+      {message && !importing && <p role="status" className="px-3 py-2 text-sm text-amber-200">{message}</p>}{importing && message && <div role="status" className="border-y border-amber-900/50 bg-amber-950/30 px-3 py-2 text-sm text-amber-200">{message}</div>}{error && <p role="alert" className="border-y border-red-900 bg-red-950/40 px-3 py-3 text-sm text-red-200">{error}</p>}
       <div className="overflow-x-auto"><table className="w-full min-w-[720px] text-left text-sm"><thead className="bg-stone-900 text-xs text-stone-400"><tr><th className="p-3">Choix</th><th className="p-3">Carte source → Carte liée</th><th className="p-3">Traitement</th><th className="p-3">Diagnostic</th></tr></thead><tbody>{visible.map((issue) => <tr key={issue.key} className={`border-t border-stone-800 ${issue.status === "FAILED" ? "bg-red-950/35" : ""}`}><td className="p-3"><input type="checkbox" aria-label={`Sélectionner ${issue.targetName}`} disabled={locked || selected.length >= 200 && !selected.includes(issue.key)} checked={selected.includes(issue.key)} onChange={(e) => toggle(issue.key, e.target.checked)} /></td><td className="p-3"><span className="block text-xs text-stone-500">{relations[issue.relation]}</span><span className="block text-stone-300">{issue.sourceName}</span><button onClick={() => setDetail(issue)} className="text-left font-semibold text-amber-200 underline decoration-amber-900 underline-offset-4">→ {issue.targetName}</button></td><td className="p-3 text-xs text-stone-400">{methods[issue.method]}{issue.status === "FAILED" && <strong className="mt-1 block text-red-300">Échec conservé</strong>}</td><td className="max-w-md p-3 text-xs text-stone-300">{issue.failureReason ?? issue.reason}</td></tr>)}</tbody></table></div>
       {!visible.length && <p className="p-8 text-center text-sm text-stone-400">{busy ? "Lecture de la base…" : !report ? "Lance un scan pour charger les résultats." : filtered.length === 0 && report.issues.length ? "Aucune anomalie pour ces filtres." : "Aucune anomalie détectée dans les références enregistrées."}</p>}
       <div className="flex items-center justify-between gap-2 border-t border-stone-800 p-3 text-xs text-stone-400"><button className={button} disabled={!currentPage} onClick={() => setPage(currentPage - 1)}>Précédent</button><span>{filtered.length} résultats · {currentPage + 1}/{lastPage + 1}</span><button className={button} disabled={currentPage === lastPage} onClick={() => setPage(currentPage + 1)}>Suivant</button></div>
