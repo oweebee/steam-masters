@@ -25,6 +25,7 @@ export function CoherencePanel({ externalBusy }: { externalBusy: boolean }) {
   const [page, setPage] = useState(0);
   const [detail, setDetail] = useState<Issue | null>(null);
   const [importProgress, setImportProgress] = useState<{ index: number; total: number; current: string } | null>(null);
+  const [scanElapsed, setScanElapsed] = useState(0);
   const stopped = useRef(false);
   const mounted = useRef(true);
   const locked = busy || importing || externalBusy;
@@ -35,9 +36,14 @@ export function CoherencePanel({ externalBusy }: { externalBusy: boolean }) {
   useEffect(() => {
     mounted.current = true;
     setBusy(true);
-    refresh().catch((e) => { if (mounted.current) setError(e.message); }).finally(() => { if (mounted.current) setBusy(false); });
+    refresh().catch((e) => { if (mounted.current && e.name !== "AbortError" && !String(e.message).startsWith("NetworkError")) setError(e.message); }).finally(() => { if (mounted.current) setBusy(false); });
     return () => { mounted.current = false; stopped.current = true; };
   }, [refresh]);
+  useEffect(() => {
+    if (!busy || importing) { setScanElapsed(0); return; }
+    const id = setInterval(() => setScanElapsed((s) => s + 1), 1000);
+    return () => clearInterval(id);
+  }, [busy, importing]);
   useEffect(() => {
     if (!detail) return;
     const close = (event: KeyboardEvent) => { if (event.key === "Escape") setDetail(null); };
@@ -100,7 +106,7 @@ export function CoherencePanel({ externalBusy }: { externalBusy: boolean }) {
     <div className="rounded-2xl border border-amber-900/80 bg-gradient-to-br from-stone-900 to-stone-950 p-4 sm:p-5">
       <div className="flex flex-wrap items-start justify-between gap-4"><div><h2 className="text-xl font-semibold text-amber-100">Atelier de cohérence</h2><p className="mt-1 text-sm text-stone-400">Contrôle des relations déjà enregistrées dans la base. Aucun appel Steam pendant le scan.</p></div><a href="/admin/logs" className="text-sm text-amber-300 underline">Journal de l’application</a></div>
       <div className="mt-4 flex flex-wrap gap-2"><button className={button} disabled={locked} onClick={() => void local("scan")}>{busy ? "Traitement local…" : "Scanner la base locale"}</button><button className={`${button} !border-amber-600`} disabled={locked} onClick={() => void local("repair-existing-links")}>⚙ Réparer les liens des cartes existantes</button></div>
-      {busy && !importing && <div className="mt-3 flex items-center gap-2 rounded-lg border border-amber-800/50 bg-amber-950/30 px-3 py-2"><span className="relative flex h-2 w-2"><span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-amber-400 opacity-75" /><span className="relative inline-flex h-2 w-2 rounded-full bg-amber-500" /></span><span className="text-xs text-amber-200">Analyse de la base locale en cours…</span></div>}{importing && importProgress && <div className="mt-3 space-y-2 rounded-lg border border-amber-900/60 bg-gradient-to-br from-stone-900 to-stone-950 px-3 py-3"><div className="flex items-center justify-between text-xs text-amber-200"><span className="font-medium">Import Steam · {importProgress.index}/{importProgress.total}</span><span className="tabular-nums font-mono">{importProgress.total > 0 ? Math.round(importProgress.index / importProgress.total * 100) : 0} %</span></div><div className="h-1 overflow-hidden rounded-full bg-stone-800"><div className="h-full rounded-full bg-gradient-to-r from-amber-700 to-amber-400 transition-all duration-300" style={{ width: `${importProgress.total > 0 ? importProgress.index / importProgress.total * 100 : 0}%` }} /></div>{importProgress.current && <p className="truncate text-xs text-stone-400">▶︎ {importProgress.current}</p>}</div>}
+      {busy && !importing && <div className="mt-3 flex items-center justify-between gap-2 rounded-lg border border-amber-800/50 bg-amber-950/30 px-3 py-2"><div className="flex items-center gap-2"><span className="relative flex h-2 w-2"><span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-amber-400 opacity-75" /><span className="relative inline-flex h-2 w-2 rounded-full bg-amber-500" /></span><span className="text-xs text-amber-200">Analyse locale{report ? ` · ${report.counts.games} jeux / ${report.counts.studios} studios / ${report.counts.dlcs} DLC` : " de la base"} en cours…</span></div><span className="font-mono text-xs text-amber-500/70 tabular-nums">{scanElapsed}s</span></div>}{importing && importProgress && <div className="mt-3 space-y-2 rounded-lg border border-amber-900/60 bg-gradient-to-br from-stone-900 to-stone-950 px-3 py-3"><div className="flex items-center justify-between text-xs text-amber-200"><span className="font-medium">Import Steam · {importProgress.index}/{importProgress.total}</span><span className="tabular-nums font-mono">{importProgress.total > 0 ? Math.round(importProgress.index / importProgress.total * 100) : 0} %</span></div><div className="h-1 overflow-hidden rounded-full bg-stone-800"><div className="h-full rounded-full bg-gradient-to-r from-amber-700 to-amber-400 transition-all duration-300" style={{ width: `${importProgress.total > 0 ? importProgress.index / importProgress.total * 100 : 0}%` }} /></div>{importProgress.current && <p className="truncate text-xs text-stone-400">▶︎ {importProgress.current}</p>}</div>}
       <p className="mt-2 text-xs text-stone-500">La réparation relie les fiches existantes lorsque les données permettent une association certaine. Les cas ambigus restent à examiner.</p>
       {report && <p className="mt-3 text-xs text-stone-400">{report.counts.games} jeux · {report.counts.studios} studios · {report.counts.dlcs} DLC · {report.ignoredCount} liens retirés · scan du {new Date(report.scannedAt).toLocaleString("fr-FR")}</p>}
     </div>
