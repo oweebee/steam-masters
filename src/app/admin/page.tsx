@@ -13,8 +13,9 @@ function formatBytes(value: bigint | number) {
 }
 
 export default async function AdminPage() {
-  const [gameCount, studioCount, cardCount, storedImageCount, storedImageBytes, invalidGames, invalidCardLinks, databaseSize] = await Promise.all([
-    prisma.steamGame.count(),
+  const [gameCount, dlcCount, studioCount, cardCount, storedImageCount, storedImageBytes, invalidGames, invalidCardLinks, databaseSize] = await Promise.all([
+    prisma.steamGame.count({ where: { contentType: "GAME" } }),
+    prisma.steamGame.count({ where: { contentType: "DLC" } }),
     prisma.studio.count(),
     prisma.card.count(),
     prisma.storedImage.count({ where: { data: { not: null } } }),
@@ -28,7 +29,7 @@ export default async function AdminPage() {
     `,
     prisma.$queryRaw<Array<{ bytes: bigint }>>`SELECT pg_database_size(current_database())::bigint AS bytes`,
   ]);
-  const catalogCardCount = gameCount + studioCount;
+  const catalogCardCount = gameCount + dlcCount + studioCount;
   const errorCount = invalidGames + Number(invalidCardLinks[0]?.count ?? BigInt(0));
 
   return (
@@ -80,6 +81,7 @@ export default async function AdminPage() {
               [formatBytes(databaseSize[0]?.bytes ?? BigInt(0)), "taille totale"],
               [errorCount.toLocaleString("fr-FR"), "entrées en erreur"],
               [gameCount.toLocaleString("fr-FR"), "cartes Jeu"],
+              [dlcCount.toLocaleString("fr-FR"), "cartes DLC"],
               [studioCount.toLocaleString("fr-FR"), "cartes Studio"],
               [storedImageCount.toLocaleString("fr-FR"), "images en base"],
               [formatBytes(storedImageBytes[0]?.bytes ?? BigInt(0)), "poids des images"],

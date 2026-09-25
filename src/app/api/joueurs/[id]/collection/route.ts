@@ -12,7 +12,7 @@ export async function GET(_req: Request, { params }: { params: Promise<{ id: str
   const cards = await prisma.card.findMany({
     where: { userId: id },
     include: {
-      game: { select: { id: true, name: true, headerImage: true, rarity: true } },
+      game: { select: { id: true, name: true, headerImage: true, rarity: true, contentType: true } },
       studio: { select: { id: true, name: true, rarity: true } },
     },
     orderBy: { createdAt: "desc" },
@@ -24,7 +24,7 @@ export async function GET(_req: Request, { params }: { params: Promise<{ id: str
     headerImage: c.game?.headerImage ?? null,
     // Rareté propre à cet exemplaire, pas celle du jeu/studio catalogue.
     rarity: c.rarity,
-    type: c.game ? ("GAME" as const) : ("STUDIO" as const),
+    type: c.game ? c.game.contentType : ("STUDIO" as const),
   }));
 
   return NextResponse.json(out);

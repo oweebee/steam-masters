@@ -23,7 +23,7 @@ export async function GET() {
       include: {
         seller: { select: { id: true, username: true } },
         card: { select: { id: true, rarity: true, atk: true } },
-        game: { select: { id: true, name: true, headerImage: true, def: true } },
+        game: { select: { id: true, name: true, headerImage: true, def: true, contentType: true } },
         studio: { select: { id: true, name: true, avatarUrl: true, def: true } },
         bids: {
           orderBy: [{ amount: "desc" }, { createdAt: "asc" }],

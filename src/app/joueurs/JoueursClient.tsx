@@ -8,7 +8,7 @@ type LibraryCard = {
   label: string;
   headerImage: string | null;
   rarity: "COMMON" | "UNCOMMON" | "RARE" | "EPIC" | "LEGENDARY";
-  type: "GAME" | "STUDIO";
+  type: "GAME" | "DLC" | "STUDIO";
 };
 
 const RARITY_BORDER: Record<LibraryCard["rarity"], string> = {
@@ -162,7 +162,7 @@ export function JoueursClient() {
                   )}
                   <div>
                     <strong title={card.label}>{card.label}</strong>
-                    <small>{card.type === "GAME" ? "Jeu" : "Studio"}</small>
+                    <small>{card.type === "DLC" ? "DLC" : card.type === "GAME" ? "Jeu" : "Studio"}</small>
                   </div>
                 </article>
               ))}

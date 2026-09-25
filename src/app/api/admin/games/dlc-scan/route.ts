@@ -6,9 +6,12 @@ import { persistRemoteImage } from "@/lib/storedImages";
 import { writeAppLog } from "@/lib/appLog";
 import { recalculateCatalogRarity } from "@/lib/catalogRarity";
 import { cardDefense } from "@/lib/cardDefense";
+import { archiveCatalogIssue } from "@/lib/catalogIssueArchive";
 
 const STATE_KEY = "DLC_CATALOG_SCAN";
 const CANCEL_KEY = "DLC_CATALOG_SCAN_CANCEL";
+const TARGET_STATE_KEY = "DLC_CATALOG_TARGETED_SCAN";
+const TARGET_CANCEL_KEY = "DLC_CATALOG_TARGETED_SCAN_CANCEL";
 const ERROR_ARCHIVE_KEY = "DLC_CATALOG_ERROR_ARCHIVE";
 const ERROR_ARCHIVE_PURGED_AT_KEY = "DLC_CATALOG_ERROR_ARCHIVE_PURGED_AT";
 const DLC_BATCH_SIZE = 5;
@@ -99,6 +102,7 @@ type ScanState = {
   done: boolean;
   cancelled?: boolean;
   runId: string;
+  parentGameIds?: string[] | null;
 };
 
 async function requireAdmin() {
@@ -106,19 +110,22 @@ async function requireAdmin() {
   if (!session || (session.user as { role?: string })?.role !== "ADMIN") throw new Error("Unauthorized");
 }
 
-async function saveState(state: ScanState) {
+function stateKey(scope: "catalog" | "targeted") { return scope === "targeted" ? TARGET_STATE_KEY : STATE_KEY; }
+function cancelKey(scope: "catalog" | "targeted") { return scope === "targeted" ? TARGET_CANCEL_KEY : CANCEL_KEY; }
+
+async function saveState(state: ScanState, scope: "catalog" | "targeted" = "catalog") {
   await prisma.appSetting.upsert({
-    where: { key: STATE_KEY },
+    where: { key: stateKey(scope) },
     update: { value: JSON.stringify(state) },
-    create: { key: STATE_KEY, value: JSON.stringify(state) },
+    create: { key: stateKey(scope), value: JSON.stringify(state) },
   });
 }
 
-async function cancelRequested() {
-  return Boolean(await prisma.appSetting.findUnique({ where: { key: CANCEL_KEY }, select: { key: true } }));
+async function cancelRequested(scope: "catalog" | "targeted" = "catalog") {
+  return Boolean(await prisma.appSetting.findUnique({ where: { key: cancelKey(scope) }, select: { key: true } }));
 }
 
-async function finishScan(state: ScanState, cancelled: boolean) {
+async function finishScan(state: ScanState, cancelled: boolean, scope: "catalog" | "targeted" = "catalog") {
   state.done = true;
   state.cancelled = cancelled;
   await recalculateCatalogRarity();
@@ -131,21 +138,23 @@ async function finishScan(state: ScanState, cancelled: boolean) {
       : `Scan DLC terminé : ${state.scannedGames} jeux analysés, ${state.imported} DLC importés, ${state.rejected} refusés, ${state.errors} erreurs`,
     details: { ...state },
   });
-  await saveState(state);
-  await prisma.appSetting.deleteMany({ where: { key: CANCEL_KEY } });
+  await saveState(state, scope);
+  await prisma.appSetting.deleteMany({ where: { key: cancelKey(scope) } });
   return NextResponse.json(state);
 }
 
-export async function GET() {
+export async function GET(req: NextRequest) {
   try { await requireAdmin(); } catch { return NextResponse.json({ error: "Unauthorized" }, { status: 401 }); }
-  const row = await prisma.appSetting.findUnique({ where: { key: STATE_KEY } });
+  const scope = req.nextUrl.searchParams.get("scope") === "targeted" ? "targeted" : "catalog";
+  const row = await prisma.appSetting.findUnique({ where: { key: stateKey(scope) } });
   return NextResponse.json({ state: row ? JSON.parse(row.value) as ScanState : null, archivedErrors: Object.keys(await readErrorArchive()).length });
 }
 
 export async function POST(req: NextRequest) {
   try { await requireAdmin(); } catch { return NextResponse.json({ error: "Unauthorized" }, { status: 401 }); }
   const body = await req.json().catch(() => ({}));
-  const saved = await prisma.appSetting.findUnique({ where: { key: STATE_KEY } });
+  const scope = body?.scope === "targeted" ? "targeted" : "catalog";
+  const saved = await prisma.appSetting.findUnique({ where: { key: stateKey(scope) } });
   if (body?.purgeErrorArchive === true) {
     const archivedErrors = Object.keys(await readErrorArchive()).length;
     await prisma.appSetting.deleteMany({ where: { key: ERROR_ARCHIVE_KEY } });
@@ -159,16 +168,23 @@ export async function POST(req: NextRequest) {
     if (!state || state.done) return NextResponse.json({ done: true, state });
     if (body?.defer === true) {
       await prisma.appSetting.upsert({
-        where: { key: CANCEL_KEY },
+        where: { key: cancelKey(scope) },
         update: { value: JSON.stringify({ requestedAt: Date.now() }) },
-        create: { key: CANCEL_KEY, value: JSON.stringify({ requestedAt: Date.now() }) },
+        create: { key: cancelKey(scope), value: JSON.stringify({ requestedAt: Date.now() }) },
       });
       return NextResponse.json({ stopRequested: true, state });
     }
-    return finishScan(state, true);
+    return finishScan(state, true, scope);
   }
   const runId = typeof body?.runId === "string" ? body.runId : `dlc-scan-${crypto.randomUUID()}`;
-  if (body?.restart === true || !saved) await prisma.appSetting.deleteMany({ where: { key: CANCEL_KEY } });
+  if (body?.restart === true || !saved) await prisma.appSetting.deleteMany({ where: { key: cancelKey(scope) } });
+  let selectedGameIds: string[] | null = null;
+  if (scope === "targeted" && Array.isArray(body?.parentGameIds)) {
+    const rawIds = body.parentGameIds as unknown[];
+    const requested = Array.from(new Set(rawIds.filter((id): id is string => typeof id === "string").map((id) => id.trim()).filter(Boolean)));
+    const existingGames = await prisma.steamGame.findMany({ where: { id: { in: requested }, contentType: "GAME" }, select: { id: true }, orderBy: { id: "asc" } });
+    selectedGameIds = existingGames.map((game) => game.id);
+  }
   let state: ScanState = body?.restart === true || !saved ? {
     cursor: null,
     dlcOffset: 0,
@@ -176,35 +192,43 @@ export async function POST(req: NextRequest) {
     imported: 0,
     rejected: 0,
     errors: 0,
-    total: await prisma.steamGame.count({ where: { contentType: "GAME" } }),
+    total: selectedGameIds ? selectedGameIds.length : await prisma.steamGame.count({ where: { contentType: "GAME" } }),
     lastSteamRequestAt: 0,
     done: false,
     cancelled: false,
     runId,
+    parentGameIds: scope === "targeted" ? selectedGameIds ?? [] : null,
   } : { ...(JSON.parse(saved.value) as ScanState), lastSteamRequestAt: Number((JSON.parse(saved.value) as Partial<ScanState>).lastSteamRequestAt) || 0 };
 
   if (state.done && body?.restart !== true) return NextResponse.json({ ...state, done: true });
-  if (await cancelRequested()) return finishScan(state, true);
+  if (await cancelRequested(scope)) return finishScan(state, true, scope);
   if (body?.restart === true || !saved) await archiveHistoricalUnknownDlcErrors();
   const errorArchive = await readErrorArchive();
 
   try {
-    const parent = state.dlcOffset > 0 && state.cursor
-      ? await prisma.steamGame.findFirst({ where: { id: state.cursor, contentType: "GAME" }, select: { id: true, name: true, developers: true } })
-      : await prisma.steamGame.findFirst({
-          where: { contentType: "GAME", ...(state.cursor ? { id: { gt: state.cursor } } : {}) },
-          orderBy: { id: "asc" },
-          select: { id: true, name: true, developers: true },
-        });
+    let parent;
+    if (Array.isArray(state.parentGameIds)) {
+      const currentIndex = state.cursor ? state.parentGameIds.indexOf(state.cursor) : -1;
+      const nextId = state.dlcOffset > 0 && state.cursor ? state.cursor : state.parentGameIds[currentIndex + 1];
+      parent = nextId ? await prisma.steamGame.findFirst({ where: { id: nextId, contentType: "GAME" }, select: { id: true, name: true, developers: true } }) : null;
+    } else {
+      parent = state.dlcOffset > 0 && state.cursor
+        ? await prisma.steamGame.findFirst({ where: { id: state.cursor, contentType: "GAME" }, select: { id: true, name: true, developers: true } })
+        : await prisma.steamGame.findFirst({
+            where: { contentType: "GAME", ...(state.cursor ? { id: { gt: state.cursor } } : {}) },
+            orderBy: { id: "asc" },
+            select: { id: true, name: true, developers: true },
+          });
+    }
     if (!parent) {
-      return finishScan(state, false);
+      return finishScan(state, false, scope);
     }
     if (errorArchive[`GAME:${parent.id}`]) {
       state.cursor = parent.id;
       state.dlcOffset = 0;
       state.scannedGames += 1;
       state.rejected += 1;
-      await saveState(state);
+      await saveState(state, scope);
       return NextResponse.json({ ...state, current: parent.name, archivedSkip: true });
     }
 
@@ -215,7 +239,7 @@ export async function POST(req: NextRequest) {
       dlcIds = (await getSteamDlcAppIds(Number(parent.id))).map(String);
     } catch (error) {
       const message = error instanceof Error ? error.message : "Lecture Steam impossible";
-      if (await cancelRequested()) return finishScan(state, true);
+      if (await cancelRequested(scope)) return finishScan(state, true, scope);
       if (isExpectedSteamSkip(message)) {
         if (isArchivableUnknownApp(message)) await archiveSteamError({ scope: "GAME", appId: parent.id, name: parent.name, reason: message });
         state.cursor = parent.id;
@@ -223,14 +247,14 @@ export async function POST(req: NextRequest) {
         state.scannedGames += 1;
         state.rejected += 1;
         await writeAppLog({ runId: state.runId, category: "SYNC", level: "WARNING", message: `DLC : jeu ${parent.name} ignoré — ${message}`, details: { parentAppId: parent.id } });
-        await saveState(state);
+        await saveState(state, scope);
         return NextResponse.json({ ...state, current: parent.name });
       }
       // Keep the cursor before this parent. The client stops on 503; a manual
       // resume retries this exact game instead of silently skipping its DLCs.
       state.errors += 1;
       await writeAppLog({ runId: state.runId, category: "SYNC", level: "ERROR", message: `DLC : lecture du jeu ${parent.name} interrompue, reprise conservée — ${message}`, details: { parentAppId: parent.id, retryable: isTransientSteamFailure(message) } });
-      await saveState(state);
+      await saveState(state, scope);
       return NextResponse.json({ ...state, current: parent.name, error: message, retryable: isTransientSteamFailure(message) }, { status: 503 });
     }
 
@@ -265,6 +289,7 @@ export async function POST(req: NextRequest) {
         if (dlc.contentType !== "DLC" || dlc.parentAppId !== Number(parent.id)) throw new Error("Type DLC ou jeu parent non confirmé par Steam");
         if (dlc.ownerEstimate <= 0) {
           state.rejected += 1;
+          await archiveCatalogIssue({ scope: "DLC", itemId: dlcId, parentId: parent.id, name: dlc.name, reason: "DEF invalide : estimation de possesseurs nulle ou négative" });
           await writeAppLog({ runId: state.runId, category: "SYNC", level: "WARNING", message: `${dlc.name} refusé : DEF nulle (estimation SteamSpy absente ou égale à zéro)`, details: { appid: dlcId, parentAppId: parent.id, ownerEstimate: dlc.ownerEstimate } });
           continue;
         }
@@ -303,14 +328,14 @@ export async function POST(req: NextRequest) {
           await writeAppLog({ runId: state.runId, category: "SYNC", level: "WARNING", message: `${parent.name} : DLC ${dlcId} ignoré — ${message}`, details: { appid: dlcId, parentAppId: parent.id } });
           continue;
         }
-        if (await cancelRequested()) return finishScan(state, true);
+          if (await cancelRequested(scope)) return finishScan(state, true, scope);
         // Offset points at the failed DLC, so resuming will retry it. Earlier
         // successes in this batch are safe: existing catalog entries are skipped.
         state.cursor = parent.id;
         state.dlcOffset = offset - 1;
         state.errors += 1;
         await writeAppLog({ runId: state.runId, category: "SYNC", level: "ERROR", message: `${parent.name} : DLC ${dlcId} interrompu, reprise conservée — ${message}`, details: { appid: dlcId, parentAppId: parent.id, retryable: isTransientSteamFailure(message) } });
-        await saveState(state);
+        await saveState(state, scope);
         return NextResponse.json({ ...state, current: parent.name, error: message, retryable: isTransientSteamFailure(message) }, { status: 503 });
       }
     }
@@ -323,13 +348,13 @@ export async function POST(req: NextRequest) {
       state.cursor = parent.id;
       state.dlcOffset = offset;
     }
-    await saveState(state);
-    if (await cancelRequested()) return finishScan(state, true);
+    await saveState(state, scope);
+    if (await cancelRequested(scope)) return finishScan(state, true, scope);
     return NextResponse.json({ ...state, current: parent.name, foundDlc: dlcIds.length });
   } catch (error) {
     const message = error instanceof Error ? error.message : "Scan DLC impossible";
     await writeAppLog({ runId: state.runId, category: "SYNC", level: "ERROR", message: `Scan DLC interrompu : ${message}`, details: { ...state } });
-    await saveState(state);
+    await saveState(state, scope);
     return NextResponse.json({ error: message, ...state }, { status: 500 });
   }
 }

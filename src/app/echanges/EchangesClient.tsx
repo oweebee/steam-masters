@@ -4,14 +4,14 @@ import { useEffect, useMemo, useState } from "react";
 type Rarity = "COMMON" | "UNCOMMON" | "RARE" | "EPIC" | "LEGENDARY";
 
 type Joueur = { id: string; username: string };
-type CardOption = { id: string; label: string; headerImage: string | null; rarity: Rarity; type: "GAME" | "STUDIO" };
-type OwnedCollectionRecord = { id: string; sellable: boolean; rarity: Rarity; game: { name: string; headerImage: string } | null; studio: { name: string } | null };
+type CardOption = { id: string; label: string; headerImage: string | null; rarity: Rarity; type: "GAME" | "DLC" | "STUDIO" };
+type OwnedCollectionRecord = { id: string; sellable: boolean; rarity: Rarity; game: { name: string; headerImage: string; contentType: "GAME" | "DLC" } | null; studio: { name: string } | null };
 type CardSort = "name" | "rarity" | "type";
 
 type TradeCard = {
   side: "OFFER" | "WANT";
   card: {
-    game: { name: string; rarity: Rarity } | null;
+    game: { name: string; rarity: Rarity; contentType: "GAME" | "DLC" } | null;
     studio: { name: string; rarity: Rarity } | null;
   };
 };
@@ -30,7 +30,12 @@ type Trade = {
 };
 
 function cardLabel(tc: TradeCard) {
-  return tc.card.game?.name ?? tc.card.studio?.name ?? "?";
+  const game = tc.card.game;
+  return game ? `${game.name}${game.contentType === "DLC" ? " (DLC)" : ""}` : tc.card.studio?.name ?? "?";
+}
+
+function cardTypeLabel(type: CardOption["type"]) {
+  return type === "DLC" ? "DLC" : type === "GAME" ? "Jeu" : "Studio";
 }
 
 const RARITY_ORDER: Record<Rarity, number> = {
@@ -99,7 +104,7 @@ function CardSelector({
         >
           <option value="name">Nom A → Z</option>
           <option value="rarity">Rareté</option>
-          <option value="type">Jeux / Studios</option>
+          <option value="type">Jeux / DLC / Studios</option>
         </select>
       </div>
 
@@ -129,7 +134,7 @@ function CardSelector({
               <span className="min-w-0 flex-1 text-left">
                 <span className="block text-sm text-white truncate">{card.label}</span>
                 <span className="block text-[10px] uppercase tracking-wide text-gray-500">
-                  {card.type === "GAME" ? "Jeu" : "Studio"}
+                  {cardTypeLabel(card.type)}
                 </span>
               </span>
               <span className="steam-trade-select-mark" aria-hidden="true">{selected ? "✓" : "+"}</span>
@@ -177,7 +182,7 @@ export function EchangesClient({ myUserId }: { myUserId: string }) {
             label: c.game?.name ?? c.studio?.name ?? "?",
             headerImage: c.game?.headerImage ?? null,
             rarity: c.rarity,
-            type: c.game ? "GAME" : "STUDIO",
+            type: c.game?.contentType ?? "STUDIO",
           }))
         );
         const requested = new URLSearchParams(window.location.search).get("cardId");

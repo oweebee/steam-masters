@@ -11,6 +11,7 @@ import { recalculateCatalogRarity } from "@/lib/catalogRarity";
 import { persistRemoteImage } from "@/lib/storedImages";
 import { writeAppLog } from "@/lib/appLog";
 import { cardDefense } from "@/lib/cardDefense";
+import { archiveCatalogIssue } from "@/lib/catalogIssueArchive";
 
 async function requireAdmin() {
   const session = await auth();
@@ -98,6 +99,7 @@ export async function POST(req: NextRequest) {
       });
     } catch (error) {
       const message = error instanceof Error ? error.message : "Import impossible";
+      await archiveCatalogIssue({ scope: "GAME", itemId: officialGame.appid, name: name, reason: `${officialGame.appid} — ${message}` });
       errors.push({
         appid: officialGame.appid,
         error: message,

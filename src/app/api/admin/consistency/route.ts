@@ -6,6 +6,7 @@ import { recalculateCatalogRarity } from "@/lib/catalogRarity";
 import { writeAppLog } from "@/lib/appLog";
 import { cardDefense } from "@/lib/cardDefense";
 import { persistRemoteImage } from "@/lib/storedImages";
+import { archiveCatalogIssue } from "@/lib/catalogIssueArchive";
 
 async function requireAdmin() {
   const session = await auth();
@@ -103,7 +104,13 @@ export async function POST(req: Request) {
 
   const dlcDefenseFixed = Array.from(defRepairs.values()).reduce((sum, ids) => sum + ids.length, 0);
   const dlcStudiosLinked = Array.from(dlcStudioRepairs.values()).reduce((sum, ids) => sum + ids.length, 0);
-  const dlcsWithoutStudio = dlcs.filter((dlc) => dlc.developers.length === 0 && (!dlc.parentGame || dlc.parentGame.developers.length === 0)).length;
+  const repairedDlcIds = new Set(Array.from(dlcStudioRepairs.values()).flat());
+  const unresolvedDlcIssues = dlcIssues.filter((issue) => !repairedDlcIds.has(issue.id));
+  for (const issue of unresolvedDlcIssues) {
+    const dlc = dlcs.find((entry) => entry.id === issue.id);
+    await archiveCatalogIssue({ scope: issue.reason.includes("studio") ? "LINK" : "DLC", itemId: issue.id, parentId: dlc?.parentGameId ?? undefined, name: dlc?.name ?? issue.id, reason: issue.reason });
+  }
+  const dlcsWithoutStudio = dlcs.filter((dlc) => dlc.developers.length === 0 && !repairedDlcIds.has(dlc.id) && (!dlc.parentGame || dlc.parentGame.developers.length === 0)).length;
   await writeAppLog({
     runId,
     category: "REPAIR",

@@ -1,23 +1,24 @@
 export type Rarity = "COMMON" | "UNCOMMON" | "RARE" | "EPIC" | "LEGENDARY";
+export type RarityWeights = Record<Rarity, number>;
 
 // Taux de loot fixes, indépendants du jeu/studio tiré (donnés par l'utilisateur) :
 // 0,5% Orange (Légendaire), 5% Violet (Épique), 10% Bleu (Rare), 20% Vert (Magique),
 // le reste en Blanc (Commun). Un exemplaire de carte est tiré une fois pour toutes
 // avec cette table ; la rareté est ensuite figée (modifiable seulement par un admin).
-const WEIGHTS: { rarity: Rarity; weight: number }[] = [
-  { rarity: "LEGENDARY", weight: 0.5 }, // 🟠 Orange
-  { rarity: "EPIC", weight: 5 },        // 🟣 Violet
-  { rarity: "RARE", weight: 10 },       // 🔵 Bleu
-  { rarity: "UNCOMMON", weight: 20 },   // 🟢 Vert
-  { rarity: "COMMON", weight: 64.5 },   // ⚪ Blanc
-];
+export const DEFAULT_RARITY_WEIGHTS: RarityWeights = {
+  LEGENDARY: 0.5,
+  EPIC: 5,
+  RARE: 10,
+  UNCOMMON: 20,
+  COMMON: 64.5,
+};
 
-export function rollCardRarity(): Rarity {
+export function rollCardRarity(weights: RarityWeights = DEFAULT_RARITY_WEIGHTS): Rarity {
   const r = Math.random() * 100;
   let acc = 0;
-  for (const w of WEIGHTS) {
-    acc += w.weight;
-    if (r < acc) return w.rarity;
+  for (const rarity of ["LEGENDARY", "EPIC", "RARE", "UNCOMMON", "COMMON"] as const) {
+    acc += weights[rarity];
+    if (r < acc) return rarity;
   }
   return "COMMON";
 }

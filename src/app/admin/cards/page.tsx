@@ -61,7 +61,7 @@ const RARITY_LABEL: Record<Rarity, string> = {
 
 type SortKey = "name" | "rarity" | "atk" | "def" | "ownerEstimate" | "reviewScore" | "updatedAt";
 type SortDir = "asc" | "desc";
-type TypeFilter = "ALL" | "GAME" | "STUDIO";
+type TypeFilter = "ALL" | "GAME" | "DLC" | "STUDIO";
 type ClaimFilter = "ALL" | "CLAIMED" | "FREE";
 
 export default function AdminCardsPage() {
@@ -157,7 +157,9 @@ export default function AdminCardsPage() {
     const q = normalize(search.trim());
     let out = items.filter((it) => {
       if (q && ![it.name, it.id, ...it.developers, ...(it.games ?? []).map((game) => game.name)].some((value) => normalize(value).includes(q))) return false;
-      if (typeFilter !== "ALL" && it.type !== typeFilter) return false;
+      if (typeFilter === "GAME" && (it.type !== "GAME" || it.contentType === "DLC")) return false;
+      if (typeFilter === "DLC" && (it.type !== "GAME" || it.contentType !== "DLC")) return false;
+      if (typeFilter === "STUDIO" && it.type !== "STUDIO") return false;
       if (rarityFilter !== "ALL" && it.rarity !== rarityFilter) return false;
       if (claimFilter === "CLAIMED" && it.copies === 0) return false;
       if (claimFilter === "FREE" && it.copies > 0) return false;
@@ -236,6 +238,7 @@ export default function AdminCardsPage() {
         >
           <option value="ALL">Tous types</option>
           <option value="GAME">Jeux</option>
+          <option value="DLC">DLC</option>
           <option value="STUDIO">Studios</option>
         </select>
         <select
@@ -290,7 +293,7 @@ export default function AdminCardsPage() {
               {filtered.map((it) => (
                 <Fragment key={`${it.type}-${it.id}`}>
                   <tr className="border-t border-gray-800 hover:bg-gray-900/50">
-                    <td className="px-4 py-2 text-gray-400">{it.type === "GAME" ? "🎮 Jeu" : "🏢 Studio"}</td>
+                    <td className="px-4 py-2 text-gray-400">{it.type === "STUDIO" ? "🏢 Studio" : it.contentType === "DLC" ? "🧩 DLC" : "🎮 Jeu"}</td>
                     <td className="px-4 py-2 text-white font-medium">{it.name}</td>
                     <td className={`px-4 py-2 font-semibold ${RARITY_COLOR[it.rarity]}`}>{it.rarity}</td>
                     <td className="px-4 py-2 text-red-400">{it.atk}</td>

@@ -6,14 +6,14 @@ import { useRouter } from "next/navigation";
 type Rarity = "COMMON" | "UNCOMMON" | "RARE" | "EPIC" | "LEGENDARY";
 type CollectionCard = {
   id: string; rarity: Rarity; atk: number; sellable: boolean;
-  game: { id: string; name: string; headerImage: string; def: number } | null;
+  game: { id: string; name: string; headerImage: string; def: number; contentType: "GAME" | "DLC" } | null;
   studio: { id: string; name: string; avatarUrl: string | null; def: number } | null;
 };
 type Auction = {
   id: string; sellerId: string; startPrice: number; currentBid: number; endsAt: string;
   seller: { id: string; username: string };
   card: { id: string; rarity: Rarity; atk: number } | null;
-  game: { id: string; name: string; headerImage: string; def: number } | null;
+  game: { id: string; name: string; headerImage: string; def: number; contentType: "GAME" | "DLC" } | null;
   studio: { id: string; name: string; avatarUrl: string | null; def: number } | null;
   bidCount: number; highestBidderId: string | null; hasBid: boolean; averagePrice: number | null;
 };
@@ -61,7 +61,7 @@ export function MarcheClient({ userId }: { userId: string }) {
   const [message, setMessage] = useState("");
   const [error, setError] = useState("");
   const [query, setQuery] = useState("");
-  const [type, setType] = useState<"ALL" | "GAME" | "STUDIO">("ALL");
+  const [type, setType] = useState<"ALL" | "GAME" | "DLC" | "STUDIO">("ALL");
   const [rarity, setRarity] = useState<Rarity | "ALL">("ALL");
   const [sort, setSort] = useState<"ENDING" | "PRICE_ASC" | "PRICE_DESC" | "NEWEST">("ENDING");
   const [scope, setScope] = useState<"ALL" | "SELLING" | "BIDDING">("ALL");
@@ -127,7 +127,10 @@ export function MarcheClient({ userId }: { userId: string }) {
       .filter((card) => !needle || normalizeSearch(cardName(card)).includes(needle))
       .sort((a, b) => {
         if (cardSort === "rarity") return RARITY_ORDER[a.rarity] - RARITY_ORDER[b.rarity] || cardName(a).localeCompare(cardName(b), "fr");
-        if (cardSort === "type") return Number(!!a.studio) - Number(!!b.studio) || cardName(a).localeCompare(cardName(b), "fr");
+        if (cardSort === "type") {
+          const rank = (card: CollectionCard) => card.studio ? 2 : card.game?.contentType === "DLC" ? 1 : 0;
+          return rank(a) - rank(b) || cardName(a).localeCompare(cardName(b), "fr");
+        }
         return cardName(a).localeCompare(cardName(b), "fr");
       });
   }, [cardSearch, cardSort, sellableCards]);
@@ -136,6 +139,8 @@ export function MarcheClient({ userId }: { userId: string }) {
     const result = auctions.filter((auction) => {
       if (needle && !`${cardName(auction)} ${auction.seller.username}`.toLocaleLowerCase("fr").includes(needle)) return false;
       if (type === "GAME" && !auction.game) return false;
+      if (type === "GAME" && auction.game?.contentType === "DLC") return false;
+      if (type === "DLC" && auction.game?.contentType !== "DLC") return false;
       if (type === "STUDIO" && !auction.studio) return false;
       if (rarity !== "ALL" && auction.card?.rarity !== rarity) return false;
       if (scope === "SELLING" && auction.sellerId !== userId) return false;
@@ -211,7 +216,7 @@ export function MarcheClient({ userId }: { userId: string }) {
                 const image = cardImage(card);
                 return <button type="button" key={card.id} aria-pressed={selected} onClick={() => setSelectedCardId(selected ? "" : card.id)} className={`steam-trade-card-choice border-l-4 ${RARITY_BORDER[card.rarity]} ${selected ? "steam-trade-card-selected" : ""}`}>
                   {image ? <img src={image} alt="" className="w-16 h-9 rounded object-cover shrink-0" /> : <span className="steam-trade-studio-icon">🏭</span>}
-                  <span className="min-w-0 flex-1 text-left"><span className="block text-sm text-white truncate">{cardName(card)}</span><span className="block text-[10px] uppercase tracking-wide text-gray-500">{card.game ? "Jeu" : "Studio"}</span></span>
+                  <span className="min-w-0 flex-1 text-left"><span className="block text-sm text-white truncate">{cardName(card)}</span><span className="block text-[10px] uppercase tracking-wide text-gray-500">{card.studio ? "Studio" : card.game?.contentType === "DLC" ? "DLC" : "Jeu"}</span></span>
                   <span className="steam-trade-select-mark" aria-hidden="true">{selected ? "✓" : "+"}</span>
                 </button>;
               })}
@@ -232,7 +237,7 @@ export function MarcheClient({ userId }: { userId: string }) {
       <section className="steam-market-controls">
         <div className="steam-market-scopes"><button className={scope === "ALL" ? "is-active" : ""} onClick={() => setScope("ALL")}>Toutes</button><button className={scope === "SELLING" ? "is-active" : ""} onClick={() => setScope("SELLING")}>Mes ventes</button><button className={scope === "BIDDING" ? "is-active" : ""} onClick={() => setScope("BIDDING")}>Mes enchères</button></div>
         <input aria-label="Rechercher" placeholder="Rechercher une carte ou un vendeur…" value={query} onChange={(event) => setQuery(event.target.value)} />
-        <select value={type} onChange={(event) => setType(event.target.value as typeof type)}><option value="ALL">Jeux + studios</option><option value="GAME">Jeux</option><option value="STUDIO">Studios</option></select>
+        <select value={type} onChange={(event) => setType(event.target.value as typeof type)}><option value="ALL">Jeux + DLC + studios</option><option value="GAME">Jeux</option><option value="DLC">DLC</option><option value="STUDIO">Studios</option></select>
         <select value={rarity} onChange={(event) => setRarity(event.target.value as typeof rarity)}>{RARITIES.map((item) => <option key={item.value} value={item.value}>{item.label}</option>)}</select>
         <select value={sort} onChange={(event) => setSort(event.target.value as typeof sort)}><option value="ENDING">Fin proche</option><option value="PRICE_ASC">Prix croissant</option><option value="PRICE_DESC">Prix décroissant</option><option value="NEWEST">Fin lointaine</option></select>
       </section>
@@ -243,7 +248,7 @@ export function MarcheClient({ userId }: { userId: string }) {
           const minimum = auction.bidCount > 0 ? auction.currentBid + 1 : auction.startPrice;
           const image = cardImage(auction);
           return <article key={auction.id} data-rarity={auction.card?.rarity ?? "COMMON"} className="steam-market-card">
-            <div className="steam-market-card-topline"><span>{auction.game ? "Jeu" : "Studio"}</span><span>{timeLeft(auction.endsAt, now)}</span></div>
+            <div className="steam-market-card-topline"><span>{auction.studio ? "Studio" : auction.game?.contentType === "DLC" ? "DLC" : "Jeu"}</span><span>{timeLeft(auction.endsAt, now)}</span></div>
             <div className="steam-market-card-image">{image ? <img src={image} alt="" /> : <span>🏭</span>}<i aria-hidden="true">⚙</i></div>
             <div className="steam-market-card-body"><h3>{cardName(auction)}</h3><p>Vendu par <strong>{auction.seller.username}</strong></p>
               <div className="steam-market-stats"><span><small>ATK</small>{auction.card?.atk ?? "—"}</span><span><small>DEF</small>{(auction.game?.def ?? auction.studio?.def ?? 0).toLocaleString("fr-FR")}</span></div>

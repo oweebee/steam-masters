@@ -23,7 +23,7 @@ export async function GET() {
         include: {
           card: {
             include: {
-              game: { select: { name: true, headerImage: true, rarity: true } },
+              game: { select: { name: true, headerImage: true, rarity: true, contentType: true } },
               studio: { select: { name: true, rarity: true } },
             },
           },

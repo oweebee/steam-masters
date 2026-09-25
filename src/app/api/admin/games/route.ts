@@ -6,6 +6,7 @@ import { recalculateCatalogRarity } from "@/lib/catalogRarity";
 import { persistRemoteImage } from "@/lib/storedImages";
 import { writeAppLog } from "@/lib/appLog";
 import { cardDefense } from "@/lib/cardDefense";
+import { archiveCatalogIssue } from "@/lib/catalogIssueArchive";
 
 async function requireAdmin() {
   const session = await auth();
@@ -30,23 +31,29 @@ export async function POST(req: NextRequest) {
     data = await getSteamGameData(Number(appid));
   } catch (error) {
     const message = error instanceof Error ? error.message : "Import Steam impossible";
+    await archiveCatalogIssue({ scope: "GAME", itemId: String(appid), name: `AppID ${appid}`, reason: message });
     await writeAppLog({ runId, category: "IMPORT", level: "ERROR", message: `Import ${appid} refusé : ${message}`, details: { appid: String(appid) } });
     return NextResponse.json({ error: message }, { status: 400 });
   }
   if (data.ownerEstimate <= 0) {
+    await archiveCatalogIssue({ scope: data.contentType, itemId: String(data.appid), name: data.name, reason: "DEF invalide : estimation de possesseurs nulle ou négative" });
     await writeAppLog({ runId, category: "IMPORT", level: "WARNING", message: `${data.name} refusé : DEF nul`, details: { appid: String(data.appid), def: data.ownerEstimate } });
     return NextResponse.json({ error: "Jeu refusé : DEF doit être supérieur à 0" }, { status: 422 });
   }
   const parentGameId = data.parentAppId ? String(data.parentAppId) : null;
   if (data.contentType === "DLC" && !parentGameId) {
+    await archiveCatalogIssue({ scope: "DLC", itemId: String(data.appid), name: data.name, reason: "DLC sans jeu parent Steam confirmé" });
     await writeAppLog({ runId, category: "IMPORT", level: "WARNING", message: `${data.name} refusé : Steam ne fournit aucun jeu parent`, details: { appid: String(data.appid) } });
     return NextResponse.json({ error: "DLC refusé : jeu parent Steam introuvable" }, { status: 422 });
   }
+  let developers = data.developers;
   if (data.contentType === "DLC") {
-    const parent = await prisma.steamGame.findUnique({ where: { id: parentGameId! }, select: { contentType: true } });
+    const parent = await prisma.steamGame.findUnique({ where: { id: parentGameId! }, select: { contentType: true, developers: true } });
     if (parent?.contentType !== "GAME") {
+      await archiveCatalogIssue({ scope: "DLC", itemId: String(data.appid), parentId: parentGameId ?? undefined, name: data.name, reason: "Jeu parent absent du catalogue; importer le jeu avant le DLC" });
       return NextResponse.json({ error: "DLC refusé : importez d’abord son jeu parent" }, { status: 422 });
     }
+    if (parent.developers.length > 0) developers = parent.developers;
   }
 
   let headerImage: string;
@@ -82,7 +89,7 @@ export async function POST(req: NextRequest) {
       atk: data.reviewScore,
       def: cardDefense(data.ownerEstimate),
       tags: data.tags,
-      developers: data.developers,
+      developers,
       priceCents: data.priceCents,
       isFree: data.isFree,
       contentType: data.contentType,
@@ -101,7 +108,7 @@ export async function POST(req: NextRequest) {
       atk: data.reviewScore,
       def: cardDefense(data.ownerEstimate),
       tags: data.tags,
-      developers: data.developers,
+      developers,
       priceCents: data.priceCents,
       isFree: data.isFree,
       contentType: data.contentType,
@@ -120,8 +127,8 @@ export async function POST(req: NextRequest) {
     runId,
     category: "IMPORT",
     level: "SUCCESS",
-    message: `${data.name} (${data.contentType}) importé${data.contentType === "GAME" ? ` avec ${data.developers.length} studio(s) lié(s)` : ` — parent ${parentGameId}`}`,
-    details: { appid: String(data.appid), contentType: data.contentType, parentGameId, developers: data.developers, def: data.ownerEstimate, reviewScore: data.reviewScore },
+    message: `${data.name} (${data.contentType}) importé${data.contentType === "GAME" ? ` avec ${developers.length} studio(s) lié(s)` : ` — parent ${parentGameId}`}`,
+    details: { appid: String(data.appid), contentType: data.contentType, parentGameId, developers, def: data.ownerEstimate, reviewScore: data.reviewScore },
   });
   return NextResponse.json(finalGame ?? game);
 }
