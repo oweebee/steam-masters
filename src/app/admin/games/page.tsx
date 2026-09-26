@@ -81,6 +81,12 @@ export default function AdminGamesPage() {
   const [cooldownDraft, setCooldownDraft] = useState(60);
   const [savingRarity, setSavingRarity] = useState(false);
   const [rarityMessage, setRarityMessage] = useState("");
+  const [redistWorking, setRedistWorking] = useState(false);
+  const [redistMsg, setRedistMsg] = useState("");
+  const [legendaryMin, setLegendaryMin] = useState(5000000);
+  const [epicMin, setEpicMin] = useState(5000000);
+  const [thresholdMsg, setThresholdMsg] = useState("");
+  const [savingThresholds, setSavingThresholds] = useState(false);
   const [catalogIssues, setCatalogIssues] = useState<CatalogIssue[]>([]);
   const [issueFilter, setIssueFilter] = useState("ALL");
   const [issueSearch, setIssueSearch] = useState("");
@@ -93,6 +99,12 @@ export default function AdminGamesPage() {
   }
 
   useEffect(() => { load(); }, []);
+  useEffect(() => {
+    fetch("/api/admin/settings").then((r) => r.json()).then((d) => {
+      if (d.LEGENDARY_MIN_OWNERS) setLegendaryMin(parseInt(d.LEGENDARY_MIN_OWNERS, 10));
+      if (d.EPIC_MIN_OWNERS) setEpicMin(parseInt(d.EPIC_MIN_OWNERS, 10));
+    });
+  }, []);
   useEffect(() => {
     fetch("/api/admin/games/dlc-scan").then((response) => response.json()).then((data) => {
       setDlcScan(data.state);
@@ -117,6 +129,27 @@ export default function AdminGamesPage() {
       const data = await response.json();
       setCatalogIssues(Array.isArray(data.issues) ? data.issues : []);
     }
+  }
+
+  async function saveThresholds() {
+    setSavingThresholds(true); setThresholdMsg("");
+    const res = await fetch("/api/admin/settings", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ LEGENDARY_MIN_OWNERS: String(legendaryMin), EPIC_MIN_OWNERS: String(epicMin) }),
+    });
+    setSavingThresholds(false);
+    setThresholdMsg(res.ok ? "✓ Seuils enregistrés" : "Erreur lors de l'enregistrement");
+    setTimeout(() => setThresholdMsg(""), 3000);
+  }
+
+  async function redistCatalogRarity() {
+    setRedistWorking(true); setRedistMsg("");
+    const res = await fetch("/api/admin/consistency", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({}) });
+    const data = await res.json();
+    setRedistWorking(false);
+    if (res.ok) setRedistMsg(`✓ ${data.gamesRarityFixed ?? 0} raretés catalogue · ${data.studiosUpserted ?? 0} studios · ${data.cardsRarityFixed ?? 0} cartes`);
+    else setRedistMsg(`Erreur : ${data.error ?? "Inconnu"}`);
   }
 
   async function saveRaritySettings() {
@@ -720,6 +753,50 @@ export default function AdminGamesPage() {
           <input aria-label="Délai de renouvellement en minutes" type="range" min="1" max="360" step="1" value={cooldownDraft} onChange={(event) => setCooldownDraft(Number(event.target.value))} className="mt-6 w-full accent-amber-500" />
           <div className="mt-1 flex justify-between text-[10px] text-gray-600"><span>1 min</span><span>3 h</span><span>6 h</span></div>
           <div className="mt-4 flex flex-wrap gap-2">{[1, 15, 30, 60, 180, 360].map((minutes) => <button key={minutes} type="button" onClick={() => setCooldownDraft(minutes)} aria-pressed={cooldownDraft === minutes} className={`rounded-lg border px-3 py-1.5 text-xs transition ${cooldownDraft === minutes ? "border-amber-500 bg-amber-950/60 text-amber-100" : "border-gray-700 text-gray-400 hover:border-gray-500 hover:text-white"}`}>{formatCooldown(minutes)}</button>)}</div>
+        </div>
+
+        <div className="rounded-xl border border-blue-900/60 bg-gray-900 p-5">
+          <h2 className="text-lg font-semibold text-white mb-1">Seuils de ventes pour Légendaire / Épique</h2>
+          <p className="text-gray-500 text-xs mb-4">Nombre minimum de possesseurs estimés (SteamSpy) pour qu'un jeu soit éligible à ces raretés. DLC et Studios : règles propres, non affectés par ces seuils.</p>
+          <div className="flex flex-wrap gap-6 mb-4">
+            <label className="flex flex-col gap-1">
+              <span className="text-xs text-orange-400 font-semibold">🟠 Légendaire — seuil minimum</span>
+              <div className="flex items-center gap-2">
+                <input type="number" min="0" step="100000" value={legendaryMin}
+                  onChange={(e) => setLegendaryMin(Number(e.target.value))}
+                  className="w-36 rounded-md border border-gray-700 bg-gray-950 px-3 py-2 font-mono text-white text-sm focus:border-orange-500 outline-none" />
+                <span className="text-gray-500 text-xs">possesseurs</span>
+              </div>
+              <span className="text-gray-600 text-xs">{legendaryMin.toLocaleString("fr-FR")} ventes min.</span>
+            </label>
+            <label className="flex flex-col gap-1">
+              <span className="text-xs text-purple-400 font-semibold">🟣 Épique — seuil minimum</span>
+              <div className="flex items-center gap-2">
+                <input type="number" min="0" step="100000" value={epicMin}
+                  onChange={(e) => setEpicMin(Number(e.target.value))}
+                  className="w-36 rounded-md border border-gray-700 bg-gray-950 px-3 py-2 font-mono text-white text-sm focus:border-purple-500 outline-none" />
+                <span className="text-gray-500 text-xs">possesseurs</span>
+              </div>
+              <span className="text-gray-600 text-xs">{epicMin.toLocaleString("fr-FR")} ventes min.</span>
+            </label>
+          </div>
+          <div className="flex items-center gap-3">
+            <button type="button" onClick={() => void saveThresholds()} disabled={savingThresholds}
+              className="rounded-lg bg-blue-700 hover:bg-blue-600 disabled:opacity-50 text-white font-semibold px-4 py-2 text-sm transition">
+              {savingThresholds ? "Enregistrement…" : "Enregistrer les seuils"}
+            </button>
+            {thresholdMsg && <span className={`text-sm ${thresholdMsg.startsWith("✓") ? "text-emerald-300" : "text-red-400"}`}>{thresholdMsg}</span>}
+          </div>
+        </div>
+
+        <div className="rounded-xl border border-purple-900/60 bg-gray-900 p-5">
+          <h2 className="text-lg font-semibold text-white mb-1">Redistribution des raretés catalogue</h2>
+          <p className="text-gray-500 text-xs mb-3">Recalcule les raretés de TOUS les jeux, DLC et studios selon leur popularité (ownerEstimate). Ne modifie pas les cartes déjà obtenues.</p>
+          <button type="button" onClick={() => void redistCatalogRarity()} disabled={redistWorking}
+            className="rounded-lg bg-purple-700 hover:bg-purple-600 disabled:opacity-50 text-white font-semibold px-5 py-2.5 transition">
+            {redistWorking ? "Recalcul en cours…" : "⚙ Recalculer toutes les raretés catalogue"}
+          </button>
+          {redistMsg && <p className={`text-sm mt-2 ${redistMsg.startsWith("✓") ? "text-emerald-300" : "text-red-400"}`}>{redistMsg}</p>}
         </div>
 
         <div className="flex flex-wrap items-center gap-3"><button type="button" onClick={() => void saveRaritySettings()} disabled={savingRarity || !rarityDraftChanged || Math.abs(currentWeightTotal - 100) > 0.01} className="rounded-lg bg-gradient-to-b from-red-600 to-red-800 px-5 py-2.5 font-semibold text-white shadow-lg shadow-red-950/30 transition hover:brightness-110 disabled:cursor-not-allowed disabled:opacity-40">{savingRarity ? "Enregistrement…" : "Enregistrer les réglages"}</button><button type="button" onClick={() => { setRarityDraft(DEFAULT_WEIGHTS); setCooldownDraft(60); }} className="rounded-lg border border-gray-700 px-4 py-2.5 text-sm text-gray-300 hover:bg-gray-800">Valeurs par défaut</button>{rarityMessage && <p className={`text-sm ${rarityMessage.startsWith("Réglages") ? "text-emerald-300" : "text-amber-200"}`}>{rarityMessage}</p>}</div>

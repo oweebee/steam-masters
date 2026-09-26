@@ -100,7 +100,13 @@ export async function POST(req: Request) {
     await prisma.studio.deleteMany({ where: { id: { in: removable.map((s) => s.id) } } });
   }
 
-  const rarityResult = await recalculateCatalogRarity();
+  let rarityResult: Awaited<ReturnType<typeof recalculateCatalogRarity>> | null = null;
+  try {
+    rarityResult = await recalculateCatalogRarity();
+  } catch (err) {
+    console.error("[consistency] recalculateCatalogRarity a planté :", err);
+    // On continue le reste de la cohérence même si le recalcul échoue
+  }
 
   const dlcDefenseFixed = Array.from(defRepairs.values()).reduce((sum, ids) => sum + ids.length, 0);
   const dlcStudiosLinked = Array.from(dlcStudioRepairs.values()).reduce((sum, ids) => sum + ids.length, 0);

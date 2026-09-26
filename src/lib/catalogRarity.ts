@@ -82,6 +82,13 @@ function gameRarityForPosition(position: number, total: number, epicEnd: number)
 }
 
 export async function recalculateCatalogRarity() {
+  try {
+  // Seuils configurables via admin/settings (clés LEGENDARY_MIN_OWNERS / EPIC_MIN_OWNERS)
+  const settings = await prisma.appSetting.findMany({ where: { key: { in: ["LEGENDARY_MIN_OWNERS", "EPIC_MIN_OWNERS"] } } });
+  const settingsMap = Object.fromEntries(settings.map((s) => [s.key, parseInt(s.value, 10)]));
+  const legendaryMin = settingsMap["LEGENDARY_MIN_OWNERS"] ?? LEGENDARY_MIN_OWNER_ESTIMATE;
+  const epicMin = settingsMap["EPIC_MIN_OWNERS"] ?? EPIC_MIN_OWNER_ESTIMATE;
+
   const [games, dlcs, studios] = await Promise.all([
     prisma.steamGame.findMany({ where: { contentType: "GAME" }, select: { id: true, reviewScore: true, ownerEstimate: true, rarity: true, developers: true } }),
     prisma.steamGame.findMany({ where: { contentType: "DLC" }, select: { id: true, ownerEstimate: true, rarity: true } }),
@@ -105,7 +112,7 @@ export async function recalculateCatalogRarity() {
     ...games.map((game) => ({ ...game, contentType: "GAME" as const })),
     ...dlcs.map((dlc) => ({ ...dlc, reviewScore: 0, developers: [] as string[], contentType: "DLC" as const })),
   ].sort((a, b) => b.ownerEstimate - a.ownerEstimate || a.id.localeCompare(b.id));
-  const gamesWithEpicSales = catalogSorted.filter((item) => item.ownerEstimate >= EPIC_MIN_OWNER_ESTIMATE).length;
+  const gamesWithEpicSales = catalogSorted.filter((item) => item.ownerEstimate >= epicMin).length;
   const gamesEpicEnd = Math.min(catalogSorted.length, Math.max(Math.round(catalogSorted.length * EPIC_PCT), gamesWithEpicSales));
 
   // Studios : tri décroissant par avgReviewScore, pool séparé des jeux.
@@ -117,9 +124,9 @@ export async function recalculateCatalogRarity() {
 
   catalogSorted.forEach((item, index) => {
     let expected = gameRarityForPosition(index + 1, catalogSorted.length, gamesEpicEnd);
-    if (expected === "LEGENDARY" && item.ownerEstimate < LEGENDARY_MIN_OWNER_ESTIMATE) {
+    if (expected === "LEGENDARY" && item.ownerEstimate < legendaryMin) {
       expected = item.ownerEstimate >= EPIC_MIN_OWNER_ESTIMATE ? "EPIC" : "RARE";
-    } else if (expected === "EPIC" && item.ownerEstimate < EPIC_MIN_OWNER_ESTIMATE) {
+    } else if (expected === "EPIC" && item.ownerEstimate < epicMin) {
       expected = "RARE";
     }
     // Les DLC peuvent être COMMON, UNCOMMON ou RARE, jamais EPIC/LEGENDARY.
@@ -131,7 +138,7 @@ export async function recalculateCatalogRarity() {
 
   const epicEligibleStudios = new Set<string>();
   catalogSorted.forEach((game, gameIndex) => {
-    if (game.contentType === "GAME" && gameIndex + 1 <= gamesEpicEnd && game.ownerEstimate >= EPIC_MIN_OWNER_ESTIMATE) {
+    if (game.contentType === "GAME" && gameIndex + 1 <= gamesEpicEnd && game.ownerEstimate >= epicMin) {
       game.developers.forEach((developer) => epicEligibleStudios.add(developer));
     }
   });
@@ -142,19 +149,32 @@ export async function recalculateCatalogRarity() {
     if (expected !== (studio.rarity as Rarity)) studioUpdates.push({ id: studio.id, rarity: expected });
   });
 
+  const groupIds = (updates: { id: string; rarity: Rarity }[]) => {
+    const byRarity = new Map<Rarity, string[]>();
+    for (const u of updates) byRarity.set(u.rarity, [...(byRarity.get(u.rarity) ?? []), u.id]);
+    return Array.from(byRarity);
+  };
+
   if (gameUpdates.length + dlcUpdates.length + studioUpdates.length > 0) {
     // Regroupement par rareté cible : au plus 5 updateMany par table au lieu
     // d'un UPDATE par ligne (un réimport peut décaler des centaines de rangs).
-    const groupIds = (updates: { id: string; rarity: Rarity }[]) => {
-      const byRarity = new Map<Rarity, string[]>();
-      for (const u of updates) byRarity.set(u.rarity, [...(byRarity.get(u.rarity) ?? []), u.id]);
-      return Array.from(byRarity);
-    };
-    await prisma.$transaction([
-      ...groupIds(gameUpdates).map(([rarity, ids]) => prisma.steamGame.updateMany({ where: { id: { in: ids } }, data: { rarity } })),
-      ...groupIds(dlcUpdates).map(([rarity, ids]) => prisma.steamGame.updateMany({ where: { id: { in: ids } }, data: { rarity } })),
-      ...groupIds(studioUpdates).map(([rarity, ids]) => prisma.studio.updateMany({ where: { id: { in: ids } }, data: { rarity } })),
-    ]);
+    // Fallback ligne par ligne si la transaction échoue (ex: timeout, lock).
+    try {
+      await prisma.$transaction([
+        ...groupIds(gameUpdates).map(([rarity, ids]) => prisma.steamGame.updateMany({ where: { id: { in: ids } }, data: { rarity } })),
+        ...groupIds(dlcUpdates).map(([rarity, ids]) => prisma.steamGame.updateMany({ where: { id: { in: ids } }, data: { rarity } })),
+        ...groupIds(studioUpdates).map(([rarity, ids]) => prisma.studio.updateMany({ where: { id: { in: ids } }, data: { rarity } })),
+      ], { timeout: 30_000 });
+    } catch (err) {
+      // Fallback : groupes séparés sans transaction globale
+      console.error("[catalogRarity] transaction échouée, fallback individuel :", err);
+      for (const [rarity, ids] of groupIds(gameUpdates))
+        await prisma.steamGame.updateMany({ where: { id: { in: ids } }, data: { rarity } }).catch(console.error);
+      for (const [rarity, ids] of groupIds(dlcUpdates))
+        await prisma.steamGame.updateMany({ where: { id: { in: ids } }, data: { rarity } }).catch(console.error);
+      for (const [rarity, ids] of groupIds(studioUpdates))
+        await prisma.studio.updateMany({ where: { id: { in: ids } }, data: { rarity } }).catch(console.error);
+    }
   }
 
   const eligibleStudios = await prisma.studio.findMany({
@@ -188,11 +208,21 @@ export async function recalculateCatalogRarity() {
       const key = `${update.rarity}:${update.atk}`;
       groups.set(key, [...(groups.get(key) ?? []), update]);
     }
-    await prisma.$transaction(Array.from(groups.values()).map((items) => prisma.card.updateMany({
+    const cardOps = Array.from(groups.values()).map((items) => prisma.card.updateMany({
       where: { id: { in: items.map((item) => item.id) } },
       data: { rarity: items[0].rarity, atk: items[0].atk },
-    })));
+    }));
+    try {
+      await prisma.$transaction(cardOps, { timeout: 30_000 });
+    } catch (err) {
+      console.error("[catalogRarity] transaction cartes échouée, fallback individuel :", err);
+      for (const op of cardOps) await op.catch(console.error);
+    }
   }
 
   return { entriesScanned: gamesTotal + dlcs.length + studiosTotal, gamesFixed: gameUpdates.length + dlcUpdates.length, studiosFixed: studioUpdates.length, cardsFixed: cardUpdates.length };
+  } catch (err) {
+    console.error("[catalogRarity] recalculateCatalogRarity a planté :", err);
+    return { entriesScanned: 0, gamesFixed: 0, studiosFixed: 0, cardsFixed: 0, error: String(err) };
+  }
 }
