@@ -152,7 +152,8 @@ export default function AdminCardsPage() {
     setSavingInstanceId(null);
   }
 
-  const filtered = useMemo(() => {
+  const [shown, setShown] = useState(100);
+  const filteredAll = useMemo(() => {
     const normalize = (value: string) => value.normalize("NFD").replace(/\p{Diacritic}/gu, "").toLocaleLowerCase("fr");
     const q = normalize(search.trim());
     let out = items.filter((it) => {
@@ -182,6 +183,8 @@ export default function AdminCardsPage() {
 
     return out;
   }, [items, search, typeFilter, rarityFilter, claimFilter, sortKey, sortDir]);
+  useEffect(() => { setShown(100); }, [search, typeFilter, rarityFilter, claimFilter, sortKey, sortDir, view]);
+  const filtered = filteredAll.slice(0, shown);
 
   function toggleSort(key: SortKey) {
     if (sortKey === key) {
@@ -217,7 +220,7 @@ export default function AdminCardsPage() {
         </div>
       </div>
       <p className="text-gray-500 text-sm mb-1">
-        {loading ? "Chargement…" : `${filtered.length} / ${items.length} carte(s)`}
+        {loading ? "Chargement…" : `${filteredAll.length} / ${items.length} carte(s)`}
       </p>
       <p className="text-gray-600 text-xs mb-6">
         La DEF (50–250) est calculée depuis les possesseurs estimés SteamSpy ; l’estimation brute reste en base.
@@ -443,6 +446,13 @@ export default function AdminCardsPage() {
           {!loading && filtered.length === 0 && (
             <p className="text-gray-500 text-sm">Aucune carte ne correspond aux filtres.</p>
           )}
+        </div>
+      )}
+      {filteredAll.length > shown && (
+        <div className="mt-6 text-center">
+          <button type="button" onClick={() => setShown((n) => n + 200)} className="rounded-lg border border-gray-700 px-4 py-2 text-sm text-gray-300 hover:bg-gray-800">
+            Afficher plus ({shown} / {filteredAll.length})
+          </button>
         </div>
       )}
     </div>

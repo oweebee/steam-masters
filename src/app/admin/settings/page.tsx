@@ -10,7 +10,7 @@ export default function AdminSettingsPage() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    fetch("/api/admin/settings").then((r) => r.json()).then((d) => {
+    fetch("/api/admin/settings?keys=STEAM_API_KEY,OPEN_REGISTRATION").then((r) => r.json()).then((d) => {
       setSteamKey(d.STEAM_API_KEY ?? "");
       setOpenReg(d.OPEN_REGISTRATION === "true");
       setLoading(false);

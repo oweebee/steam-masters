@@ -45,6 +45,8 @@ export default function ToutesLesCartesPage() {
   const [sortKey, setSortKey] = useState<SortKey>("rarity");
   const [sortDir, setSortDir] = useState<SortDir>("asc");
   const [view, setView] = useState<"grid" | "list">("grid");
+  const [shown, setShown] = useState(60);
+  useEffect(() => { setShown(60); }, [search, typeFilter, rarityFilter, sortKey, sortDir, view]);
 
   useEffect(() => {
     fetch("/api/cards")
@@ -136,7 +138,7 @@ export default function ToutesLesCartesPage() {
           <p className="text-gray-500 text-center py-20">Aucune carte trouvée.</p>
         ) : view === "grid" ? (
           <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-4">
-            {filtered.map((item) =>
+            {filtered.slice(0, shown).map((item) =>
               item.type === "STUDIO" ? (
                 <StudioCard
                   key={item.id}
@@ -186,7 +188,7 @@ export default function ToutesLesCartesPage() {
                 </tr>
               </thead>
               <tbody>
-                {filtered.map((item) => (
+                {filtered.slice(0, shown).map((item) => (
                   <tr key={item.id} className="border-t border-gray-800 hover:bg-gray-800/40 transition">
                     <td className="px-4 py-3 font-medium text-white">
                       {item.headerImage && <img src={item.headerImage} alt="" className="inline-block w-8 h-5 object-cover rounded mr-2 align-middle" />}
@@ -201,6 +203,13 @@ export default function ToutesLesCartesPage() {
                 ))}
               </tbody>
             </table>
+          </div>
+        )}
+        {!loading && filtered.length > shown && (
+          <div className="mt-6 text-center">
+            <button type="button" onClick={() => setShown((n) => n + 120)} className="rounded-lg border border-gray-700 px-4 py-2 text-sm text-gray-300 hover:bg-gray-800">
+              Afficher plus ({shown} / {filtered.length})
+            </button>
           </div>
         )}
       </div>

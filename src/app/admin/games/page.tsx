@@ -56,6 +56,7 @@ async function resilientFetch(input: RequestInfo | URL, init?: RequestInit) {
 export default function AdminGamesPage() {
   const [section, setSection] = useState<AdminSection>("import");
   const [games, setGames] = useState<Game[]>([]);
+  const [gamesShown, setGamesShown] = useState(60);
   const [query, setQuery] = useState("");
   const [appid, setAppid] = useState("");
   const [suggestions, setSuggestions] = useState<Suggestion[]>([]);
@@ -100,7 +101,7 @@ export default function AdminGamesPage() {
 
   useEffect(() => { load(); }, []);
   useEffect(() => {
-    fetch("/api/admin/settings").then((r) => r.json()).then((d) => {
+    fetch("/api/admin/settings?keys=LEGENDARY_MIN_OWNERS,EPIC_MIN_OWNERS").then((r) => r.json()).then((d) => {
       if (d.LEGENDARY_MIN_OWNERS) setLegendaryMin(parseInt(d.LEGENDARY_MIN_OWNERS, 10));
       if (d.EPIC_MIN_OWNERS) setEpicMin(parseInt(d.EPIC_MIN_OWNERS, 10));
     });
@@ -730,12 +731,19 @@ export default function AdminGamesPage() {
       </details>
 
       <div className="flex flex-wrap gap-6">
-        {games.map((g) => (
+        {games.slice(0, gamesShown).map((g) => (
           <GameCard key={g.id} id={g.id} name={g.name} headerImage={g.headerImage} description={g.description}
             atk={g.atk} def={g.def} rarity={g.rarity} tags={g.tags} developers={g.developers} reviewScore={g.reviewScore}
             peakCcu={g.peakCcu} ownerEstimate={g.ownerEstimate} priceCents={g.priceCents} isFree={g.isFree} contentType={g.contentType} />
         ))}
       </div>
+      {games.length > gamesShown && (
+        <div className="mt-6 text-center">
+          <button type="button" onClick={() => setGamesShown((n) => n + 120)} className="rounded-lg border border-gray-700 px-4 py-2 text-sm text-gray-300 hover:bg-gray-800">
+            Afficher plus ({gamesShown} / {games.length})
+          </button>
+        </div>
+      )}
       </>}
 
       {section === "coherence" && <CoherencePanel externalBusy={loading || seeding || scanningDlcs || syncingStudios || repairing} />}

@@ -7,9 +7,10 @@ async function requireAdmin() {
   if (!session || (session.user as any)?.role !== "ADMIN") throw new Error("Unauthorized");
 }
 
-export async function GET() {
+export async function GET(req: NextRequest) {
   try { await requireAdmin(); } catch { return NextResponse.json({ error: "Unauthorized" }, { status: 401 }); }
-  const settings = await prisma.appSetting.findMany();
+  const keys = req.nextUrl.searchParams.get("keys")?.split(",").filter(Boolean);
+  const settings = await prisma.appSetting.findMany(keys?.length ? { where: { key: { in: keys } } } : undefined);
   const map = Object.fromEntries(settings.map((s) => [s.key, s.value]));
   return NextResponse.json(map);
 }
