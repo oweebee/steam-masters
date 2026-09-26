@@ -995,7 +995,7 @@ a.bg-purple-600 {
 .steam-delivery-row button { padding: 0 0.7rem; }
 
 @media (max-width: 760px), (display-mode: standalone) and (max-width: 900px) {
-  .steam-owned-frame.is-flipped { flex-direction: column; width: 18.7rem; max-height: calc(100dvh - 24px); overflow-y: auto; }
+  .steam-owned-frame.is-flipped { position: fixed; left: 50%; top: 50%; transform: translate(-50%, -50%); flex-direction: column; width: min(18.7rem, calc(100vw - 1.5rem)); max-height: calc(100dvh - 24px); overflow-y: auto; z-index: 50; }
   .steam-owned-frame.is-flipped .steam-card-wrap { flex: none; }
   .steam-owned-actions { width: 18rem; height: auto; max-height: none; border-left: 1px solid #6f4b2c; border-top: 3px double #c78a4c; border-radius: 0 0 0.7rem 0.7rem; }
   .steam-delivery-row { align-items: flex-start; flex-direction: column; }
