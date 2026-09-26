@@ -84,10 +84,12 @@ function gameRarityForPosition(position: number, total: number, epicEnd: number)
 export async function recalculateCatalogRarity({ skipCards = false }: { skipCards?: boolean } = {}) {
   try {
   // Seuils configurables via admin/settings (clés LEGENDARY_MIN_OWNERS / EPIC_MIN_OWNERS)
-  const settings = await prisma.appSetting.findMany({ where: { key: { in: ["LEGENDARY_MIN_OWNERS", "EPIC_MIN_OWNERS"] } } });
+  const settings = await prisma.appSetting.findMany({ where: { key: { in: ["LEGENDARY_MIN_OWNERS", "EPIC_MIN_OWNERS", "RARE_MIN_OWNERS", "UNCOMMON_MIN_OWNERS"] } } });
   const settingsMap = Object.fromEntries(settings.map((s) => [s.key, parseInt(s.value, 10)]));
   const legendaryMin = settingsMap["LEGENDARY_MIN_OWNERS"] ?? LEGENDARY_MIN_OWNER_ESTIMATE;
   const epicMin = settingsMap["EPIC_MIN_OWNERS"] ?? EPIC_MIN_OWNER_ESTIMATE;
+  const rareMin = settingsMap["RARE_MIN_OWNERS"] ?? 0;
+  const uncommonMin = settingsMap["UNCOMMON_MIN_OWNERS"] ?? 0;
 
   const [games, dlcs, studios] = await Promise.all([
     prisma.steamGame.findMany({ where: { contentType: "GAME" }, select: { id: true, reviewScore: true, ownerEstimate: true, rarity: true, developers: true } }),
@@ -128,6 +130,11 @@ export async function recalculateCatalogRarity({ skipCards = false }: { skipCard
       expected = item.ownerEstimate >= epicMin ? "EPIC" : "RARE";
     } else if (expected === "EPIC" && item.ownerEstimate < epicMin) {
       expected = "RARE";
+    }
+    if (expected === "RARE" && rareMin > 0 && item.ownerEstimate < rareMin) {
+      expected = item.ownerEstimate >= uncommonMin ? "UNCOMMON" : "COMMON";
+    } else if (expected === "UNCOMMON" && uncommonMin > 0 && item.ownerEstimate < uncommonMin) {
+      expected = "COMMON";
     }
     // Les DLC peuvent être COMMON, UNCOMMON ou RARE, jamais EPIC/LEGENDARY.
     if (item.contentType === "DLC" && (expected === "EPIC" || expected === "LEGENDARY")) expected = "RARE";

@@ -86,6 +86,9 @@ export default function AdminGamesPage() {
   const [redistMsg, setRedistMsg] = useState("");
   const [legendaryMin, setLegendaryMin] = useState(5000000);
   const [epicMin, setEpicMin] = useState(5000000);
+  const [rareMin, setRareMin] = useState(0);
+  const [uncommonMin, setUncommonMin] = useState(0);
+  const [showSpyInfo, setShowSpyInfo] = useState(false);
   const [thresholdMsg, setThresholdMsg] = useState("");
   const [savingThresholds, setSavingThresholds] = useState(false);
   const [catalogIssues, setCatalogIssues] = useState<CatalogIssue[]>([]);
@@ -101,11 +104,13 @@ export default function AdminGamesPage() {
 
   useEffect(() => { load(); }, []);
   useEffect(() => {
-    fetch("/api/admin/settings?keys=LEGENDARY_MIN_OWNERS,EPIC_MIN_OWNERS", { cache: "no-store" })
+    fetch("/api/admin/settings?keys=LEGENDARY_MIN_OWNERS,EPIC_MIN_OWNERS,RARE_MIN_OWNERS,UNCOMMON_MIN_OWNERS", { cache: "no-store" })
       .then((r) => r.ok ? r.json() : Promise.reject(r.status))
       .then((d) => {
         if (d.LEGENDARY_MIN_OWNERS) setLegendaryMin(parseInt(d.LEGENDARY_MIN_OWNERS, 10));
         if (d.EPIC_MIN_OWNERS) setEpicMin(parseInt(d.EPIC_MIN_OWNERS, 10));
+        if (d.RARE_MIN_OWNERS) setRareMin(parseInt(d.RARE_MIN_OWNERS, 10));
+        if (d.UNCOMMON_MIN_OWNERS) setUncommonMin(parseInt(d.UNCOMMON_MIN_OWNERS, 10));
       })
       .catch((e) => console.error("[Seuils] load failed", e));
   }, []);
@@ -140,7 +145,7 @@ export default function AdminGamesPage() {
     const res = await fetch("/api/admin/settings", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ LEGENDARY_MIN_OWNERS: String(legendaryMin), EPIC_MIN_OWNERS: String(epicMin) }),
+      body: JSON.stringify({ LEGENDARY_MIN_OWNERS: String(legendaryMin), EPIC_MIN_OWNERS: String(epicMin), RARE_MIN_OWNERS: String(rareMin), UNCOMMON_MIN_OWNERS: String(uncommonMin) }),
     });
     setSavingThresholds(false);
     setThresholdMsg(res.ok ? "✓ Seuils enregistrés" : "Erreur lors de l'enregistrement");
@@ -766,9 +771,27 @@ export default function AdminGamesPage() {
           <div className="mt-4 flex flex-wrap gap-2">{[1, 15, 30, 60, 180, 360].map((minutes) => <button key={minutes} type="button" onClick={() => setCooldownDraft(minutes)} aria-pressed={cooldownDraft === minutes} className={`rounded-lg border px-3 py-1.5 text-xs transition ${cooldownDraft === minutes ? "border-amber-500 bg-amber-950/60 text-amber-100" : "border-gray-700 text-gray-400 hover:border-gray-500 hover:text-white"}`}>{formatCooldown(minutes)}</button>)}</div>
         </div>
 
-        <div className="rounded-xl border border-blue-900/60 bg-gray-900 p-5">
-          <h2 className="text-lg font-semibold text-white mb-1">Seuils de ventes pour Légendaire / Épique</h2>
-          <p className="text-gray-500 text-xs mb-4">Nombre minimum de possesseurs estimés (SteamSpy) pour qu'un jeu soit éligible à ces raretés. DLC et Studios : règles propres, non affectés par ces seuils.</p>
+        <div className="rounded-xl border border-blue-900/60 bg-gray-900 p-5 relative">
+          <div className="flex items-start justify-between mb-1">
+            <h2 className="text-lg font-semibold text-white">Seuils de ventes par rareté</h2>
+            <button type="button" onClick={() => setShowSpyInfo((v) => !v)}
+              className="ml-2 rounded-full border border-gray-600 bg-gray-800 text-gray-300 hover:bg-gray-700 hover:text-white w-6 h-6 flex items-center justify-center text-xs font-bold transition flex-shrink-0"
+              title="Fourchettes d'estimation SteamSpy">?</button>
+          </div>
+          {showSpyInfo && (
+            <div className="mb-4 rounded-lg border border-gray-700 bg-gray-950 p-3 text-xs">
+              <p className="text-gray-400 mb-2 font-semibold">Fourchettes d&apos;estimation SteamSpy → valeur médiane utilisée</p>
+              <table className="w-full text-gray-300">
+                <thead><tr className="text-gray-500"><th className="text-left pr-4 pb-1">Fourchette</th><th className="text-right pb-1">Valeur médiane</th></tr></thead>
+                <tbody>
+                  {([["0 – 20 000","10 000"],["20 000 – 50 000","35 000"],["50 000 – 100 000","75 000"],["100 000 – 200 000","150 000"],["200 000 – 500 000","350 000"],["500 000 – 1 000 000","750 000"],["1 000 000 – 2 000 000","1 500 000"],["2 000 000 – 5 000 000","3 500 000"],["5 000 000 – 10 000 000","7 500 000"],["10 000 000 – 20 000 000","15 000 000"],["20 000 000 – 50 000 000","35 000 000"],["50 000 000 – 100 000 000","75 000 000"],["100 000 000 – 200 000 000","150 000 000"]] as [string,string][]).map(([range, mid]) => (
+                    <tr key={range} className="border-t border-gray-800"><td className="pr-4 py-0.5 text-gray-400">{range}</td><td className="text-right py-0.5 font-mono text-gray-200">{mid}</td></tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+          <p className="text-gray-500 text-xs mb-4">Nombre minimum de possesseurs estimés (SteamSpy) pour qu&apos;un jeu soit éligible à ces raretés. Mettre 0 = pas de seuil.</p>
           <div className="flex flex-wrap gap-6 mb-4">
             <label className="flex flex-col gap-1">
               <span className="text-xs text-orange-400 font-semibold">🟠 Légendaire — seuil minimum</span>
@@ -778,7 +801,7 @@ export default function AdminGamesPage() {
                   className="w-36 rounded-md border border-gray-700 bg-gray-950 px-3 py-2 font-mono text-white text-sm focus:border-orange-500 outline-none" />
                 <span className="text-gray-500 text-xs">possesseurs</span>
               </div>
-              <span className="text-gray-600 text-xs">{legendaryMin.toLocaleString("fr-FR")} ventes min.</span>
+              <span className="text-gray-600 text-xs">{legendaryMin.toLocaleString("fr-FR")} min.</span>
             </label>
             <label className="flex flex-col gap-1">
               <span className="text-xs text-purple-400 font-semibold">🟣 Épique — seuil minimum</span>
@@ -788,7 +811,27 @@ export default function AdminGamesPage() {
                   className="w-36 rounded-md border border-gray-700 bg-gray-950 px-3 py-2 font-mono text-white text-sm focus:border-purple-500 outline-none" />
                 <span className="text-gray-500 text-xs">possesseurs</span>
               </div>
-              <span className="text-gray-600 text-xs">{epicMin.toLocaleString("fr-FR")} ventes min.</span>
+              <span className="text-gray-600 text-xs">{epicMin.toLocaleString("fr-FR")} min.</span>
+            </label>
+            <label className="flex flex-col gap-1">
+              <span className="text-xs text-blue-400 font-semibold">🔵 Rare — seuil minimum</span>
+              <div className="flex items-center gap-2">
+                <input type="number" min="0" step="10000" value={rareMin}
+                  onChange={(e) => setRareMin(Number(e.target.value))}
+                  className="w-36 rounded-md border border-gray-700 bg-gray-950 px-3 py-2 font-mono text-white text-sm focus:border-blue-500 outline-none" />
+                <span className="text-gray-500 text-xs">possesseurs</span>
+              </div>
+              <span className="text-gray-600 text-xs">{rareMin.toLocaleString("fr-FR")} min.</span>
+            </label>
+            <label className="flex flex-col gap-1">
+              <span className="text-xs text-green-400 font-semibold">🟢 Peu commune — seuil minimum</span>
+              <div className="flex items-center gap-2">
+                <input type="number" min="0" step="10000" value={uncommonMin}
+                  onChange={(e) => setUncommonMin(Number(e.target.value))}
+                  className="w-36 rounded-md border border-gray-700 bg-gray-950 px-3 py-2 font-mono text-white text-sm focus:border-green-500 outline-none" />
+                <span className="text-gray-500 text-xs">possesseurs</span>
+              </div>
+              <span className="text-gray-600 text-xs">{uncommonMin.toLocaleString("fr-FR")} min.</span>
             </label>
           </div>
           <div className="flex items-center gap-3">
