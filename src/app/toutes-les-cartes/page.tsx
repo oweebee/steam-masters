@@ -137,7 +137,7 @@ export default function ToutesLesCartesPage() {
         ) : filtered.length === 0 ? (
           <p className="text-gray-500 text-center py-20">Aucune carte trouvée.</p>
         ) : view === "grid" ? (
-          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-4">
+          <div className="flex flex-wrap gap-6 justify-center">
             {filtered.slice(0, shown).map((item) =>
               item.type === "STUDIO" ? (
                 <StudioCard
@@ -156,6 +156,7 @@ export default function ToutesLesCartesPage() {
               ) : (
                 <GameCard
                   key={item.id}
+                  id={item.id}
                   name={item.name}
                   headerImage={item.headerImage ?? ""}
                   description={item.description ?? ""}
