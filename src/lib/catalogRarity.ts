@@ -125,7 +125,7 @@ export async function recalculateCatalogRarity() {
   catalogSorted.forEach((item, index) => {
     let expected = gameRarityForPosition(index + 1, catalogSorted.length, gamesEpicEnd);
     if (expected === "LEGENDARY" && item.ownerEstimate < legendaryMin) {
-      expected = item.ownerEstimate >= EPIC_MIN_OWNER_ESTIMATE ? "EPIC" : "RARE";
+      expected = item.ownerEstimate >= epicMin ? "EPIC" : "RARE";
     } else if (expected === "EPIC" && item.ownerEstimate < epicMin) {
       expected = "RARE";
     }
