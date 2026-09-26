@@ -3,6 +3,7 @@ import { auth } from "@/auth";
 import { redirect } from "next/navigation";
 import { prisma } from "@/lib/prisma";
 import { Sidebar } from "./Sidebar";
+import { NotifToaster } from "./NotifToaster";
 
 export async function AppShell({ children }: { children: React.ReactNode }) {
   const session = await auth();
@@ -33,6 +34,7 @@ export async function AppShell({ children }: { children: React.ReactNode }) {
           </Link>
         </div>
         <div className="flex-1">{children}</div>
+        <NotifToaster />
         <footer className="pt-8 text-right text-[10px] text-stone-600"><a href="/flame/README.md" className="hover:text-amber-400">Crédit de la flamme animée</a></footer>
       </main>
     </div>
