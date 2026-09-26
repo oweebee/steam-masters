@@ -11,6 +11,7 @@ const TABS: { href: string; label: string; icon: SteamMenuIconName }[] = [
   { href: "/admin/logs", label: "Journal", icon: "logs" },
   { href: "/admin/bug-reports", label: "Bug Reports", icon: "bug" },
   { href: "/admin/settings", label: "Configuration", icon: "configuration" },
+  { href: "/admin/annonces", label: "Annonces", icon: "annonces" },
 ];
 
 const SHORTCUTS: { href: string; label: string; icon: SteamMenuIconName }[] = [
