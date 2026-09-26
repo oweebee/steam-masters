@@ -149,7 +149,7 @@ export default function AdminGamesPage() {
     const res = await fetch("/api/admin/consistency", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({}) });
     const data = await res.json();
     setRedistWorking(false);
-    if (res.ok) setRedistMsg(`✓ ${data.gamesRarityFixed ?? 0} raretés catalogue · ${data.studiosUpserted ?? 0} studios · ${data.cardsRarityFixed ?? 0} cartes`);
+    if (res.ok) setRedistMsg(`✓ ${data.gamesRarityFixed ?? 0} jeux/studios modifiés · ${data.studiosUpserted ?? 0} devs scannés · ${data.cardsRarityFixed ?? 0} cartes`);
     else setRedistMsg(`Erreur : ${data.error ?? "Inconnu"}`);
   }
 

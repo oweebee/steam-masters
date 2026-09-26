@@ -22,7 +22,7 @@ export function AdminTabs() {
   const pathname = usePathname();
   return (
     <div className="steam-admin-tabs bg-gray-950 border-b border-gray-800 px-8 sticky top-0 z-20">
-      <nav className="flex items-center justify-between gap-1 overflow-x-auto">
+      <nav className="relative flex items-center justify-center gap-1 overflow-x-auto">
         <div className="flex gap-1">
           {TABS.map((tab) => {
             const active = tab.href === "/admin" ? pathname === "/admin" : pathname.startsWith(tab.href);
@@ -42,7 +42,7 @@ export function AdminTabs() {
             );
           })}
         </div>
-        <div className="flex items-center gap-2 shrink-0">
+        <div className="absolute right-0 flex items-center gap-2 shrink-0">
           <Link
             href="/dashboard"
             className="flex items-center gap-1.5 px-3 py-1.5 my-2 text-xs rounded-lg border border-amber-800 bg-amber-950/40 text-amber-300 hover:bg-amber-900/50 hover:text-amber-100 whitespace-nowrap transition font-medium"
