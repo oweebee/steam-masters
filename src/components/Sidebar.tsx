@@ -12,15 +12,12 @@ const NAV: { href: string; label: string; icon: SteamMenuIconName; active: boole
   { href: "/echanges", label: "Échanges", icon: "exchange", active: true },
   { href: "/marche", label: "Marché", icon: "market", active: true },
   { href: "/profil", label: "Profil", icon: "profile", active: false },
-  { href: "/guilde", label: "Guilde", icon: "guild", active: false },
   { href: "/joueurs", label: "Joueurs", icon: "players", active: true },
   { href: "/messages", label: "Messages", icon: "messages", active: true },
   { href: "/ajouter-jeu", label: "Ajouter un jeu", icon: "submit", active: true },
   { href: "/bataille", label: "Bataille", icon: "battle", active: true },
-  { href: "/succes", label: "Succès", icon: "achievements", active: false },
-  { href: "/classement", label: "Classement", icon: "ranking", active: false },
   { href: "/parametres", label: "Paramètres", icon: "settings", active: false },
-  { href: "/alertes", label: "Alertes", icon: "alertes", active: true },
+  { href: "/alertes", label: "Notifications", icon: "alertes", active: true },
   { href: "/bug-report", label: "Bug Report", icon: "bug", active: true },
   { href: "/aide", label: "Aide", icon: "aide", active: true },
 ];
@@ -127,7 +124,17 @@ export function Sidebar({ isAdmin, username, coins, unreadNotifs = 0 }: { isAdmi
           </button>
         </div>
 
-        {!collapsed && <div className="text-amber-400 text-xs px-2 mb-4">{coins} pièces</div>}
+        {!collapsed && (
+          <div className="flex items-center justify-between px-2 mb-4">
+            <span className="text-amber-400 text-xs">{coins} pièces</span>
+            {unreadNotifs > 0 && (
+              <Link href="/alertes" className="flex items-center gap-1 text-[#c8a96b] hover:text-amber-300 transition" title="Notifications non lues">
+                <SteamMenuIcon name="alertes" className="steam-nav-icon !w-[18px] !h-[18px]" />
+                <span className="text-xs font-bold leading-none">{unreadNotifs > 99 ? "99+" : unreadNotifs}</span>
+              </Link>
+            )}
+          </div>
+        )}
 
         <nav className="flex min-h-0 flex-col gap-1 flex-1 overflow-y-auto overscroll-contain">
           {NAV.map((item) => {
