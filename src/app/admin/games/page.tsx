@@ -149,10 +149,10 @@ export default function AdminGamesPage() {
 
   async function redistCatalogRarity() {
     setRedistWorking(true); setRedistMsg("");
-    const res = await fetch("/api/admin/consistency", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({}) });
+    const res = await fetch("/api/admin/rarity-recalc", { method: "POST" });
     const data = await res.json();
     setRedistWorking(false);
-    if (res.ok) setRedistMsg(`✓ ${data.gamesRarityFixed ?? 0} raretés recalculées · ${data.studiosUpserted ?? 0} studios sync · ${data.cardsRarityFixed ?? 0} cartes`);
+    if (res.ok) setRedistMsg(`✓ ${data.gamesRarityFixed ?? 0} jeux/studios mis à jour · ${data.entriesScanned ?? 0} scannés`);
     else setRedistMsg(`Erreur : ${data.error ?? "Inconnu"}`);
   }
 

@@ -81,7 +81,7 @@ function gameRarityForPosition(position: number, total: number, epicEnd: number)
   return "COMMON";
 }
 
-export async function recalculateCatalogRarity() {
+export async function recalculateCatalogRarity({ skipCards = false }: { skipCards?: boolean } = {}) {
   try {
   // Seuils configurables via admin/settings (clés LEGENDARY_MIN_OWNERS / EPIC_MIN_OWNERS)
   const settings = await prisma.appSetting.findMany({ where: { key: { in: ["LEGENDARY_MIN_OWNERS", "EPIC_MIN_OWNERS"] } } });
@@ -202,7 +202,7 @@ export async function recalculateCatalogRarity() {
     const rarity: Rarity = epicEligible ? "EPIC" : "RARE";
     if (rarity !== card.rarity) cardUpdates.push({ id: card.id, rarity, atk: rollAtkForRarity(rarity) });
   }
-  if (cardUpdates.length) {
+  if (!skipCards && cardUpdates.length) {
     const groups = new Map<string, typeof cardUpdates>();
     for (const update of cardUpdates) {
       const key = `${update.rarity}:${update.atk}`;
