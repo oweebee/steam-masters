@@ -9,6 +9,7 @@ import { SteamMenuIcon, type SteamMenuIconName } from "@/components/SteamMenuIco
 const NAV: { href: string; label: string; icon: SteamMenuIconName; active: boolean }[] = [
   { href: "/dashboard", label: "Paquets", icon: "packs", active: true },
   { href: "/collection", label: "Mes collections", icon: "collection", active: true },
+  { href: "/toutes-les-cartes", label: "Toutes les cartes", icon: "cards", active: true },
   { href: "/echanges", label: "Échanges", icon: "exchange", active: true },
   { href: "/marche", label: "Marché", icon: "market", active: true },
   { href: "/profil", label: "Profil", icon: "profile", active: false },
