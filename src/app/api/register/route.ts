@@ -22,8 +22,10 @@ export async function POST(req: NextRequest) {
   if (exists) return NextResponse.json({ error: "Email ou username déjà utilisé" }, { status: 409 });
 
   const hash = await bcrypt.hash(password, 12);
+  const openRegSetting = await prisma.appSetting.findUnique({ where: { key: "OPEN_REGISTRATION" } });
+  const status = openRegSetting?.value === "true" ? "ACTIVE" : "PENDING";
   await prisma.user.create({
-    data: { username, email, password: hash, role: "USER", status: "PENDING" },
+    data: { username, email, password: hash, role: "USER", status },
   });
 
   return NextResponse.json({ ok: true });

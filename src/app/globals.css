@@ -206,8 +206,8 @@ a.bg-purple-600 {
 }
 
 .steam-bottom-nav .steam-nav-icon {
-  width: 1.45rem;
-  height: 1.45rem;
+  width: 2.32rem;
+  height: 2.32rem;
   border-radius: 6px 4px 6px 4px;
 }
 
@@ -891,6 +891,13 @@ a.bg-purple-600 {
 .steam-category-create input:not([type="color"]) { min-width: 0; border: 1px solid #62472f; border-radius: .4rem; padding: .48rem .55rem; color: #fff; background: #120f0d; font-size: .75rem; }
 .steam-category-color { flex: 0 0 auto !important; }
 .steam-category-color input { width: 2.4rem; height: 2rem; border: 1px solid #62472f; border-radius: .35rem; background: #120f0d; }
+.steam-category-palette-wrap { display: flex; flex-direction: column; gap: .3rem; }
+.steam-category-palette-label { color: #b9a78f; font-size: .65rem; }
+.steam-category-palette { display: flex; flex-wrap: wrap; gap: .3rem; align-items: center; }
+.steam-palette-swatch { width: 1.25rem; height: 1.25rem; border-radius: 50%; border: 2px solid transparent; cursor: pointer; transition: transform .12s, border-color .12s; flex-shrink: 0; }
+.steam-palette-swatch:hover { transform: scale(1.2); border-color: rgba(255,255,255,.5); }
+.steam-palette-swatch.active { border-color: #ffd28d; box-shadow: 0 0 0 1px #ffd28d, 0 0 8px rgba(255,210,141,.5); transform: scale(1.15); }
+.steam-palette-custom { width: 1.4rem; height: 1.4rem; border: 1px solid #62472f; border-radius: .35rem; background: #120f0d; cursor: pointer; padding: 0; }
 .steam-category-create > button,
 .steam-category-list article > button,
 .steam-category-modal > footer button { border: 1px solid #79512f; border-radius: .4rem; padding: .45rem .65rem; color: #f5d7ad; background: linear-gradient(#352519,#21160f); font-size: .65rem; font-weight: 700; }
@@ -1248,7 +1255,10 @@ a.bg-purple-600 {
 @media (max-width: 640px) { .steam-main { padding:0.75rem; padding-bottom:calc(4.5rem + env(safe-area-inset-bottom,0px)); } .steam-owned-slot { flex:none; width:100%; height:22rem; } .steam-owned-slot .steam-card-wrap { width:100%; height:22rem; } .steam-owned-frame { width:100%; }.steam-market-header { min-height:7rem; padding:1rem; }.steam-market-gauge { width:3.8rem;height:3.8rem;font-size:1.7rem;border-width:5px; }.steam-market-header p { display:none; }.steam-market-picker-controls,.steam-market-auction-settings,.steam-market-controls { grid-template-columns:1fr; }.steam-market-picker-grid { grid-template-columns:1fr; }.steam-market-scopes,.steam-market-controls input { grid-column:auto; }.steam-market-scopes button { flex:1; }.steam-market-grid { grid-template-columns:repeat(2,minmax(0,1fr));gap:.55rem; }.steam-market-card-topline { padding:.5rem .45rem .4rem;font-size:.49rem;letter-spacing:.06em; }.steam-market-card-image { height:5.5rem; }.steam-market-card-body { padding:.55rem; }.steam-market-card-body h3 { font-size:.8rem; }.steam-market-card-body > p { font-size:.57rem; }.steam-market-stats { gap:.25rem;margin:.45rem 0; }.steam-market-stats span { min-width:0;flex:1;padding:.28rem .2rem;font-size:.72rem; }.steam-market-stats small { margin-right:.2rem;font-size:.5rem; }.steam-market-price { gap:.25rem;padding:.4rem; }.steam-market-price small { font-size:.46rem; }.steam-market-price strong { font-size:.66rem; }.steam-market-bids { min-height:1.4rem;font-size:.56rem; }.steam-market-bidbox { grid-template-columns:minmax(0,1fr) auto;gap:.25rem; }.steam-market-bidbox input,.steam-market-bidbox button,.steam-market-cancel { height:2.1rem;min-width:0;padding:0 .4rem;font-size:.62rem; }.steam-market-header-actions { gap:.45rem; }.steam-market-header-actions .steam-market-gauge { width:3rem;height:3rem;font-size:1.4rem; }.steam-market-create-trigger { min-height:3rem;padding:.4rem .55rem;gap:.35rem;font-family:Arial,sans-serif;font-size:.63rem; }.steam-market-create-trigger > span:first-child { width:1.75rem;height:1.75rem;font-size:1rem; }.steam-market-modal-backdrop { padding:.5rem; }.steam-market-modal { max-height:calc(100dvh - 1rem);padding:.9rem; }.steam-market-modal .steam-market-picker-grid { grid-template-columns:1fr; } }
 @media (display-mode:standalone) and (max-width:900px) { .steam-market-grid { grid-template-columns:repeat(2,minmax(0,1fr));gap:.55rem; } }
 /* Nav mobile (bottom bar PWA) */
-.steam-bottom-nav { background:linear-gradient(180deg,#1a1410 0%,#110e0b 100%); border-top:1px solid #63462c; box-shadow:0 -4px 16px rgba(0,0,0,.4); padding-bottom:env(safe-area-inset-bottom,0px); }
+.steam-bottom-nav { background:linear-gradient(180deg,#1a1410 0%,#110e0b 100%); border-top:1px solid #63462c; box-shadow:0 -4px 16px rgba(0,0,0,.4); padding-bottom:env(safe-area-inset-bottom,0px); overflow-x:auto; overflow-y:hidden; justify-content:flex-start; scrollbar-width:none; }
+.steam-bottom-nav::-webkit-scrollbar { display:none; }
+.steam-bottom-nav a { min-width:4rem; flex:0 0 auto; padding-top:0.5rem; padding-bottom:0.5rem; }
+.steam-bottom-nav span.text-\[8px\] { font-size:10px !important; }
 .steam-bottom-nav a { -webkit-tap-highlight-color:transparent; outline:none; }
 /* Arène : panneaux compacts et contrôles tactiles pour la PWA. */
 .battle-page{max-width:1180px;margin:0 auto;padding:12px 12px 60px;color:#f4e8d6}

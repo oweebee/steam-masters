@@ -55,6 +55,14 @@ type Card = {
   categories: PrivateCardCategory[];
 };
 
+const STEAM_PALETTE = [
+  "#c8874a","#e3b578","#ffd28d","#d4521a","#a32c25",
+  "#4a7fa5","#69c5d6","#3d6e9e","#1a4060","#2e8b57",
+  "#6b4fa0","#9b59b6","#c0392b","#8e7b5c","#5a4a3b",
+  "#607d8b","#455a64","#2c3e50","#1a1a2e","#b8860b",
+];
+
+
 function OwnedCardActions({ card, players, onChanged }: {
   card: Card; players: Player[]; onChanged: () => void;
 }) {
@@ -154,6 +162,7 @@ export function CollectionClient() {
   const [searchQuery, setSearchQuery] = useState("");
   const [rarityFilter, setRarityFilter] = useState<Rarity | "ALL">("ALL");
   const [categoryFilter, setCategoryFilter] = useState("ALL");
+  const [typeFilter, setTypeFilter] = useState<"ALL" | "GAME" | "DLC" | "STUDIO">("ALL");
 
   async function refreshAll() {
     const [collectionResponse, playersResponse, offersResponse, categoriesResponse] = await Promise.all([
@@ -278,6 +287,11 @@ export function CollectionClient() {
   const filteredCards = cards.filter((card) => {
     if (rarityFilter !== "ALL" && card.rarity !== rarityFilter) return false;
     if (categoryFilter !== "ALL" && !card.categories.some((category) => category.id === categoryFilter)) return false;
+    if (typeFilter !== "ALL") {
+      if (typeFilter === "STUDIO" && !card.studio) return false;
+      if (typeFilter === "GAME" && card.game?.contentType !== "GAME") return false;
+      if (typeFilter === "DLC" && card.game?.contentType !== "DLC") return false;
+    }
     if (!normalizedQuery) return true;
     const haystack = [
       card.game?.name, card.studio?.name, ...(card.game?.developers ?? []),
@@ -389,10 +403,13 @@ export function CollectionClient() {
         <label><span>Rareté</span><select value={rarityFilter} onChange={(event) => setRarityFilter(event.target.value as Rarity | "ALL")}>
           <option value="ALL">Toutes</option><option value="COMMON">Blanche</option><option value="UNCOMMON">Verte</option><option value="RARE">Bleue</option><option value="EPIC">Violette</option><option value="LEGENDARY">Légendaire</option>
         </select></label>
+        <label><span>Type</span><select value={typeFilter} onChange={(event) => setTypeFilter(event.target.value as "ALL" | "GAME" | "DLC" | "STUDIO")}>
+          <option value="ALL">Tous</option><option value="GAME">Jeux</option><option value="DLC">DLC</option><option value="STUDIO">Studios</option>
+        </select></label>
         <label><span>Catégorie</span><select value={categoryFilter} onChange={(event) => setCategoryFilter(event.target.value)}>
           <option value="ALL">Toutes</option>{categories.map((category) => <option key={category.id} value={category.id}>{category.name}</option>)}
         </select></label>
-        {(searchQuery || rarityFilter !== "ALL" || categoryFilter !== "ALL") && <button type="button" className="steam-sale-secondary" onClick={() => { setSearchQuery(""); setRarityFilter("ALL"); setCategoryFilter("ALL"); }}>Effacer</button>}
+        {(searchQuery || rarityFilter !== "ALL" || categoryFilter !== "ALL" || typeFilter !== "ALL") && <button type="button" className="steam-sale-secondary" onClick={() => { setSearchQuery(""); setRarityFilter("ALL"); setCategoryFilter("ALL"); setTypeFilter("ALL"); }}>Effacer</button>}
         <small>{filteredCards.length} / {cards.length} carte{cards.length > 1 ? "s" : ""}</small>
       </section>
       {deliveries.some((offer) => offer.status === "PENDING") && <section className="steam-delivery-inbox">
@@ -486,7 +503,22 @@ export function CollectionClient() {
         {selectedIds.length > 0 && <div className="steam-category-selected-count">{selectedIds.length} carte{selectedIds.length > 1 ? "s" : ""} sélectionnée{selectedIds.length > 1 ? "s" : ""}</div>}
         <div className="steam-category-create">
           <label>Nom <input value={categoryName} onChange={(event) => setCategoryName(event.target.value)} maxLength={24} placeholder="Ex. À échanger" /></label>
-          <label className="steam-category-color">Couleur <input aria-label="Couleur de la catégorie" type="color" value={categoryColor} onChange={(event) => setCategoryColor(event.target.value)} /></label>
+          <div className="steam-category-palette-wrap">
+            <span className="steam-category-palette-label">Couleur</span>
+            <div className="steam-category-palette">
+              {STEAM_PALETTE.map((color) => (
+                <button
+                  key={color}
+                  type="button"
+                  aria-label={color}
+                  className={`steam-palette-swatch${categoryColor === color ? " active" : ""}`}
+                  style={{ backgroundColor: color }}
+                  onClick={() => setCategoryColor(color)}
+                />
+              ))}
+              <input aria-label="Couleur personnalisée" type="color" value={categoryColor} onChange={(event) => setCategoryColor(event.target.value)} className="steam-palette-custom" title="Couleur personnalisée" />
+            </div>
+          </div>
           <button type="button" disabled={categoryBusy || !categoryName.trim()} onClick={editingCategoryId
             ? () => { const category = categories.find((item) => item.id === editingCategoryId); if (category) void updateCategory(category, "save"); }
             : () => void createCategory()}>{editingCategoryId ? "Enregistrer" : "Créer"}</button>

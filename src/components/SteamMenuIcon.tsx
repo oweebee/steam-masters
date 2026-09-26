@@ -1,7 +1,7 @@
 export type SteamMenuIconName =
   | "packs" | "collection" | "exchange" | "market" | "profile" | "guild"
   | "players" | "messages" | "battle" | "achievements" | "ranking" | "settings"
-  | "admin" | "home" | "users" | "cards" | "import" | "logs" | "configuration" | "submit" | "bug";
+  | "admin" | "home" | "users" | "cards" | "import" | "logs" | "configuration" | "submit" | "bug" | "aide";
 
 export function SteamMenuIcon({ name, className = "" }: { name: SteamMenuIconName; className?: string }) {
   return (
@@ -10,7 +10,8 @@ export function SteamMenuIcon({ name, className = "" }: { name: SteamMenuIconNam
         <path d="M6 9.5 16 5l10 4.5v13L16 27 6 22.5z" fill="#171512" stroke="#9b7044" strokeWidth="1.3" />
         <path d="m6 9.5 10 5 10-5M16 14.5V27" stroke="#d5a365" strokeWidth="1.2" />
         <path d="M9 11v9.5l7 3.5 7-3.5V11" stroke="#596064" strokeWidth=".8" />
-        {name === "bug" && <><path d="m10 12-3-3m15 3 3-3M9 17H5m18 0h4M10 22l-3 3m15-3 3 3" stroke="#e3b578" strokeWidth="2"/><ellipse cx="16" cy="18" rx="6" ry="8" fill="#a32c25" stroke="#e3b578" strokeWidth="1.5"/><path d="M16 12v12m-4-8h8" stroke="#ffd28d"/><circle cx="16" cy="8" r="3" fill="#e3b578"/></>}
+        {name === "bug" && <><path d="m10 12-3-3m15 3 3-3M9 17H5m18 0h4M10 22l-3 3m15-3 3 3" stroke="#e3b578" strokeWidth="2"/><ellipse cx="16" cy="18" rx="6" ry="8" fill="#a32c25" stroke="#e3b578" strokeWidth="1.5"/><path d="M16 12v12m-4-8h8" stroke="#ffd28d"/><circle cx="16" cy="8" r="3" fill="#e3b578"/></>
+        {name === "aide" && <><circle cx="16" cy="16" r="9" fill="#1a3a4a" stroke="#4fc3e0" strokeWidth="1.5"/><path d="M13 13c0-1.7 1.3-3 3-3s3 1.3 3 3c0 1.5-1 2.3-2 3-.7.5-1 1-1 1.5" stroke="#e3b578" strokeWidth="2" strokeLinecap="round"/><circle cx="16" cy="22" r="1.2" fill="#e3b578"/></>}
         {name === "packs" && <><path d="m12 13 4-2 4 2-4 2zM16 15v5" fill="#bd3d2e" stroke="#e9a34f" strokeWidth="1.2"/><circle cx="16" cy="18" r="1.2" fill="#ffd27e" stroke="none"/></>}
         {name === "collection" && <><path d="M10 11h10v12H10zM13 8h10v12M16 5h10v12" stroke="#e3b578" strokeWidth="1.2"/><path d="M12.5 14h5M12.5 17h5" stroke="#83b5ca" strokeWidth="1"/></>}
         {name === "exchange" && <><path d="M9 13h13l-3-3m4 9H10l3 3" stroke="#e4bd80" strokeWidth="1.8"/><circle cx="8" cy="13" r="1.2" fill="#69c5d6" stroke="none"/><circle cx="24" cy="19" r="1.2" fill="#e35942" stroke="none"/></>}

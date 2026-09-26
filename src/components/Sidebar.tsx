@@ -21,6 +21,7 @@ const NAV: { href: string; label: string; icon: SteamMenuIconName; active: boole
   { href: "/classement", label: "Classement", icon: "ranking", active: false },
   { href: "/parametres", label: "Paramètres", icon: "settings", active: false },
   { href: "/bug-report", label: "Bug Report", icon: "bug", active: true },
+  { href: "/aide", label: "Aide", icon: "aide", active: true },
 ];
 
 const STORAGE_KEY = "sm_sidebar_collapsed";
@@ -39,7 +40,7 @@ function BottomNav({ isAdmin }: { isAdmin: boolean }) {
           }`}
         >
           <SteamMenuIcon name={item.icon} className="steam-nav-icon" />
-          <span className="text-[8px] tracking-tight leading-none text-center w-full">{item.label}</span>
+          <span className="text-[10px] tracking-tight leading-none text-center w-full">{item.label}</span>
         </Link>
       ))}
       {isAdmin && (
@@ -50,7 +51,7 @@ function BottomNav({ isAdmin }: { isAdmin: boolean }) {
           }`}
         >
           <SteamMenuIcon name="admin" className="steam-nav-icon" />
-          <span className="text-[8px] tracking-tight leading-none text-center w-full">Admin</span>
+          <span className="text-[10px] tracking-tight leading-none text-center w-full">Admin</span>
         </Link>
       )}
     </nav>
