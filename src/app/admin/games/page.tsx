@@ -101,10 +101,13 @@ export default function AdminGamesPage() {
 
   useEffect(() => { load(); }, []);
   useEffect(() => {
-    fetch("/api/admin/settings?keys=LEGENDARY_MIN_OWNERS,EPIC_MIN_OWNERS").then((r) => r.json()).then((d) => {
-      if (d.LEGENDARY_MIN_OWNERS) setLegendaryMin(parseInt(d.LEGENDARY_MIN_OWNERS, 10));
-      if (d.EPIC_MIN_OWNERS) setEpicMin(parseInt(d.EPIC_MIN_OWNERS, 10));
-    });
+    fetch("/api/admin/settings?keys=LEGENDARY_MIN_OWNERS,EPIC_MIN_OWNERS", { cache: "no-store" })
+      .then((r) => r.ok ? r.json() : Promise.reject(r.status))
+      .then((d) => {
+        if (d.LEGENDARY_MIN_OWNERS) setLegendaryMin(parseInt(d.LEGENDARY_MIN_OWNERS, 10));
+        if (d.EPIC_MIN_OWNERS) setEpicMin(parseInt(d.EPIC_MIN_OWNERS, 10));
+      })
+      .catch((e) => console.error("[Seuils] load failed", e));
   }, []);
   useEffect(() => {
     fetch("/api/admin/games/dlc-scan").then((response) => response.json()).then((data) => {
@@ -149,7 +152,7 @@ export default function AdminGamesPage() {
     const res = await fetch("/api/admin/consistency", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({}) });
     const data = await res.json();
     setRedistWorking(false);
-    if (res.ok) setRedistMsg(`✓ ${data.gamesRarityFixed ?? 0} jeux/studios modifiés · ${data.studiosUpserted ?? 0} devs scannés · ${data.cardsRarityFixed ?? 0} cartes`);
+    if (res.ok) setRedistMsg(`✓ ${data.gamesRarityFixed ?? 0} raretés recalculées · ${data.studiosUpserted ?? 0} studios sync · ${data.cardsRarityFixed ?? 0} cartes`);
     else setRedistMsg(`Erreur : ${data.error ?? "Inconnu"}`);
   }
 

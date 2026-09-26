@@ -25,7 +25,7 @@ const NAV: { href: string; label: string; icon: SteamMenuIconName; active: boole
 
 const STORAGE_KEY = "sm_sidebar_collapsed";
 
-function BottomNav({ isAdmin, unreadNotifs }: { isAdmin: boolean; unreadNotifs: number }) {
+function BottomNav({ isAdmin, unreadNotifs, unreadMsgs }: { isAdmin: boolean; unreadNotifs: number; unreadMsgs: number }) {
   const pathname = usePathname();
   const activeItems = NAV.filter((item) => item.active);
   return (
@@ -43,6 +43,11 @@ function BottomNav({ isAdmin, unreadNotifs }: { isAdmin: boolean; unreadNotifs: 
             {item.href === "/alertes" && unreadNotifs > 0 && (
               <span className="absolute -top-1 -right-1 min-w-[14px] h-[14px] bg-[#c8a96b] text-[#18130f] text-[9px] font-bold rounded-full flex items-center justify-center px-0.5 leading-none">
                 {unreadNotifs > 9 ? "9+" : unreadNotifs}
+              </span>
+            )}
+            {item.href === "/messages" && unreadMsgs > 0 && (
+              <span className="absolute -top-1 -right-1 min-w-[14px] h-[14px] bg-blue-500 text-white text-[9px] font-bold rounded-full flex items-center justify-center px-0.5 leading-none">
+                {unreadMsgs > 9 ? "9+" : unreadMsgs}
               </span>
             )}
           </span>
@@ -64,7 +69,7 @@ function BottomNav({ isAdmin, unreadNotifs }: { isAdmin: boolean; unreadNotifs: 
   );
 }
 
-export function Sidebar({ isAdmin, username, coins, unreadNotifs = 0 }: { isAdmin: boolean; username: string; coins: number; unreadNotifs?: number }) {
+export function Sidebar({ isAdmin, username, coins, unreadNotifs = 0, unreadMsgs = 0 }: { isAdmin: boolean; username: string; coins: number; unreadNotifs?: number; unreadMsgs?: number }) {
   const pathname = usePathname();
   // Replié par défaut (avant lecture localStorage, pour éviter un flash déplié).
   const [collapsed, setCollapsed] = useState(true);
@@ -158,6 +163,11 @@ export function Sidebar({ isAdmin, username, coins, unreadNotifs = 0 }: { isAdmi
                       {unreadNotifs > 9 ? "9+" : unreadNotifs}
                     </span>
                   )}
+                  {item.href === "/messages" && unreadMsgs > 0 && (
+                    <span className="absolute -top-1 -right-1 min-w-[14px] h-[14px] bg-blue-500 text-white text-[9px] font-bold rounded-full flex items-center justify-center px-0.5 leading-none">
+                      {unreadMsgs > 9 ? "9+" : unreadMsgs}
+                    </span>
+                  )}
                 </span>
                 {!collapsed && (
                   <span className={`truncate ${!item.active ? "line-through" : ""}`}>{item.label}</span>
@@ -190,7 +200,7 @@ export function Sidebar({ isAdmin, username, coins, unreadNotifs = 0 }: { isAdmi
           </Link>
         </div>
       </aside>
-      <BottomNav isAdmin={isAdmin} unreadNotifs={unreadNotifs} />
+      <BottomNav isAdmin={isAdmin} unreadNotifs={unreadNotifs} unreadMsgs={unreadMsgs} />
     </>
   );
 }

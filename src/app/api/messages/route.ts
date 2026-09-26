@@ -17,8 +17,8 @@ export async function GET() {
     prisma.user.findMany({ where: { status: "ACTIVE", id: { not: userId } }, select: { id: true, username: true }, orderBy: { username: "asc" } }),
   ]);
   const partnerIds = [...new Set(pairs.map((pair) => pair.fromUserId === userId ? pair.toUserId : pair.fromUserId))];
-  const partners = await prisma.user.findMany({ where: { id: { in: partnerIds } }, select: { id: true, username: true } });
-  const names = new Map(partners.map((partner) => [partner.id, partner.username]));
+  const partners = await prisma.user.findMany({ where: { id: { in: partnerIds } }, select: { id: true, username: true, role: true } });
+  const names = new Map(partners.map((partner) => [partner.id, partner.role === "ADMIN" ? "Admin" : partner.username]));
   const unreadByPartner = new Map(unread.map((entry) => [entry.fromUserId, entry._count.id]));
   const conversations = await Promise.all(partnerIds.map(async (partnerId) => {
     const last = await prisma.message.findFirst({ where: { OR: [

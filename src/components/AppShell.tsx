@@ -9,15 +9,16 @@ export async function AppShell({ children }: { children: React.ReactNode }) {
   const session = await auth();
   if (!session) redirect("/login");
   const userId = (session.user as any)?.id as string | undefined;
-  const [user, unreadNotifs] = await Promise.all([
+  const [user, unreadNotifs, unreadMsgs] = await Promise.all([
     userId ? prisma.user.findUnique({ where: { id: userId } }) : null,
     userId ? prisma.notification.count({ where: { userId, read: false } }) : 0,
+    userId ? prisma.message.count({ where: { toUserId: userId, read: false } }) : 0,
   ]);
   const isAdmin = (session.user as any)?.role === "ADMIN";
 
   return (
     <div className="steam-app-shell min-h-screen bg-gray-950 flex">
-      <Sidebar isAdmin={isAdmin} username={session.user?.name ?? ""} coins={user?.coins ?? 0} unreadNotifs={unreadNotifs} />
+      <Sidebar isAdmin={isAdmin} username={session.user?.name ?? ""} coins={user?.coins ?? 0} unreadNotifs={unreadNotifs} unreadMsgs={unreadMsgs} />
       <main className="steam-main flex-1 p-8 flex flex-col">
         {/* Barre mobile : coins + déconnexion (sidebar masquée en dessous de sm) */}
         <div className="flex sm:hidden items-center justify-between pb-3 mb-4 border-b border-gray-800">
