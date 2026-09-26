@@ -81,8 +81,6 @@ export default function AdminGamesPage() {
   const [cooldownDraft, setCooldownDraft] = useState(60);
   const [savingRarity, setSavingRarity] = useState(false);
   const [rarityMessage, setRarityMessage] = useState("");
-  const [redistWorking, setRedistWorking] = useState(false);
-  const [redistMsg, setRedistMsg] = useState("");
   const [catalogIssues, setCatalogIssues] = useState<CatalogIssue[]>([]);
   const [issueFilter, setIssueFilter] = useState("ALL");
   const [issueSearch, setIssueSearch] = useState("");
@@ -119,15 +117,6 @@ export default function AdminGamesPage() {
       const data = await response.json();
       setCatalogIssues(Array.isArray(data.issues) ? data.issues : []);
     }
-  }
-
-  async function redistCatalogRarity() {
-    setRedistWorking(true); setRedistMsg("");
-    const res = await fetch("/api/admin/consistency", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({}) });
-    const data = await res.json();
-    setRedistWorking(false);
-    if (res.ok) setRedistMsg(`✓ ${data.gamesRarityFixed ?? 0} raretés catalogue · ${data.studiosUpserted ?? 0} studios · ${data.cardsRarityFixed ?? 0} cartes`);
-    else setRedistMsg(`Erreur : ${data.error ?? "Inconnu"}`);
   }
 
   async function saveRaritySettings() {
@@ -731,16 +720,6 @@ export default function AdminGamesPage() {
           <input aria-label="Délai de renouvellement en minutes" type="range" min="1" max="360" step="1" value={cooldownDraft} onChange={(event) => setCooldownDraft(Number(event.target.value))} className="mt-6 w-full accent-amber-500" />
           <div className="mt-1 flex justify-between text-[10px] text-gray-600"><span>1 min</span><span>3 h</span><span>6 h</span></div>
           <div className="mt-4 flex flex-wrap gap-2">{[1, 15, 30, 60, 180, 360].map((minutes) => <button key={minutes} type="button" onClick={() => setCooldownDraft(minutes)} aria-pressed={cooldownDraft === minutes} className={`rounded-lg border px-3 py-1.5 text-xs transition ${cooldownDraft === minutes ? "border-amber-500 bg-amber-950/60 text-amber-100" : "border-gray-700 text-gray-400 hover:border-gray-500 hover:text-white"}`}>{formatCooldown(minutes)}</button>)}</div>
-        </div>
-
-        <div className="rounded-xl border border-purple-900/60 bg-gray-900 p-5">
-          <h2 className="text-lg font-semibold text-white mb-1">Redistribution des raretés catalogue</h2>
-          <p className="text-gray-500 text-xs mb-3">Recalcule les raretés de TOUS les jeux, DLC et studios selon leur popularité (ownerEstimate). Ne modifie pas les cartes déjà obtenues.</p>
-          <button type="button" onClick={() => void redistCatalogRarity()} disabled={redistWorking}
-            className="rounded-lg bg-purple-700 hover:bg-purple-600 disabled:opacity-50 text-white font-semibold px-5 py-2.5 transition">
-            {redistWorking ? "Recalcul en cours…" : "⚙ Recalculer toutes les raretés catalogue"}
-          </button>
-          {redistMsg && <p className={`text-sm mt-2 ${redistMsg.startsWith("✓") ? "text-emerald-300" : "text-red-400"}`}>{redistMsg}</p>}
         </div>
 
         <div className="flex flex-wrap items-center gap-3"><button type="button" onClick={() => void saveRaritySettings()} disabled={savingRarity || !rarityDraftChanged || Math.abs(currentWeightTotal - 100) > 0.01} className="rounded-lg bg-gradient-to-b from-red-600 to-red-800 px-5 py-2.5 font-semibold text-white shadow-lg shadow-red-950/30 transition hover:brightness-110 disabled:cursor-not-allowed disabled:opacity-40">{savingRarity ? "Enregistrement…" : "Enregistrer les réglages"}</button><button type="button" onClick={() => { setRarityDraft(DEFAULT_WEIGHTS); setCooldownDraft(60); }} className="rounded-lg border border-gray-700 px-4 py-2.5 text-sm text-gray-300 hover:bg-gray-800">Valeurs par défaut</button>{rarityMessage && <p className={`text-sm ${rarityMessage.startsWith("Réglages") ? "text-emerald-300" : "text-amber-200"}`}>{rarityMessage}</p>}</div>

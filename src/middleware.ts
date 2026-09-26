@@ -9,19 +9,14 @@ export default auth((req) => {
   if (pathname.startsWith("/setup")) return NextResponse.next();
 
   // Routes admin
-  if (pathname.startsWith("/admin")) {
+  if (pathname.startsWith("/admin") || pathname.startsWith("/toutes-les-cartes")) {
     if (!session) return NextResponse.redirect(new URL("/login", req.url));
     if ((session.user as { role?: string })?.role !== "ADMIN")
       return NextResponse.redirect(new URL("/", req.url));
   }
 
-  // Routes protégées (tous les utilisateurs connectés)
-  if (
-    pathname.startsWith("/dashboard") ||
-    pathname.startsWith("/collection") ||
-    pathname.startsWith("/bataille") ||
-    pathname.startsWith("/toutes-les-cartes")
-  ) {
+  // Routes protégées (collection, duels, etc.)
+  if (pathname.startsWith("/dashboard") || pathname.startsWith("/collection") || pathname.startsWith("/bataille")) {
     if (!session) return NextResponse.redirect(new URL("/login", req.url));
   }
 

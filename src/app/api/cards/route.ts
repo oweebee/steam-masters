@@ -3,10 +3,13 @@ import { auth } from "@/auth";
 import { prisma } from "@/lib/prisma";
 import { buildStudioGamesByDeveloper } from "@/lib/studioGames";
 
-// Vue catalogue complète — tous les utilisateurs connectés.
+// Vue catalogue complète réservée aux administrateurs.
 export async function GET() {
   const session = await auth();
   if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  if ((session.user as { role?: string })?.role !== "ADMIN") {
+    return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+  }
 
   const [games, studios] = await Promise.all([
     prisma.steamGame.findMany({
