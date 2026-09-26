@@ -23,13 +23,12 @@ export async function POST(req: NextRequest) {
         if (existing.userId !== userId) throw new Error("CONFLICT");
         return db.bugReport.findUniqueOrThrow({ where: { id: existing.id }, select: publicReportSelect });
       }
-      const recent = await db.bugReport.count({ where: { userId, createdAt: { gte: new Date(Date.now() - 3600_000) } } });
-      if (recent >= 5) throw new Error("LIMIT");
+
       return db.bugReport.create({ data: { ...parsed.data, pagePath: parsed.data.pagePath || null, userId }, select: publicReportSelect });
     });
     return NextResponse.json(report, { status: 201 });
   } catch (e) {
     const code = e instanceof Error ? e.message : "";
-    return NextResponse.json({ error: code === "LIMIT" ? "Cinq signalements maximum par heure. Réessaie plus tard." : code === "INACTIVE" ? "Compte actif requis." : "Envoi impossible. Ton message reste dans le formulaire." }, { status: code === "LIMIT" ? 429 : code === "INACTIVE" ? 403 : code === "CONFLICT" ? 409 : 500 });
+    return NextResponse.json({ error: code === "INACTIVE" ? "Compte actif requis." : "Envoi impossible. Ton message reste dans le formulaire." }, { status: code === "INACTIVE" ? 403 : code === "CONFLICT" ? 409 : 500 });
   }
 }
