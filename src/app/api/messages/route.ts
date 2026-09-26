@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { auth } from "@/auth";
 import { prisma } from "@/lib/prisma";
+import { createNotification } from "@/lib/notifications";
 
 async function selfId() {
   const session = await auth();
@@ -46,6 +47,15 @@ export async function POST(req: Request) {
       if (recent >= 12) throw new Error("Trop de messages envoyés : réessaie dans une minute");
       return tx.message.create({ data: { fromUserId: userId, toUserId: recipientId, content } });
     }, { isolationLevel: "Serializable" });
+    // Notify recipient (best-effort)
+    const sender = await prisma.user.findUnique({ where: { id: userId }, select: { username: true } });
+    await createNotification(
+      recipientId,
+      "MESSAGE",
+      `Message de ${sender?.username ?? "un joueur"}`,
+      content.length > 80 ? content.slice(0, 80) + "…" : content,
+      `/messages`
+    );
     return NextResponse.json(message, { status: 201 });
   } catch (error) {
     return NextResponse.json({ error: error instanceof Error ? error.message : "Envoi impossible" }, { status: 400 });

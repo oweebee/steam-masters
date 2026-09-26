@@ -20,13 +20,14 @@ const NAV: { href: string; label: string; icon: SteamMenuIconName; active: boole
   { href: "/succes", label: "Succès", icon: "achievements", active: false },
   { href: "/classement", label: "Classement", icon: "ranking", active: false },
   { href: "/parametres", label: "Paramètres", icon: "settings", active: false },
+  { href: "/alertes", label: "Alertes", icon: "alertes", active: true },
   { href: "/bug-report", label: "Bug Report", icon: "bug", active: true },
   { href: "/aide", label: "Aide", icon: "aide", active: true },
 ];
 
 const STORAGE_KEY = "sm_sidebar_collapsed";
 
-function BottomNav({ isAdmin }: { isAdmin: boolean }) {
+function BottomNav({ isAdmin, unreadNotifs }: { isAdmin: boolean; unreadNotifs: number }) {
   const pathname = usePathname();
   const activeItems = NAV.filter((item) => item.active);
   return (
@@ -39,7 +40,14 @@ function BottomNav({ isAdmin }: { isAdmin: boolean }) {
             pathname === item.href ? "text-white" : "text-gray-500"
           }`}
         >
-          <SteamMenuIcon name={item.icon} className="steam-nav-icon" />
+          <span className="relative inline-flex">
+            <SteamMenuIcon name={item.icon} className="steam-nav-icon" />
+            {item.href === "/alertes" && unreadNotifs > 0 && (
+              <span className="absolute -top-1 -right-1 min-w-[14px] h-[14px] bg-[#c8a96b] text-[#18130f] text-[9px] font-bold rounded-full flex items-center justify-center px-0.5 leading-none">
+                {unreadNotifs > 9 ? "9+" : unreadNotifs}
+              </span>
+            )}
+          </span>
           <span className="text-[10px] tracking-tight leading-none text-center w-full">{item.label}</span>
         </Link>
       ))}
@@ -58,7 +66,7 @@ function BottomNav({ isAdmin }: { isAdmin: boolean }) {
   );
 }
 
-export function Sidebar({ isAdmin, username, coins }: { isAdmin: boolean; username: string; coins: number }) {
+export function Sidebar({ isAdmin, username, coins, unreadNotifs = 0 }: { isAdmin: boolean; username: string; coins: number; unreadNotifs?: number }) {
   const pathname = usePathname();
   // Replié par défaut (avant lecture localStorage, pour éviter un flash déplié).
   const [collapsed, setCollapsed] = useState(true);
@@ -135,7 +143,14 @@ export function Sidebar({ isAdmin, username, coins }: { isAdmin: boolean; userna
                   active ? "bg-blue-600 text-white border-red-500/60" : "text-gray-400 hover:bg-gray-800 hover:text-white"
                 }`}
               >
-                <SteamMenuIcon name={item.icon} className="steam-nav-icon shrink-0" />
+                <span className="relative inline-flex shrink-0">
+                  <SteamMenuIcon name={item.icon} className="steam-nav-icon" />
+                  {item.href === "/alertes" && unreadNotifs > 0 && (
+                    <span className="absolute -top-1 -right-1 min-w-[14px] h-[14px] bg-[#c8a96b] text-[#18130f] text-[9px] font-bold rounded-full flex items-center justify-center px-0.5 leading-none">
+                      {unreadNotifs > 9 ? "9+" : unreadNotifs}
+                    </span>
+                  )}
+                </span>
                 {!collapsed && (
                   <span className={`truncate ${!item.active ? "line-through" : ""}`}>{item.label}</span>
                 )}
@@ -167,7 +182,7 @@ export function Sidebar({ isAdmin, username, coins }: { isAdmin: boolean; userna
           </Link>
         </div>
       </aside>
-      <BottomNav isAdmin={isAdmin} />
+      <BottomNav isAdmin={isAdmin} unreadNotifs={unreadNotifs} />
     </>
   );
 }

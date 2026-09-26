@@ -1,7 +1,7 @@
 export type SteamMenuIconName =
   | "packs" | "collection" | "exchange" | "market" | "profile" | "guild"
   | "players" | "messages" | "battle" | "achievements" | "ranking" | "settings"
-  | "admin" | "home" | "users" | "cards" | "import" | "logs" | "configuration" | "submit" | "bug" | "aide";
+  | "admin" | "home" | "users" | "cards" | "import" | "logs" | "configuration" | "submit" | "bug" | "aide" | "alertes";
 
 export function SteamMenuIcon({ name, className = "" }: { name: SteamMenuIconName; className?: string }) {
   return (
@@ -10,7 +10,8 @@ export function SteamMenuIcon({ name, className = "" }: { name: SteamMenuIconNam
         <path d="M6 9.5 16 5l10 4.5v13L16 27 6 22.5z" fill="#171512" stroke="#9b7044" strokeWidth="1.3" />
         <path d="m6 9.5 10 5 10-5M16 14.5V27" stroke="#d5a365" strokeWidth="1.2" />
         <path d="M9 11v9.5l7 3.5 7-3.5V11" stroke="#596064" strokeWidth=".8" />
-        {name === "bug" && <><path d="m10 12-3-3m15 3 3-3M9 17H5m18 0h4M10 22l-3 3m15-3 3 3" stroke="#e3b578" strokeWidth="2"/><ellipse cx="16" cy="18" rx="6" ry="8" fill="#a32c25" stroke="#e3b578" strokeWidth="1.5"/><path d="M16 12v12m-4-8h8" stroke="#ffd28d"/><circle cx="16" cy="8" r="3" fill="#e3b578"/></>
+        {name === "bug" && <><path d="m10 12-3-3m15 3 3-3M9 17H5m18 0h4M10 22l-3 3m15-3 3 3" stroke="#e3b578" strokeWidth="2"/><ellipse cx="16" cy="18" rx="6" ry="8" fill="#a32c25" stroke="#e3b578" strokeWidth="1.5"/><path d="M16 12v12m-4-8h8" stroke="#ffd28d"/><circle cx="16" cy="8" r="3" fill="#e3b578"/></>}
+        {name === "alertes" && <><rect x="14" y="22" width="4" height="7" rx="1" fill="#4a3010" stroke="#c8a96b" strokeWidth="1"/><rect x="12" y="20" width="8" height="3" rx="0.5" fill="#5a3a18" stroke="#c8a96b" strokeWidth="1"/><polygon points="16,4 13,13 19,13" fill="#1a3a4a" stroke="#4fc3e0" strokeWidth="1"/><rect x="13" y="13" width="6" height="7" rx="0.5" fill="#1a3a4a" stroke="#4fc3e0" strokeWidth="1"/><circle cx="16" cy="8" r="2" fill="#ffe57a" stroke="#e3b578" strokeWidth="1"/><line x1="16" y1="2" x2="16" y2="5" stroke="#e3b578" strokeWidth="1.5"/><line x1="16" y1="8" x2="24" y2="11" stroke="#ffe57a" strokeWidth="0.8" opacity="0.5"/><line x1="16" y1="8" x2="8" y2="13" stroke="#ffe57a" strokeWidth="0.8" opacity="0.4"/><line x1="16" y1="8" x2="22" y2="4" stroke="#ffe57a" strokeWidth="0.8" opacity="0.3"/></>}
         {name === "aide" && <><circle cx="16" cy="16" r="9" fill="#1a3a4a" stroke="#4fc3e0" strokeWidth="1.5"/><path d="M13 13c0-1.7 1.3-3 3-3s3 1.3 3 3c0 1.5-1 2.3-2 3-.7.5-1 1-1 1.5" stroke="#e3b578" strokeWidth="2" strokeLinecap="round"/><circle cx="16" cy="22" r="1.2" fill="#e3b578"/></>}
         {name === "packs" && <><path d="m12 13 4-2 4 2-4 2zM16 15v5" fill="#bd3d2e" stroke="#e9a34f" strokeWidth="1.2"/><circle cx="16" cy="18" r="1.2" fill="#ffd27e" stroke="none"/></>}
         {name === "collection" && <><path d="M10 11h10v12H10zM13 8h10v12M16 5h10v12" stroke="#e3b578" strokeWidth="1.2"/><path d="M12.5 14h5M12.5 17h5" stroke="#83b5ca" strokeWidth="1"/></>}

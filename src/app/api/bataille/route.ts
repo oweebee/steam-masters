@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { auth } from "@/auth";
 import { prisma } from "@/lib/prisma";
+import { createNotification } from "@/lib/notifications";
 import { deckFromJson, loadBattleDeck, publicBattleDeck } from "@/lib/battle";
 import { assertStakeCardAvailable, parseStakeCardId, parseStakeCoins } from "@/lib/battleStake";
 
@@ -62,7 +63,8 @@ export async function POST(req: Request) {
         const debited = await tx.user.updateMany({ where: { id: userId, coins: { gte: stakeCoins } }, data: { coins: { decrement: stakeCoins } } });
         if (debited.count !== 1) throw new Error("Pièces insuffisantes pour cette mise");
       }
-      return tx.battle.create({ data: { challengerId: userId, opponentId: opponent.id, challengerDeck: deck, challengerStakeCoins: stakeCoins, challengerStakeCardId: stakeCardId } });
+      const newBattle = await tx.battle.create({ data: { challengerId: userId, opponentId: opponent.id, challengerDeck: deck, challengerStakeCoins: stakeCoins, challengerStakeCardId: stakeCardId } });
+      return newBattle;
     }, { isolationLevel: "Serializable" });
     return NextResponse.json({ id: battle.id }, { status: 201 });
   } catch (error) {

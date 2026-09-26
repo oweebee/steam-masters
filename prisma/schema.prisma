@@ -89,6 +89,7 @@ model User {
   battlesStarted  Battle[]       @relation("BattleChallenger")
   battlesReceived Battle[]       @relation("BattleOpponent")
   battleRewards   BattleReward[]
+  notifications   Notification[]
 }
 
 enum BattleStatus {
@@ -425,4 +426,19 @@ model Friend {
   to   User @relation("FriendTo", fields: [toUserId], references: [id])
 
   @@unique([fromUserId, toUserId])
+}
+
+model Notification {
+  id        String   @id @default(cuid())
+  userId    String
+  type      String   // MESSAGE | BATTLE | TRADE | AUCTION | SYSTEM
+  title     String
+  body      String   @db.Text
+  link      String?
+  read      Boolean  @default(false)
+  createdAt DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, read, createdAt])
 }
