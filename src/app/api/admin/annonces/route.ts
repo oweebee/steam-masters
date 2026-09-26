@@ -30,7 +30,7 @@ export async function POST(req: Request) {
   if (!content || content.length > 2000) return NextResponse.json({ error: "Contenu requis (2000 car. max)" }, { status: 400 });
 
   const users = await prisma.user.findMany({
-    where: { status: "ACTIVE", id: { not: adminId } },
+    where: { status: "ACTIVE" },
     select: { id: true },
   });
 
