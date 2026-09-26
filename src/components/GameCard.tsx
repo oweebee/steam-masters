@@ -1,4 +1,5 @@
 "use client";
+import Link from "next/link";
 import { FlipCard } from "./FlipCard";
 import { CardOrnaments } from "./CardOrnaments";
 import { FlameDial } from "./FlameDial";
@@ -77,16 +78,6 @@ export function GameCard({
           {contentType === "DLC" && <span className="ml-2 rounded border border-amber-700/70 px-1.5 py-0.5 text-[9px] uppercase tracking-wider text-amber-300">DLC</span>}
         </div>
 
-        {tags.length > 0 && (
-          <div className="flex flex-wrap gap-1">
-            {tags.slice(0, 3).map((t) => (
-              <span key={t} className="steam-tag text-[10px] bg-gray-800 text-gray-400 px-2 py-0.5 rounded-full">
-                {t}
-              </span>
-            ))}
-          </div>
-        )}
-
         <p className="text-gray-400 text-xs leading-snug line-clamp-4 flex-1">{description}</p>
 
         <div className="steam-statbar flex justify-between items-center pt-2 border-t border-gray-800 mt-2">
@@ -139,8 +130,31 @@ export function GameCard({
 
       <div className="steam-info-panel bg-gray-800 rounded-lg p-2 text-xs">
         <div className="text-gray-500 text-[10px] uppercase mb-0.5">Studio</div>
-        <div className="text-white truncate">{developers.length > 0 ? developers.join(", ") : "Inconnu"}</div>
+        <div className="text-white truncate">
+          {developers.length > 0
+            ? developers.map((dev, i) => (
+                <span key={dev}>
+                  {i > 0 && <span className="text-gray-600">, </span>}
+                  <Link
+                    href={`/studios/${encodeURIComponent(dev)}`}
+                    onClick={(e) => e.stopPropagation()}
+                    className="hover:text-amber-400 transition-colors"
+                  >{dev}</Link>
+                </span>
+              ))
+            : "Inconnu"}
+        </div>
       </div>
+
+      {tags.length > 0 && (
+        <div className="flex flex-wrap gap-1">
+          {tags.slice(0, 4).map((t) => (
+            <span key={t} className="steam-tag text-[10px] bg-gray-800 text-gray-400 px-2 py-0.5 rounded-full">
+              {t}
+            </span>
+          ))}
+        </div>
+      )}
 
       <div className="flex-1" />
 

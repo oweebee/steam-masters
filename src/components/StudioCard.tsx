@@ -1,5 +1,6 @@
 "use client";
 import { useEffect, useMemo, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import { FlipCard } from "./FlipCard";
 import { GameCard } from "./GameCard";
 import { CardOrnaments } from "./CardOrnaments";
@@ -232,13 +233,18 @@ export function StudioCard({
     </div>
   );
 
-  return <>
-    <FlipCard front={front} back={back} canFlip={canFlip} onFlipChange={onFlipChange} />
-    {preview && <div className="battle-preview-overlay" role="presentation" onClick={() => setPreview(null)}>
+  const overlay = preview ? createPortal(
+    <div className="battle-preview-overlay" role="presentation" onClick={() => setPreview(null)}>
       <div className="battle-preview-dialog" role="dialog" aria-modal="true" aria-label={`Carte ${preview.name}`} onClick={(event) => event.stopPropagation()}>
         <button type="button" className="battle-preview-close" onClick={() => setPreview(null)} aria-label="Fermer la carte">×</button>
         <GameCard {...preview} />
       </div>
-    </div>}
+    </div>,
+    document.body
+  ) : null;
+
+  return <>
+    <FlipCard front={front} back={back} canFlip={canFlip} onFlipChange={onFlipChange} />
+    {overlay}
   </>;
 }

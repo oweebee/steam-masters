@@ -39,7 +39,7 @@ function BottomNav({ isAdmin }: { isAdmin: boolean }) {
           }`}
         >
           <SteamMenuIcon name={item.icon} className="steam-nav-icon" />
-          <span className="text-[8px] tracking-tight leading-none">{item.label}</span>
+          <span className="text-[8px] tracking-tight leading-none text-center w-full">{item.label}</span>
         </Link>
       ))}
       {isAdmin && (
@@ -49,8 +49,8 @@ function BottomNav({ isAdmin }: { isAdmin: boolean }) {
             pathname === "/admin/games" ? "text-white" : "text-purple-500"
           }`}
         >
-          <span className="text-xl leading-none">🛡️</span>
-          <span className="text-[8px] tracking-tight leading-none">Admin</span>
+          <SteamMenuIcon name="admin" className="steam-nav-icon" />
+          <span className="text-[8px] tracking-tight leading-none text-center w-full">Admin</span>
         </Link>
       )}
     </nav>
