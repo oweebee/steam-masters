@@ -301,7 +301,7 @@ export function CollectionClient() {
     }
 
     setCards((current) => current.filter((card) => !selectedIds.includes(card.id)));
-    setSaleMessage(`${data.sold} carte${data.sold > 1 ? "s" : ""} vendue${data.sold > 1 ? "s" : ""} · +${data.earned} GP`);
+    setSaleMessage(`${data.sold} carte${data.sold > 1 ? "s" : ""} vendue${data.sold > 1 ? "s" : ""} · +${data.earned} gigapuissances`);
     closeSaleMode();
     router.refresh();
   }

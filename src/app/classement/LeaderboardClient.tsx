@@ -91,7 +91,7 @@ export function LeaderboardClient({ entries, selfId, claimedRewardKeys }: { entr
         <div>
           <p className={styles.eyebrow}>Tes gains de progression</p>
           <h2 id="reward-hub-title">Mes récompenses</h2>
-          <p>{availableRewards.length ? `${availableRewards.length} récompense${availableRewards.length > 1 ? "s" : ""} à récupérer · ${number(availableGp)} GP` : "Aucune récompense en attente pour le moment."}</p>
+          <p>{availableRewards.length ? `${availableRewards.length} récompense${availableRewards.length > 1 ? "s" : ""} à récupérer · ${number(availableGp)} gigapuissances` : "Aucune récompense en attente pour le moment."}</p>
         </div>
         <button type="button" onClick={openRewards}>Voir et récupérer</button>
       </section>}
@@ -156,10 +156,10 @@ export function LeaderboardClient({ entries, selfId, claimedRewardKeys }: { entr
 
             {selected.id === selfId && <div id="leaderboard-rewards" className={styles.rewardSection}>
               <h3>Récompenses débloquées</h3>
-              <p className={styles.rewardIntro}>Chaque palier donne ses propres gigapuissances. Les objectifs simples commencent à 20 GP ; les plus exigeants montent jusqu’à 5 000 GP.</p>
+              <p className={styles.rewardIntro}>Chaque palier donne ses propres gigapuissances. Les objectifs simples commencent à 20 gigapuissances ; les plus exigeants montent jusqu’à 5 000 gigapuissances.</p>
               <div className={styles.rewards}>{selected.rewards.map((reward) => {
                 const done = claimed.has(reward.key);
-                return <article key={reward.key}><div><strong>{reward.label}</strong><small>{reward.detail}</small></div><button type="button" disabled={done || !!claiming} onClick={() => void claimReward(reward.key)}>{done ? "Récupérée ✓" : claiming === reward.key ? "Attribution…" : `Récupérer +${number(reward.coins)} GP`}</button></article>;
+                return <article key={reward.key}><div><strong>{reward.label}</strong><small>{reward.detail}</small></div><button type="button" disabled={done || !!claiming} onClick={() => void claimReward(reward.key)}>{done ? "Récupérée ✓" : claiming === reward.key ? "Attribution…" : `Récupérer +${number(reward.coins)} gigapuissances`}</button></article>;
               })}</div>
               {selected.rewards.length === 0 && <p className={styles.noBonus}>Aucun palier monétaire débloqué pour le moment.</p>}
               {claimError && <p className={styles.claimError} role="alert">{claimError}</p>}

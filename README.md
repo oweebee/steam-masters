@@ -44,7 +44,7 @@ Email + mot de passe, pas de vérification mail. Statut `PENDING` jusqu'à appro
 
 Le score de base vaut 10/30/80/200/500 points pour les cartes commune/peu commune/rare/épique/légendaire. Les collections de plateformes, DLC et jeux d'un studio accordent déjà un multiplicateur à un tiers, puis un meilleur palier à deux tiers et le maximum à 100 %. La diversité des raretés, les séries d'une même rareté, le duo jeu + studio et la collection ultime ajoutent leurs bonus. Pour un même sujet, seul le multiplicateur le plus fort est retenu.
 
-Le tableau `/classement` reste ordonné par score. Un clic sur un joueur ouvre le détail du score, les jauges et le prochain palier. La page privée `/recompenses`, accessible depuis le menu, affiche uniquement les gains du joueur connecté; son badge indique les récompenses non récupérées et chaque gain ne peut être réclamé qu’une fois.
+Le tableau `/classement` reste ordonné par score. Un clic sur un joueur ouvre le détail du score, les jauges et le prochain palier. La page privée `/recompenses`, accessible depuis le menu, affiche uniquement les gains du joueur connecté; son badge indique les récompenses non récupérées. Elle distingue les gains disponibles, les objectifs entamés, ceux qui ne sont pas encore commencés et l’historique. Chaque objectif possède une explication détaillée et chaque gain ne peut être réclamé qu’une fois.
 
 ## Stack
 

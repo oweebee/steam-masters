@@ -88,7 +88,7 @@ export function MagasinClient() {
       const response = await fetch(`/api/magasin/${offer.id}/buy`, { method: "POST" });
       const data = await response.json();
       if (!response.ok) throw new Error(data.error ?? "Achat impossible");
-      setMessage(`Carte achetée · -${data.price.toLocaleString("fr-FR")} GP`);
+      setMessage(`Carte achetée · -${data.price.toLocaleString("fr-FR")} gigapuissances`);
       await load();
       router.refresh();
     } catch (reason) {

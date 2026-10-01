@@ -15,7 +15,7 @@ export const CHANGELOG_POSTS: ChangelogPost[] = [
     category: "Classement",
     title: "Un espace personnel pour récupérer ses récompenses",
     summary: "Le menu accueille une page Mes récompenses avec le nombre de gains en attente et leur récupération en gigapuissances.",
-    details: ["Le badge du menu indique uniquement tes récompenses non récupérées.", "La page dédiée sépare les gains disponibles de l’historique déjà encaissé; les récompenses des autres joueurs restent privées."],
+    details: ["Le badge du menu indique uniquement tes récompenses non récupérées.", "La page dédiée sépare gains disponibles, objectifs en progression, objectifs non commencés et historique; un bouton d’information explique chaque condition et les récompenses des autres joueurs restent privées."],
   },
   {
     slug: "classement-recompenses-paliers",
@@ -23,7 +23,7 @@ export const CHANGELOG_POSTS: ChangelogPost[] = [
     category: "Classement",
     title: "Des récompenses conçues pour durer",
     summary: "Les objectifs exigeants du classement peuvent être réclamés une fois, de 20 à 5 000 gigapuissances selon leur difficulté réelle.",
-    details: ["Les objectifs triviaux et les catalogues à une seule carte ne distribuent plus de GP.", "Les petits catalogues demandent 100 %, les paliers intermédiaires sont réservés aux collections profondes et l’attribution reste sécurisée côté serveur."],
+    details: ["Les objectifs triviaux et les catalogues à une seule carte ne distribuent plus de gigapuissances.", "Les petits catalogues demandent 100 %, les paliers intermédiaires sont réservés aux collections profondes et l’attribution reste sécurisée côté serveur."],
   },
   {
     slug: "navigation-cartes-zoom-liens",

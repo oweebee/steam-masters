@@ -60,7 +60,7 @@ export function ShopOfferPopup({ offer, initialCoins }: { offer: Offer; initialC
         <p className={styles.eyebrow}>OFFRE DU MAGASIN</p>
         <h1>{name}</h1>
         <div className={styles.price}><small>PRIX</small><strong>{offer.price.toLocaleString("fr-FR")}</strong><span>gigapuissances</span></div>
-        <div className={styles.wallet}><span>Ton solde</span><strong>{coins.toLocaleString("fr-FR")} GP</strong></div>
+        <div className={styles.wallet}><span>Ton solde</span><strong>{coins.toLocaleString("fr-FR")} gigapuissances</strong></div>
         <button type="button" className={styles.buy} disabled={busy || purchased || expired || cannotAfford} onClick={() => void buy()}>
           <span aria-hidden="true">⚙</span><b>{purchased ? "DÉJÀ VENDUE" : expired ? "OFFRE EXPIRÉE" : cannotAfford ? "SOLDE INSUFFISANT" : busy ? "ACHAT…" : "ACHETER MAINTENANT"}</b>
         </button>

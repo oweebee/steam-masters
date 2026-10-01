@@ -24,7 +24,7 @@ const { rollAtkForRarity } = load('src/lib/rarityRoll.ts');
 const { parseShopPriceRanges, randomShopPrice, shopRotationWindow } = load('src/lib/shopConfig.ts', { '@/lib/prisma': { prisma: {} } });
 const { buildShopWatchNotifications } = load('src/lib/shopNotifications.ts');
 const { notificationLink } = load('src/lib/notificationLinks.ts');
-const { buildLeaderboard, LEADERBOARD_RARITY_POINTS } = load('src/lib/leaderboard.ts');
+const { buildLeaderboard, buildRewardObjectives, LEADERBOARD_RARITY_POINTS } = load('src/lib/leaderboard.ts');
 const { sanitizeSidebarOrder } = load('src/lib/sidebarOrder.ts');
 const { combatAttack } = load('src/lib/battle.ts', { '@/lib/battleStake': {}, '@/lib/tradeExpiry': {} });
 const game = (id, extra = {}) => ({ id, name: `Game ${id}`, contentType: 'GAME', developers: ['Studio'], dlcAppIds: [], parentGameId: null, reviewScore: 90, ownerEstimate: 10000, ...extra });
@@ -177,6 +177,17 @@ test('leaderboard GP rewards reject trivial goals and reserve intermediate stage
   const full = buildLeaderboard([{ id: 'f', username: 'Full', cards: games.map((game) => ({ rarity: 'COMMON', gameId: game.id, studioId: null })) }], games, [{ id: 'trio', name: 'Trio' }])[0];
   assert.deepEqual(full.rewards.filter((reward) => reward.key.startsWith('studio:trio:')).map((reward) => reward.coins), [120]);
   assert.ok(full.rewards.every((reward) => reward.coins >= 20 && reward.coins <= 5000));
+});
+test('reward center exposes locked objectives before they are started or completed', () => {
+  const games = ['pc', 'ps', 'xbox'].map((platform, index) => ({ id: `r${index}`, name: 'Marathon', contentType: 'GAME', source: 'IGDB', parentGameId: null, dlcAppIds: [], platforms: [platform], developers: ['Long Run'] }));
+  const emptyUser = { id: 'empty', username: 'Empty', cards: [] };
+  const locked = buildRewardObjectives(emptyUser, games, [{ id: 'long-run', name: 'Long Run' }]);
+  const platform = locked.find((reward) => reward.key.startsWith('platform:'));
+  assert.equal(platform.current, 0); assert.equal(platform.target, 3); assert.equal(platform.unlocked, false);
+  const started = buildRewardObjectives({ ...emptyUser, cards: [{ rarity: 'COMMON', gameId: 'r0', studioId: null }] }, games, [{ id: 'long-run', name: 'Long Run' }]).find((reward) => reward.key === platform.key);
+  assert.equal(started.current, 1); assert.equal(started.unlocked, false);
+  const completed = buildRewardObjectives({ ...emptyUser, cards: games.map((game) => ({ rarity: 'COMMON', gameId: game.id, studioId: null })) }, games, [{ id: 'long-run', name: 'Long Run' }]).find((reward) => reward.key === platform.key);
+  assert.equal(completed.current, 3); assert.equal(completed.unlocked, true);
 });
 test('leaderboard indexes a large catalog once instead of rescanning it per player', () => {
   const mainCount = 1500;

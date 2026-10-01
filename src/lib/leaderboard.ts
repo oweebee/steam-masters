@@ -12,6 +12,7 @@ export type LeaderboardUser = { id: string; username: string; cards: Leaderboard
 export type LeaderboardProgress = { current: number; total: number; next: number | null };
 export type LeaderboardBonus = { label: string; detail: string; multiplier: number | null; points: number; progress?: LeaderboardProgress };
 export type LeaderboardReward = { key: string; label: string; detail: string; coins: number; current: number; target: number };
+export type LeaderboardRewardObjective = LeaderboardReward & { unlocked: boolean };
 export type LeaderboardEntry = { id: string; username: string; rank: number; score: number; baseScore: number; comboScore: number; globalMultiplier: number; globalBonus: number; cardCount: number; rarity: { rarity: LeaderboardRarity; count: number; points: number }[]; bonuses: LeaderboardBonus[]; rewards: LeaderboardReward[] };
 
 type ComboCandidate = LeaderboardBonus & { subjects: string[]; priority: number };
@@ -228,4 +229,88 @@ export function buildLeaderboard(users: LeaderboardUser[], games: LeaderboardGam
   const sorted = users.map((user) => scoreOneUser(user, catalog)).sort((a, b) => b.score - a.score || a.username.localeCompare(b.username, "fr"));
   let previousScore: number | null = null; let previousRank = 0;
   return sorted.map((entry, index) => { const rank = previousScore === entry.score ? previousRank : index + 1; previousScore = entry.score; previousRank = rank; return { ...entry, rank }; });
+}
+
+export function buildRewardObjectives(user: LeaderboardUser, games: LeaderboardGame[], studios: LeaderboardStudio[]): LeaderboardRewardObjective[] {
+  const catalog = buildCatalogIndex(games, studios);
+  const entry = scoreOneUser(user, catalog);
+  const unlockedByKey = new Map(entry.rewards.map((reward) => [reward.key, reward]));
+  const ownedMainKeys = new Set<string>();
+  const ownedPlatforms = new Map<string, Set<string>>();
+  const ownedDlcGroups = new Map<string, Set<string>>();
+  const ownedStudioIds = new Set<string>();
+  const subjectsByRarity = new Map<LeaderboardRarity, Set<string>>(LEADERBOARD_RARITIES.map((rarity) => [rarity, new Set()]));
+
+  for (const card of user.cards) {
+    const subject = card.gameId ? subjectKey("GAME", card.gameId) : card.studioId ? subjectKey("STUDIO", card.studioId) : null;
+    if (subject) subjectsByRarity.get(card.rarity)?.add(subject);
+    if (card.studioId) ownedStudioIds.add(card.studioId);
+    if (!card.gameId) continue;
+    const game = catalog.gameById.get(card.gameId);
+    if (!game) continue;
+    if (game.contentType === "GAME") {
+      const mainKey = catalog.mainKeyByGameId.get(game.id);
+      if (!mainKey) continue;
+      ownedMainKeys.add(mainKey);
+      for (const platform of catalogPlatforms(game)) addToSetMap(ownedPlatforms, mainKey, platform);
+    } else {
+      const dlc = catalog.dlcByGameId.get(game.id);
+      if (!dlc) continue;
+      for (const mainKey of dlc.mainKeys) addToSetMap(ownedDlcGroups, mainKey, dlc.logicalKey);
+    }
+  }
+
+  const objectives = new Map<string, LeaderboardRewardObjective>();
+  const add = (reward: LeaderboardReward) => {
+    const unlocked = unlockedByKey.get(reward.key);
+    objectives.set(reward.key, { ...(unlocked ?? reward), unlocked: Boolean(unlocked) });
+  };
+  let duoCount = 0;
+
+  for (const [mainKey, main] of catalog.mainGroups) {
+    const platforms = ownedPlatforms.get(mainKey)?.size ?? 0;
+    const dlcs = ownedDlcGroups.get(mainKey)?.size ?? 0;
+    const hasStudio = [...main.studioIds].some((studioId) => ownedStudioIds.has(studioId));
+    if (ownedMainKeys.has(mainKey) && hasStudio) duoCount += 1;
+    for (const { target, stage } of rewardStages(main.platforms.size)) {
+      const coins = rewardCoins(25 + main.platforms.size * 30 * [0, .5, 1, 2][stage]);
+      add({ key: `platform:${mainKey}:${target}`, label: `Plateformes · ${main.name}`, detail: `${target}/${main.platforms.size} plateformes`, coins, current: platforms, target });
+    }
+    for (const { target, stage } of rewardStages(main.dlcGroups.size)) {
+      const coins = rewardCoins(25 + main.dlcGroups.size * 35 * [0, .5, 1, 2][stage]);
+      const current = ownedMainKeys.has(mainKey) ? dlcs : Math.min(dlcs, Math.max(0, target - 1));
+      add({ key: `dlc:${mainKey}:${target}`, label: `DLC · ${main.name}`, detail: `${target}/${main.dlcGroups.size} DLC`, coins, current, target });
+    }
+    if (main.platforms.size > 0 && main.dlcGroups.size > 0 && main.studioIds.size > 0) {
+      const target = main.platforms.size + main.dlcGroups.size + 1;
+      add({ key: `ultimate:${mainKey}`, label: `Collection ultime · ${main.name}`, detail: "Plateformes, DLC et studio", coins: rewardCoins(250 + target * 140), current: Math.min(platforms, main.platforms.size) + Math.min(dlcs, main.dlcGroups.size) + (hasStudio ? 1 : 0), target });
+    }
+  }
+
+  for (const [target, coins] of [[10, 100], [25, 400], [50, 1500], [100, 4000]] as const) {
+    add({ key: `duos:${target}`, label: "Duos créateurs", detail: `${target} jeux avec leur carte Studio`, coins, current: duoCount, target });
+  }
+
+  for (const [studioId, gameKeys] of catalog.studioGameKeys) {
+    const studio = catalog.studioById.get(studioId);
+    if (!studio || gameKeys.size === 0) continue;
+    const current = [...gameKeys].filter((key) => ownedMainKeys.has(key)).length;
+    for (const { target, stage } of rewardStages(gameKeys.size)) {
+      const base = gameKeys.size === 1 ? 20 : stage === 1 ? 20 + Math.max(0, gameKeys.size - 3) * 18 : stage === 2 ? 60 + Math.max(0, gameKeys.size - 3) * 35 : 120 + Math.max(0, gameKeys.size - 3) * 70;
+      add({ key: `studio:${studioId}:${target}`, label: `Studio · ${studio.name}`, detail: `${target}/${gameKeys.size} jeux`, coins: rewardCoins(base), current, target });
+    }
+    const absoluteTarget = gameKeys.size + 1;
+    add({ key: `studio-card:${studioId}`, label: `Studio absolu · ${studio.name}`, detail: "Tous les jeux et la carte Studio", coins: gameKeys.size === 1 ? 50 : rewardCoins(100 + gameKeys.size * 85), current: current + (ownedStudioIds.has(studioId) ? 1 : 0), target: absoluteTarget });
+  }
+
+  const rarityCount = LEADERBOARD_RARITIES.filter((rarity) => (subjectsByRarity.get(rarity)?.size ?? 0) > 0).length;
+  for (const target of [4, 5]) add({ key: `rarities:${target}`, label: "Éventail des raretés", detail: `${target}/5 raretés`, coins: target === 4 ? 200 : 600, current: rarityCount, target });
+  for (const rarity of LEADERBOARD_RARITIES) {
+    const current = subjectsByRarity.get(rarity)?.size ?? 0;
+    for (const target of [20, 50, 100]) add({ key: `monochrome:${rarity}:${target}`, label: `Forge ${rarity.toLocaleLowerCase("fr")}`, detail: `${target} cartes différentes`, coins: rewardCoins(target * LEADERBOARD_RARITY_POINTS[rarity] / 3), current, target });
+  }
+  const advancedCollections = entry.bonuses.filter((bonus) => bonus.label !== "Éventail des raretés" && bonus.label !== "Forge monochrome").length;
+  for (const target of [10, 25, 50]) add({ key: `global:${target}`, label: "Collections avancées", detail: `${target} collections avec bonus`, coins: target === 10 ? 500 : target === 25 ? 1800 : 5000, current: advancedCollections, target });
+
+  return [...objectives.values()].sort((a, b) => Number(b.unlocked) - Number(a.unlocked) || (b.current / b.target) - (a.current / a.target) || a.coins - b.coins || a.label.localeCompare(b.label, "fr"));
 }

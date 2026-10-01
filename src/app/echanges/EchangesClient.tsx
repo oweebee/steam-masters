@@ -374,9 +374,9 @@ export function EchangesClient({ myUserId }: { myUserId: string }) {
               <div className="text-sm text-gray-300">
                 <span className="text-white font-medium">{t.fromUser.username}</span> t’offre{" "}
                 {t.cards.filter((c) => c.side === "OFFER").map(cardLabel).join(", ") || "rien"}
-                {t.offerCoins > 0 && ` + ${t.offerCoins} GP`} contre{" "}
+                {t.offerCoins > 0 && ` + ${t.offerCoins} gigapuissances`} contre{" "}
                 {t.cards.filter((c) => c.side === "WANT").map(cardLabel).join(", ") || "rien"}
-                {t.wantCoins > 0 && ` + ${t.wantCoins} GP`}
+                {t.wantCoins > 0 && ` + ${t.wantCoins} gigapuissances`}
                 {expiryLabel(t.expiresAt) && <span className="ml-2 text-xs text-amber-500/80">· {expiryLabel(t.expiresAt)}</span>}
               </div>
               <div className="flex gap-2 shrink-0">
@@ -409,10 +409,10 @@ export function EchangesClient({ myUserId }: { myUserId: string }) {
               <div className="text-sm text-gray-300">
                 Tu offres{" "}
                 {t.cards.filter((c) => c.side === "OFFER").map(cardLabel).join(", ") || "rien"}
-                {t.offerCoins > 0 && ` + ${t.offerCoins} GP`} à{" "}
+                {t.offerCoins > 0 && ` + ${t.offerCoins} gigapuissances`} à{" "}
                 <span className="text-white font-medium">{t.toUser.username}</span> contre{" "}
                 {t.cards.filter((c) => c.side === "WANT").map(cardLabel).join(", ") || "rien"}
-                {t.wantCoins > 0 && ` + ${t.wantCoins} GP`}
+                {t.wantCoins > 0 && ` + ${t.wantCoins} gigapuissances`}
                 {expiryLabel(t.expiresAt) && <span className="ml-2 text-xs text-amber-500/80">· {expiryLabel(t.expiresAt)}</span>}
               </div>
               <button

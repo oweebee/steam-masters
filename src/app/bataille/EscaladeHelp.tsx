@@ -272,7 +272,7 @@ export function EscaladeRules() {
       <p>Tu peux abandonner <b>la ligne active</b> face à un bouclier. Tes attaques restantes absorbent les dégâts (sans bonus), puis sont défaussées. Tu perds <b>max(0, résistance − somme de tes attaques)</b> PV et le combat continue si une défense reste disponible. Une manche se termine au K.O. ou quand personne ne peut plus poser de défense.</p>
 
       <h3>💰 Les mises</h3>
-      <p>Avant de jouer tu peux miser des gigapuissances et/ou une carte de ta collection. La carte misée ne combat pas. Le gagnant du match remporte tout. Récompense : <b>3 GP + 25 XP</b> pour le vainqueur, 5 XP pour le perdant.</p>
+      <p>Avant de jouer tu peux miser des gigapuissances et/ou une carte de ta collection. La carte misée ne combat pas. Le gagnant du match remporte tout. Récompense : <b>3 gigapuissances + 25 XP</b> pour le vainqueur, 5 XP pour le perdant.</p>
     </details>
   );
 }
