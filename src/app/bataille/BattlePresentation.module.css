@@ -1,0 +1,131 @@
+.arena {
+  background: #13171b;
+  padding: clamp(16px, 3vw, 32px) !important;
+  border-radius: 18px;
+  min-width: 0;
+}
+.cardBack:global(.escalade-card-back) {
+  background: #102226 url('/images/battle/card-back-generated.webp') center / cover no-repeat;
+  border: 0;
+  box-shadow: 0 6px 12px #0005;
+  border-radius: 5%;
+  width: 144px;
+  height: auto;
+  aspect-ratio: 1;
+}
+.cardBack:global(.escalade-card-back)::before,
+.cardBack:global(.escalade-card-back)::after { content: none; }
+.arena :global(.escalade-opponent-hand) {
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+  flex-wrap: nowrap;
+  gap: clamp(6px, 1.5vw, 16px);
+  padding: 12px 0 20px;
+  min-width: 0;
+}
+.arena :global(.escalade-opponent-hand) > .cardBack {
+  flex: 0 1 144px;
+  min-width: 0;
+  max-width: calc((100% - 24px) / 5);
+}
+.compactBack:global(.escalade-card-back) { width: 100%; height: 100%; aspect-ratio: auto; background-size: contain; transform: none; }
+.plaque {
+  background: url('/images/battle/phase-generated.webp') center / 100% 100% no-repeat;
+  width: min(650px, 100%);
+  min-height: clamp(125px, 26vw, 200px);
+  padding: 45px 70px 24px;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  text-align: center;
+  box-sizing: border-box;
+  color: #fff1d0;
+  text-shadow: 0 2px 4px #000;
+}
+.plaque strong { font-size: clamp(16px, 3vw, 28px); line-height: 1.15; }
+.plaque small { font-size: clamp(11px, 1.8vw, 15px); margin-top: 5px; }
+.opening {
+  position: absolute;
+  inset: 0;
+  z-index: 26;
+  background: #080b11ed;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 16px;
+  padding: 14px;
+  animation: arrive .35s ease-out both;
+}
+.opening .plaque { animation: arrive .65s cubic-bezier(.2,.8,.2,1) both; }
+.versus { display: flex; align-items: center; gap: 18px; width: min(600px, 100%); text-align: center; }
+.versus span { flex: 1; overflow-wrap: anywhere; color: #fff1d0; animation: arrive .7s .15s both; }
+.versus span:last-child { animation-delay: .35s; }
+.versus b { color: #7fe6ef; }
+.opening p { text-align: center; color: #c3d5df; animation: arrive .6s .7s both; }
+.coin {
+  width: clamp(105px, 22vw, 170px);
+  aspect-ratio: 1;
+  flex-shrink: 0;
+  background: url('/images/battle/coin-generated.webp') center / contain no-repeat;
+  filter: drop-shadow(0 14px 12px #0009);
+  animation: coinToss 2.1s cubic-bezier(.25,.65,.3,1) both;
+}
+.starter { animation: arrive .35s 2.1s both; }
+@keyframes coinToss {
+  0% { opacity: 0; transform: translateY(45px) rotate(-50deg) scale(.7); }
+  15% { opacity: 1; }
+  45% { transform: translateY(-65px) rotate(145deg) scale(1.1); }
+  80% { transform: translateY(0) rotate(355deg) scale(1); }
+  90% { transform: translateY(-8px) rotate(362deg); }
+  100% { opacity: 1; transform: translateY(0) rotate(360deg); }
+}
+.turn { position: absolute; top: 26%; left: 0; right: 0; z-index: 19; display: flex; justify-content: center; pointer-events: none; animation: announce 1.7s both; }
+.result .plaque { margin: auto; }
+.result .plaque strong { font-size: clamp(16px, 2vw, 22px); }
+.result { animation: arrive .55s ease-out both; }
+.resultDialog:global(.escalade-splash-overlay) {
+  position: fixed;
+  inset: 0;
+  margin: auto;
+  width: min(460px, calc(100vw - 24px));
+  height: fit-content;
+  max-height: calc(100dvh - 24px);
+  padding: 0;
+  border: 0;
+  background: transparent;
+  overflow: hidden;
+  color: #f6e7cf;
+}
+.resultDialog:not([open]) { display: none; }
+.resultDialog::backdrop { background: #000b; }
+.resultDialog .result {
+  display: flex;
+  flex-direction: column;
+  max-height: calc(100dvh - 24px);
+  max-width: none;
+  padding: 0;
+  min-height: 0;
+  box-sizing: border-box;
+  animation: none;
+}
+.resultDialog .result::before { content: none; }
+.resultBody { overflow-y: auto; overscroll-behavior: contain; min-height: 0; padding: 16px 18px 0; }
+.resultFooter { flex-shrink: 0; padding: 8px 18px 18px; background: #18120d; }
+.resultFooter :global(.battle-primary) { min-height: 44px; white-space: normal; }
+.actionPlaque { position: absolute; top: 12px; left: 0; right: 0; display: flex; justify-content: center; }
+.actionPlaque .plaque { width: min(430px, 95%); min-height: 128px; padding: 35px 60px 18px; }
+.actionPlaque strong { font-size: clamp(14px, 2vw, 20px); overflow-wrap: anywhere; }
+.phase { text-align: center; color: #cde8ec; font-size: 12px; letter-spacing: .06em; margin: 14px 0; }
+.arena :global(.escalade-hand) > * { animation: deal .5s both; }
+.arena :global(.escalade-hand) > :nth-child(2) { animation-delay: .1s; }
+.arena :global(.escalade-hand) > :nth-child(3) { animation-delay: .2s; }
+.arena :global(.escalade-hand) > :nth-child(4) { animation-delay: .3s; }
+.arena :global(.escalade-hand) > :nth-child(5) { animation-delay: .4s; }
+@keyframes arrive { from { opacity: 0; transform: translateY(18px) scale(.94); } to { opacity: 1; transform: none; } }
+@keyframes deal { from { opacity: 0; transform: translateY(35px) rotate(-6deg); } to { opacity: 1; transform: none; } }
+@keyframes announce { 0% { opacity: 0; transform: scale(.8); } 18%, 75% { opacity: 1; transform: scale(1); } 100% { opacity: 0; transform: scale(1.04); } }
+@media (max-width: 600px) { .arena { padding: 16px 8px !important; } .plaque { min-height: 125px; padding-left: 45px; padding-right: 45px; } }
+@media (prefers-reduced-motion: reduce) { .arena :global(.escalade-hand) > *, .opening, .opening *, .turn, .result { animation: none !important; transition: none !important; } }

@@ -1,0 +1,96 @@
+services:
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    environment:
+      DATABASE_URL: postgresql://postgres:${POSTGRES_PASSWORD}@postgres:5432/steammasters
+      REDIS_URL: redis://redis:6379
+      NEXTAUTH_SECRET: ${NEXTAUTH_SECRET}
+      AUTH_SECRET: ${NEXTAUTH_SECRET}
+      AUTH_TRUST_HOST: "true"
+      NEXTAUTH_URL: ${NEXTAUTH_URL}
+      NEXT_PUBLIC_APP_URL: ${NEXTAUTH_URL}
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    networks:
+      - internal
+      - traefik
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.steammasters.rule=Host(`steammasters.obsidianspoon.com`)"
+      - "traefik.http.routers.steammasters.entrypoints=https"
+      - "traefik.http.routers.steammasters.tls=true"
+      - "traefik.http.routers.steammasters.tls.certresolver=letsencrypt"
+      - "traefik.http.services.steammasters.loadbalancer.server.port=3000"
+      - "traefik.docker.network=traefik"
+
+  postgres:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: steammasters
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    networks:
+      - internal
+
+  redis:
+    image: redis:7-alpine
+    restart: unless-stopped
+    volumes:
+      - redisdata:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+    networks:
+      - internal
+
+  mcp:
+    image: crystaldba/postgres-mcp:latest
+    restart: unless-stopped
+    command: ["--access-mode=unrestricted", "--transport=sse"]
+    environment:
+      DATABASE_URI: postgresql://postgres:${POSTGRES_PASSWORD}@postgres:5432/steammasters
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks:
+      - internal
+      - traefik
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.steammasters-mcp.rule=Host(`steammasters-mcp.obsidianspoon.com`)"
+      - "traefik.http.routers.steammasters-mcp.entrypoints=https"
+      - "traefik.http.routers.steammasters-mcp.tls=true"
+      - "traefik.http.routers.steammasters-mcp.tls.certresolver=letsencrypt"
+      - "traefik.http.services.steammasters-mcp.loadbalancer.server.port=8000"
+      - "traefik.http.routers.steammasters-mcp.middlewares=steammasters-mcp-auth"
+      # Can be rotated through Coolify without editing this file. Fallback keeps
+      # existing installations working until MCP_BASIC_AUTH_USERS is configured.
+      - "traefik.http.middlewares.steammasters-mcp-auth.basicauth.users=${MCP_BASIC_AUTH_USERS:-mcp:$$apr1$$9MWQcM4H$$Dv3gmZmhm7M0K2iHbKTtr.}"
+      - "traefik.docker.network=traefik"
+
+
+volumes:
+  pgdata:
+  redisdata:
+
+networks:
+  internal:
+    driver: bridge
+  traefik:
+    external: true

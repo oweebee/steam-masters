@@ -1,0 +1,1 @@
+ALTER TABLE "SteamGame" ADD COLUMN "platforms" TEXT[] NOT NULL DEFAULT ARRAY[]::TEXT[];

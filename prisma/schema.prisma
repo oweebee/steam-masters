@@ -1,0 +1,569 @@
+generator client {
+  provider      = "prisma-client-js"
+  binaryTargets = ["native", "linux-musl-openssl-3.0.x"]
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum Role {
+  USER
+  ADMIN
+}
+
+enum Status {
+  PENDING
+  ACTIVE
+  REJECTED
+}
+
+enum Rarity {
+  COMMON
+  UNCOMMON
+  RARE
+  EPIC
+  LEGENDARY
+}
+
+enum SteamContentType {
+  GAME
+  DLC
+}
+
+enum GameSource {
+  STEAM
+  IGDB
+}
+
+enum TradeStatus {
+  PENDING
+  ACCEPTED
+  DECLINED
+  CANCELLED
+}
+
+enum TradeSide {
+  OFFER
+  WANT
+}
+
+enum AuctionStatus {
+  ACTIVE
+  ENDED
+  CANCELLED
+}
+
+enum GuildRole {
+  OWNER
+  ADMIN
+  MEMBER
+}
+
+enum FriendStatus {
+  PENDING
+  ACCEPTED
+  BLOCKED
+}
+
+model User {
+  id            String    @id @default(cuid())
+  username      String    @unique
+  email         String    @unique
+  password      String
+  role          Role      @default(USER)
+  status        Status    @default(PENDING)
+  xp            Int       @default(0)
+  coins         Int       @default(100)
+  lastBoosterAt DateTime?
+  sidebarOrder  Json?
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  cards           Card[]
+  bugReports      BugReport[]
+  bugReportMessages BugReportMessage[]
+  cardCategories  CardCategory[]
+  sentTrades      Trade[]        @relation("TradeFrom")
+  receivedTrades  Trade[]        @relation("TradeTo")
+  bids            Bid[]
+  auctions        Auction[]
+  guild           GuildMember?
+  messages        Message[]
+  friendsFrom     Friend[]       @relation("FriendFrom")
+  friendsTo       Friend[]       @relation("FriendTo")
+  battlesStarted  Battle[]       @relation("BattleChallenger")
+  battlesReceived Battle[]       @relation("BattleOpponent")
+  battleRewards   BattleReward[]
+  notifications   Notification[]
+  pushSubscriptions PushSubscription[]
+  cardWatches     CardWatch[]
+  shopPurchases   ShopOffer[]     @relation("ShopPurchaser")
+  leaderboardRewardClaims LeaderboardRewardClaim[]
+}
+
+enum BattleStatus {
+  PENDING
+  ACTIVE
+  DECLINED
+  FINISHED
+}
+
+model Battle {
+  id                    String       @id @default(cuid())
+  challengerId          String
+  opponentId            String
+  status                BattleStatus @default(PENDING)
+  rulesVersion          Int          @default(3)
+  escalationState       Json?
+  challengerDeck        Json
+  opponentDeck          Json?
+  challengerIndex       Int          @default(0)
+  opponentIndex         Int          @default(0)
+  challengerHp          Int          @default(0)
+  opponentHp            Int          @default(0)
+  currentTurnId         String?
+  question              Json?
+  answerIndex           Int?
+  turnCount             Int          @default(0)
+  challengerScore       Int          @default(0)
+  opponentScore         Int          @default(0)
+  challengerStakeCoins  Int          @default(0)
+  opponentStakeCoins    Int          @default(0)
+  challengerStakeCardId String?
+  opponentStakeCardId   String?
+  winnerId              String?
+  createdAt             DateTime     @default(now())
+  updatedAt             DateTime     @updatedAt
+  finishedAt            DateTime?
+
+  challenger User           @relation("BattleChallenger", fields: [challengerId], references: [id])
+  opponent   User           @relation("BattleOpponent", fields: [opponentId], references: [id])
+  rewards    BattleReward[]
+
+  @@index([challengerId, status])
+  @@index([opponentId, status])
+}
+
+model BattleReward {
+  id         String   @id @default(cuid())
+  battleId   String
+  userId     String
+  opponentId String
+  createdAt  DateTime @default(now())
+  battle     Battle   @relation(fields: [battleId], references: [id])
+  user       User     @relation(fields: [userId], references: [id])
+
+  @@unique([battleId, userId])
+  @@index([userId, createdAt])
+  @@index([userId, opponentId, createdAt])
+}
+
+model AppSetting {
+  key       String   @id
+  value     String
+  updatedAt DateTime @updatedAt
+}
+
+enum BugReportStatus {
+  OPEN
+  IN_PROGRESS
+  RESOLVED
+  DISMISSED
+}
+
+model BugReport {
+  id           String          @id @default(cuid())
+  ticketNumber Int             @unique @default(autoincrement())
+  requestId    String          @unique
+  userId       String?
+  title        String
+  description  String          @db.Text
+  pagePath     String?
+  status       BugReportStatus @default(OPEN)
+  // Triage manuel indépendant du statut : enAttente=true / aTraiter=false par défaut
+  // à la création. Claude (via MCP) ne doit traiter QUE les signalements marqués
+  // aTraiter=true ; pour les autres, laisser un message indiquant que le
+  // traitement est en attente de revue, sans modifier le statut ni écrire de
+  // réponse définitive.
+  enAttente    Boolean         @default(true)
+  aTraiter     Boolean         @default(false)
+  adminNote    String          @default("") @db.Text
+  adminReply   String          @default("") @db.Text
+  createdAt    DateTime        @default(now())
+  updatedAt    DateTime        @updatedAt
+  user         User?           @relation(fields: [userId], references: [id], onDelete: SetNull)
+  messages     BugReportMessage[]
+
+  @@index([userId, createdAt])
+  @@index([status, createdAt])
+}
+
+// Fil de discussion : reponses supplementaires des deux cotes (joueur/admin)
+// apres le premier signalement. Une reponse du joueur sur un ticket
+// RESOLVED/DISMISSED rouvre le ticket (status -> IN_PROGRESS, aTraiter=true).
+model BugReportMessage {
+  id          String   @id @default(cuid())
+  bugReportId String
+  authorId    String?
+  fromAdmin   Boolean  @default(false)
+  body        String   @db.Text
+  createdAt   DateTime @default(now())
+
+  bugReport BugReport @relation(fields: [bugReportId], references: [id], onDelete: Cascade)
+  author    User?     @relation(fields: [authorId], references: [id], onDelete: SetNull)
+
+  @@index([bugReportId, createdAt])
+}
+
+model StoredImage {
+  key       String   @id
+  data      Bytes?
+  mimeType  String?
+  sourceUrl String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model AppLog {
+  id        String   @id @default(cuid())
+  runId     String?
+  category  String
+  level     String
+  message   String
+  details   Json?
+  createdAt DateTime @default(now())
+
+  @@index([createdAt])
+  @@index([runId, createdAt])
+  @@index([category, createdAt])
+}
+
+model SteamGame {
+  id            String           @id
+  name          String
+  description   String           @db.Text
+  headerImage   String
+  reviewScore   Int
+  peakCcu       Int
+  ownerEstimate Int
+  rarity        Rarity
+  atk           Int
+  def           Int
+  tags          String[]
+  developers    String[]
+  priceCents    Int? // prix Steam en centimes (devise EUR), null si non récupéré
+  isFree        Boolean          @default(false)
+  contentType   SteamContentType @default(GAME)
+  source        GameSource       @default(STEAM) // STEAM (id = appid numérique) ou IGDB (id = "igdb-<id>")
+  parentGameId  String?
+  dlcAppIds     String[]         @default([])
+  platforms     String[]         @default([]) // supports réels : PC pour Steam, plateformes IGDB résolues à l'import
+  updatedAt     DateTime         @updatedAt
+
+  parentGame SteamGame?  @relation("GameDlc", fields: [parentGameId], references: [id], onDelete: SetNull)
+  dlcGames   SteamGame[] @relation("GameDlc")
+  cards       Card[]
+  auctions    Auction[]
+  cardWatches CardWatch[]
+  shopOffers  ShopOffer[]
+
+  @@index([name])
+  @@index([contentType, parentGameId])
+  @@index([developers], type: Gin)
+  @@index([source])
+}
+
+model Studio {
+  id                 String   @id @default(cuid())
+  name               String   @unique
+  gameCount          Int      @default(0)
+  avgReviewScore     Int      @default(0)
+  totalOwnerEstimate Int      @default(0)
+  games              String[] @default([]) // noms réels des jeux (SteamGame.name) où ce dev apparaît dans developers[]
+  about              String?  @db.Text // saisi manuellement par un admin (aucune API Steam/SteamSpy ne fournit de bio studio)
+  avatarUrl          String? // saisi manuellement par un admin (aucune API publique de logo studio)
+  rarity             Rarity
+  atk                Int
+  def                Int
+  updatedAt          DateTime @updatedAt
+
+  cards       Card[]
+  auctions    Auction[]
+  cardWatches CardWatch[]
+  shopOffers  ShopOffer[]
+}
+
+model ShopRotation {
+  id        String      @id @default(cuid())
+  startsAt  DateTime    @unique
+  endsAt    DateTime
+  createdAt DateTime    @default(now())
+  offers    ShopOffer[]
+
+  @@index([endsAt])
+}
+
+model ShopOffer {
+  id            String    @id @default(cuid())
+  rotationId    String
+  subjectKey    String
+  gameId        String?
+  studioId      String?
+  rarity        Rarity
+  atk           Int
+  price         Int
+  purchasedById String?
+  purchasedAt   DateTime?
+  createdAt     DateTime  @default(now())
+
+  rotation    ShopRotation @relation(fields: [rotationId], references: [id], onDelete: Cascade)
+  game        SteamGame?   @relation(fields: [gameId], references: [id], onDelete: SetNull)
+  studio      Studio?      @relation(fields: [studioId], references: [id], onDelete: SetNull)
+  purchasedBy User?        @relation("ShopPurchaser", fields: [purchasedById], references: [id], onDelete: SetNull)
+
+  @@unique([rotationId, subjectKey])
+  @@index([rotationId, purchasedAt])
+  @@index([gameId, rarity])
+  @@index([studioId, rarity])
+}
+
+model Card {
+  id        String   @id @default(cuid())
+  userId    String
+  gameId    String?
+  studioId  String?
+  // Rareté PROPRE à cet exemplaire de carte, tirée au moment du pull (loot table
+  // booster), figée ensuite — n'est PLUS liée à SteamGame.rarity/Studio.rarity
+  // (qui restent un indicateur intrinsèque basé sur ownerEstimate réel, inchangé).
+  // Un même jeu/studio peut désormais être tiré plusieurs fois (plus d'unicité
+  // globale) avec une rareté différente à chaque exemplaire. Modifiable ensuite
+  // UNIQUEMENT par un admin (voir /api/admin/instances/[id]).
+  rarity    Rarity   @default(COMMON)
+  // ATK PROPRE à cet exemplaire, roulé dans la bande % de sa rareté au moment du
+  // pull (même logique de tirage/fixation que `rarity`), remplace l'ATK
+  // catalogue (SteamGame.atk/Studio, inchangé) sur l'affichage de CETTE carte.
+  // Bandes (sur l'échelle ATK 0-100 existante) : LEGENDARY 98-100 / EPIC 96-97 /
+  // RARE 91-95 / UNCOMMON 85-90 / COMMON 0-84. Modifiable ensuite UNIQUEMENT par
+  // un admin (voir /api/admin/instances/[id]).
+  atk       Int      @default(0)
+  createdAt DateTime @default(now())
+  isPinned  Boolean  @default(false)
+
+  user       User                     @relation(fields: [userId], references: [id])
+  game       SteamGame?               @relation(fields: [gameId], references: [id])
+  studio     Studio?                  @relation(fields: [studioId], references: [id])
+  tradeCards TradeCard[]
+  auctions   Auction[]
+  categories CardCategoryAssignment[]
+
+  @@index([userId, createdAt])
+  @@index([gameId, rarity])
+  @@index([studioId, rarity])
+}
+
+model CardCategory {
+  id        String   @id @default(cuid())
+  userId    String
+  name      String
+  color     String   @default("#c8874a")
+  createdAt DateTime @default(now())
+
+  user  User                     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  cards CardCategoryAssignment[]
+
+  @@unique([userId, name])
+  @@index([userId])
+}
+
+model CardCategoryAssignment {
+  cardId     String
+  categoryId String
+  createdAt  DateTime @default(now())
+
+  card     Card         @relation(fields: [cardId], references: [id], onDelete: Cascade)
+  category CardCategory @relation(fields: [categoryId], references: [id], onDelete: Cascade)
+
+  @@id([cardId, categoryId])
+  @@index([categoryId])
+}
+
+model Trade {
+  requestId  String?     @unique
+  id         String      @id @default(cuid())
+  fromUserId String
+  toUserId   String
+  offerCoins Int         @default(0) // jetons donnés par fromUser à toUser si accepté
+  wantCoins  Int         @default(0) // jetons donnés par toUser à fromUser si accepté
+  status     TradeStatus @default(PENDING)
+  isDelivery Boolean     @default(false)
+  expiresAt  DateTime?
+  createdAt  DateTime    @default(now())
+  resolvedAt DateTime?
+
+  fromUser User        @relation("TradeFrom", fields: [fromUserId], references: [id])
+  toUser   User        @relation("TradeTo", fields: [toUserId], references: [id])
+  cards    TradeCard[]
+
+  @@index([status, expiresAt])
+  @@index([fromUserId])
+  @@index([toUserId])
+}
+
+model TradeCard {
+  id      String    @id @default(cuid())
+  tradeId String
+  cardId  String
+  side    TradeSide
+
+  trade Trade @relation(fields: [tradeId], references: [id])
+  card  Card  @relation(fields: [cardId], references: [id])
+
+  @@index([cardId])
+  @@index([tradeId])
+}
+
+model Auction {
+  id         String        @id @default(cuid())
+  cardId     String?
+  sellerId   String
+  gameId     String?
+  studioId   String?
+  startPrice Int
+  currentBid Int
+  endsAt     DateTime
+  status     AuctionStatus @default(ACTIVE)
+  createdAt  DateTime      @default(now())
+
+  card   Card?      @relation(fields: [cardId], references: [id], onDelete: SetNull)
+  seller User       @relation(fields: [sellerId], references: [id])
+  game   SteamGame? @relation(fields: [gameId], references: [id], onDelete: SetNull)
+  studio Studio?    @relation(fields: [studioId], references: [id], onDelete: SetNull)
+  bids   Bid[]
+
+  @@index([status, endsAt])
+  @@index([cardId])
+}
+
+model Bid {
+  id        String   @id @default(cuid())
+  auctionId String
+  userId    String
+  amount    Int
+  createdAt DateTime @default(now())
+
+  auction Auction @relation(fields: [auctionId], references: [id])
+  user    User    @relation(fields: [userId], references: [id])
+
+  @@index([auctionId, amount])
+}
+
+model Guild {
+  id          String   @id @default(cuid())
+  name        String   @unique
+  description String?
+  createdAt   DateTime @default(now())
+
+  members GuildMember[]
+}
+
+model GuildMember {
+  id      String    @id @default(cuid())
+  userId  String    @unique
+  guildId String
+  role    GuildRole @default(MEMBER)
+  xp      Int       @default(0)
+
+  user  User  @relation(fields: [userId], references: [id])
+  guild Guild @relation(fields: [guildId], references: [id])
+}
+
+model Message {
+  id             String   @id @default(cuid())
+  fromUserId     String
+  toUserId       String
+  content        String
+  createdAt      DateTime @default(now())
+  read           Boolean  @default(false)
+  isAnnouncement Boolean  @default(false)
+
+  from User @relation(fields: [fromUserId], references: [id])
+
+  @@index([fromUserId, toUserId, createdAt])
+  @@index([toUserId, fromUserId, createdAt])
+  @@index([toUserId, read])
+}
+
+model Friend {
+  id         String       @id @default(cuid())
+  fromUserId String
+  toUserId   String
+  status     FriendStatus @default(PENDING)
+  createdAt  DateTime     @default(now())
+
+  from User @relation("FriendFrom", fields: [fromUserId], references: [id])
+  to   User @relation("FriendTo", fields: [toUserId], references: [id])
+
+  @@unique([fromUserId, toUserId])
+}
+
+model Notification {
+  id        String   @id @default(cuid())
+  userId    String
+  type      String   // MESSAGE | BATTLE | TRADE | AUCTION | SHOP | SYSTEM | BUG
+  title     String
+  body      String   @db.Text
+  link      String?
+  read      Boolean  @default(false)
+  createdAt DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, read, createdAt])
+}
+
+model LeaderboardRewardClaim {
+  id        String   @id @default(cuid())
+  userId    String
+  rewardKey String
+  coins     Int
+  claimedAt DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, rewardKey])
+  @@index([userId, claimedAt])
+}
+
+model PushSubscription {
+  id        String   @id @default(cuid())
+  userId    String
+  endpoint  String   @unique @db.Text
+  p256dh    String   @db.Text
+  auth      String   @db.Text
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+}
+
+model CardWatch {
+  id        String   @id @default(cuid())
+  userId    String
+  gameId    String?
+  studioId  String?
+  createdAt DateTime @default(now())
+
+  user    User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  game    SteamGame? @relation(fields: [gameId], references: [id], onDelete: Cascade)
+  studio  Studio?    @relation(fields: [studioId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, gameId])
+  @@unique([userId, studioId])
+  @@index([gameId])
+  @@index([studioId])
+  @@index([userId])
+}

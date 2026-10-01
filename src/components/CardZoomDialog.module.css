@@ -1,0 +1,17 @@
+.overlay { position:fixed; inset:0; display:grid; place-items:center; overflow:auto; padding:20px; background:#070504dc; backdrop-filter:blur(5px); animation:veil-in 180ms ease-out both; }
+.surface { position:relative; max-width:calc(100vw - 28px); max-height:calc(100dvh - 28px); transform-origin:center; animation:page-out-of-card 220ms cubic-bezier(.16,.82,.25,1) both; }
+.card { width:18rem; }
+.owned { width:min(35rem,calc(100vw - 28px)); }
+.wide { width:min(980px,calc(100vw - 28px)); }
+.content { max-height:calc(100dvh - 28px); overflow:auto; overscroll-behavior:contain; scrollbar-width:thin; }
+.close { position:absolute; z-index:5; top:-12px; right:-12px; display:grid; place-items:center; width:44px; height:44px; padding:0; border:1px solid #d4a260; border-radius:50%; background:radial-gradient(circle at 35% 30%,#6b4127,#2b190f 70%); color:#fff5df; box-shadow:inset 0 0 0 3px #17100b,0 5px 18px #000b,0 0 12px #d28c3b55; font:700 1.65rem/1 Georgia,serif; cursor:pointer; }
+.close:hover { filter:brightness(1.18); transform:scale(1.05); }
+.close:focus-visible { outline:2px solid #87e0e5; outline-offset:3px; }
+.closing { animation:veil-out 190ms ease-in both; pointer-events:none; }
+.closing .surface { animation:page-back-to-card 190ms cubic-bezier(.55,.02,.84,.25) both; }
+@keyframes page-out-of-card { from { opacity:.18; transform:translate(var(--zoom-shift-x),var(--zoom-shift-y)) scale(.12); filter:blur(3px); } 70% { opacity:1; } to { opacity:1; transform:translate(0,0) scale(1); filter:none; } }
+@keyframes page-back-to-card { from { opacity:1; transform:translate(0,0) scale(1); } to { opacity:0; transform:translate(var(--zoom-shift-x),var(--zoom-shift-y)) scale(.14); filter:blur(2px); } }
+@keyframes veil-in { from { background:#07050400; backdrop-filter:blur(0); } }
+@keyframes veil-out { to { background:#07050400; backdrop-filter:blur(0); } }
+@media(max-width:640px) { .overlay { padding:10px; }.surface,.content { max-height:calc(100dvh - 20px); }.close { top:4px; right:4px; } }
+@media(prefers-reduced-motion:reduce) { .overlay,.surface,.closing,.closing .surface { animation-duration:1ms; } }
