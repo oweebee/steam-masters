@@ -36,7 +36,7 @@ Email + mot de passe, pas de vérification mail. Statut `PENDING` jusqu'à appro
 - Escalade V3 : duels en deux manches gagnantes, decks tactiques, combos, pouvoirs, mises de cartes/gigapuissances et replay animé. Plateau sobre uni, dos de cartes et bannières ImageGen, face-à-face d’ouverture (passable), annonce des tours, distribution animée et résultat après le dernier replay; mouvements réduits pris en charge.
 - Imports Steam et IGDB, scans DLC, sélection directe de la plateforme IGDB dans le tableau admin et contrôles de cohérence catalogue.
 - Carte 3D flip : rareté et statistiques propres à l'exemplaire, informations Jeu/Studio et actions contextuelles; les liens internes ouvrent une fiche zoomée empilable sans quitter la page.
-- PWA installable, service worker, interface responsive et sidebar repliable/réordonnable par joueur; le même ordre est repris dans la PWA.
+- PWA installable avec invitation mobile adaptée à Android/iPhone, service worker, interface responsive et sidebar repliable/réordonnable par joueur; le même ordre est repris dans la PWA.
 - Page `/informations` accessible depuis le menu de gauche : changelog visuel, daté et sans notification, avec un post autonome par évolution majeure.
 - Accès direct MCP Postgres (`steammasters-mcp.obsidianspoon.com`) pour import/administration en masse par IA — voir `AppSetting.MCP_GUIDE` en base.
 

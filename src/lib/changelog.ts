@@ -10,6 +10,14 @@ export type ChangelogPost = {
 // Un changement majeur = un objet/post autonome. Toujours ajouter le nouveau post en tête.
 export const CHANGELOG_POSTS: ChangelogPost[] = [
   {
+    slug: "installation-pwa-mobile",
+    date: "2026-10-01",
+    category: "Application",
+    title: "Installation mobile proposée au bon moment",
+    summary: "Sur téléphone, Steam Masters propose maintenant son installation comme application sans harceler les joueurs qui préfèrent attendre.",
+    details: ["Android et les navigateurs compatibles utilisent l’invite d’installation native.", "Sur iPhone et les autres navigateurs mobiles, la popup explique les étapes; elle disparaît dans la PWA installée et attend 7 jours après un refus."],
+  },
+  {
     slug: "centre-mes-recompenses",
     date: "2026-10-01",
     category: "Classement",
