@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, type CSSProperties } from "react";
 import type { Rarity } from "@/lib/rarityRoll";
 
 const ROWS: Array<{ rarity: Rarity; label: string; color: string }> = [
@@ -14,12 +14,15 @@ type Draft = Record<Rarity, { min: string; max: string }>;
 const emptyDraft = () => Object.fromEntries(ROWS.map(({ rarity }) => [rarity, { min: "", max: "" }])) as Draft;
 
 function remainingLabel(endsAt: string | undefined, now: number) {
-  if (!endsAt) return "--:--";
+  if (!endsAt) return "--:--:--";
   const remaining = Math.max(0, new Date(endsAt).getTime() - now);
-  const minutes = Math.floor(remaining / 60_000);
+  const hours = Math.floor(remaining / 3_600_000);
+  const minutes = Math.floor((remaining % 3_600_000) / 60_000);
   const seconds = Math.floor((remaining % 60_000) / 1000);
-  return `${String(minutes).padStart(2, "0")}:${String(seconds).padStart(2, "0")}`;
+  return `${String(hours).padStart(2, "0")}:${String(minutes).padStart(2, "0")}:${String(seconds).padStart(2, "0")}`;
 }
+
+const hoursLabel = (hours: number) => `${hours} heure${hours > 1 ? "s" : ""}`;
 
 export default function AdminShopPage() {
   const [draft, setDraft] = useState<Draft>(emptyDraft);
@@ -30,6 +33,8 @@ export default function AdminShopPage() {
   const [error, setError] = useState("");
   const [now, setNow] = useState(() => Date.now());
   const [steamBurst, setSteamBurst] = useState(0);
+  const [rotationHours, setRotationHours] = useState(1);
+  const [savedRotationHours, setSavedRotationHours] = useState(1);
   const [rotation, setRotation] = useState<{ startsAt: string; endsAt: string; _count: { offers: number } } | null>(null);
 
   useEffect(() => {
@@ -37,6 +42,7 @@ export default function AdminShopPage() {
       const data = await response.json();
       if (!response.ok) throw new Error(data.error ?? "Chargement impossible");
       if (data.ranges) setDraft(Object.fromEntries(ROWS.map(({ rarity }) => [rarity, { min: String(data.ranges[rarity].min), max: String(data.ranges[rarity].max) }])) as Draft);
+      if (Number.isInteger(data.rotationHours)) { setRotationHours(data.rotationHours); setSavedRotationHours(data.rotationHours); }
       setRotation(data.rotation ?? null);
     }).catch((reason) => setError(reason instanceof Error ? reason.message : "Chargement impossible")).finally(() => setLoading(false));
   }, []);
@@ -50,16 +56,18 @@ export default function AdminShopPage() {
     event.preventDefault(); setSaving(true); setError(""); setMessage("");
     const ranges = Object.fromEntries(ROWS.map(({ rarity }) => [rarity, { min: Number(draft[rarity].min), max: Number(draft[rarity].max) }]));
     try {
-      const response = await fetch("/api/admin/shop-config", { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ ranges }) });
+      const response = await fetch("/api/admin/shop-config", { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ ranges, rotationHours }) });
       const data = await response.json();
       if (!response.ok) throw new Error(data.error ?? "Enregistrement impossible");
-      setMessage("Fourchettes enregistrées. Elles s’appliqueront aux cartes de la prochaine rotation.");
+      setSavedRotationHours(data.rotationHours);
+      setMessage(`Réglages enregistrés. La prochaine rotation durera ${hoursLabel(rotationHours)}.`);
     } catch (reason) { setError(reason instanceof Error ? reason.message : "Enregistrement impossible"); }
     finally { setSaving(false); }
   }
 
   async function rotateNow() {
-    if (!window.confirm("Expirer immédiatement les offres invendues et générer une nouvelle rotation de 50 cartes pour une heure ?")) return;
+    if (rotationHours !== savedRotationHours) { setError("Enregistre d’abord la nouvelle durée avant de relancer la rotation."); return; }
+    if (!window.confirm(`Expirer immédiatement les offres invendues et générer une nouvelle rotation de 50 cartes pour ${hoursLabel(savedRotationHours)} ?`)) return;
     setRotating(true); setError(""); setMessage("");
     try {
       const response = await fetch("/api/admin/shop-config", { method: "POST" });
@@ -67,7 +75,7 @@ export default function AdminShopPage() {
       if (!response.ok) throw new Error(data.error ?? "Relance impossible");
       setRotation(data.rotation);
       setSteamBurst((value) => value + 1);
-      setMessage("Nouvelle rotation créée : 50 cartes disponibles pendant une heure.");
+      setMessage(`Nouvelle rotation créée : 50 cartes disponibles pendant ${hoursLabel(savedRotationHours)}.`);
     } catch (reason) { setError(reason instanceof Error ? reason.message : "Relance impossible"); }
     finally { setRotating(false); }
   }
@@ -83,14 +91,22 @@ export default function AdminShopPage() {
 
     <section className={`shop-admin-console ${rotating ? "is-rotating" : ""}`}>
       <div className="shop-admin-gearbox" aria-hidden="true"><i className="gear-one">⚙</i><i className="gear-two">⚙</i><span /></div>
-      <div className="shop-admin-status-copy"><small>Rotation mondiale</small><strong>{rotation ? `${rotation._count.offers} offres chargées` : "Aucun stock actif"}</strong><span>{rotation ? `Lancée le ${new Date(rotation.startsAt).toLocaleString("fr-FR")}` : "Configure les prix avant le premier lancement."}</span></div>
+      <div className="shop-admin-status-copy"><small>Rotation mondiale · cadence {savedRotationHours} h</small><strong>{rotation ? `${rotation._count.offers} offres chargées` : "Aucun stock actif"}</strong><span>{rotation ? `Lancée le ${new Date(rotation.startsAt).toLocaleString("fr-FR")}` : "Configure les prix et la durée avant le premier lancement."}</span></div>
       <div className="shop-admin-gauge" aria-label={active ? `Renouvellement dans ${remainingLabel(rotation?.endsAt, now)}` : "Rotation inactive"}><div className="shop-admin-gauge-face"><i /><b>{remainingLabel(rotation?.endsAt, now)}</b><small>AVANT RELÈVE</small></div></div>
       <button type="button" onClick={() => void rotateNow()} disabled={rotating || loading} className="shop-admin-rotate-button"><span className="shop-admin-button-bolts" aria-hidden="true" /><i aria-hidden="true">↻</i><b>{rotating ? "Mise sous pression…" : "Relancer maintenant"}</b><small>Expire le stock invendu</small></button>
       {steamBurst > 0 && <div key={steamBurst} className="shop-admin-steam-burst" aria-hidden="true"><i /><i /><i /><i /></div>}
     </section>
 
     {loading ? <div className="shop-admin-loading"><i /> Lecture des manomètres…</div> : <form onSubmit={save} className="shop-admin-price-panel">
-      <div className="shop-admin-panel-heading"><div><small>Table de calibration</small><h2>Fourchettes de prix</h2></div><p>Le prix est tiré aléatoirement entre les deux bornes, incluses. Une rotation déjà créée conserve ses valeurs.</p></div>
+      <div className="shop-admin-panel-heading"><div><small>Table de calibration</small><h2>Cadence et fourchettes de prix</h2></div><p>La durée enregistrée s’applique à la prochaine rotation. Le stock actuellement actif conserve son heure de fin.</p></div>
+      <section className="shop-admin-duration-panel" aria-labelledby="shop-duration-title">
+        <div className="shop-admin-duration-copy"><small>Temporisateur mondial</small><h3 id="shop-duration-title">Durée d’une rotation</h3><p>Choisis combien de temps les 50 offres restent disponibles pour tous les joueurs.</p></div>
+        <div className="shop-admin-duration-control">
+          <output htmlFor="shop-rotation-hours"><strong>{rotationHours}</strong><span>{rotationHours > 1 ? "HEURES" : "HEURE"}</span></output>
+          <input id="shop-rotation-hours" type="range" min="1" max="24" step="1" value={rotationHours} aria-valuetext={hoursLabel(rotationHours)} onChange={(event) => setRotationHours(Number(event.target.value))} style={{ "--shop-duration-fill": `${(rotationHours - 1) / 23 * 100}%` } as CSSProperties} />
+          <div className="shop-admin-duration-scale" aria-hidden="true"><span>1 h</span><span>6 h</span><span>12 h</span><span>18 h</span><span>24 h</span></div>
+        </div>
+      </section>
       <div className="shop-admin-price-grid" role="group" aria-label="Fourchettes de prix par rareté">
         {ROWS.map(({ rarity, label }) => <section key={rarity} data-rarity={rarity} className="shop-admin-price-row">
           <div className="shop-admin-rarity"><i aria-hidden="true" /><span><strong>{label}</strong><small>{rarity}</small></span></div>
@@ -99,7 +115,7 @@ export default function AdminShopPage() {
           <label><span>Maximum</span><div className="shop-admin-number"><input required type="number" min="1" max="1000000" step="1" value={draft[rarity].max} onChange={(event) => setDraft((current) => ({ ...current, [rarity]: { ...current[rarity], max: event.target.value } }))} /><b>◉</b></div></label>
         </section>)}
       </div>
-      <footer className="shop-admin-panel-footer"><button disabled={saving} className="shop-admin-save-button"><i aria-hidden="true">◆</i><span>{saving ? "Gravure des réglages…" : "Enregistrer les fourchettes"}</span></button><div aria-live="polite">{message && <p className="shop-admin-success">✓ {message}</p>}{error && <p role="alert" className="shop-admin-error">⚠ {error}</p>}</div></footer>
+      <footer className="shop-admin-panel-footer"><button disabled={saving} className="shop-admin-save-button"><i aria-hidden="true">◆</i><span>{saving ? "Gravure des réglages…" : "Enregistrer les réglages"}</span></button><div aria-live="polite">{message && <p className="shop-admin-success">✓ {message}</p>}{error && <p role="alert" className="shop-admin-error">⚠ {error}</p>}</div></footer>
     </form>}
   </main>;
 }

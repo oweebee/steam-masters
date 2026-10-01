@@ -10,6 +10,14 @@ export type ChangelogPost = {
 // Un changement majeur = un objet/post autonome. Toujours ajouter le nouveau post en tête.
 export const CHANGELOG_POSTS: ChangelogPost[] = [
   {
+    slug: "magasin-cadence-configurable",
+    date: "2026-10-01",
+    category: "Magasin",
+    title: "La cadence du magasin devient configurable",
+    summary: "L’administration peut désormais régler chaque rotation mondiale entre 1 et 24 heures.",
+    details: ["Le nouveau curseur affiche précisément la durée choisie et la rotation active conserve son heure de fin.", "La cadence enregistrée s’applique à la rotation suivante ou immédiatement lors d’une relance manuelle."],
+  },
+  {
     slug: "installation-pwa-mobile",
     date: "2026-10-01",
     category: "Application",
@@ -94,7 +102,7 @@ export const CHANGELOG_POSTS: ChangelogPost[] = [
     date: "2026-09-30",
     category: "Magasin",
     title: "Ouverture du magasin mondial",
-    summary: "Une rotation commune à tous les joueurs propose 50 cartes différentes pendant une heure.",
+    summary: "Une rotation commune à tous les joueurs propose 50 cartes différentes pendant la durée configurée par l’administration.",
     details: ["Les prix sont tirés dans les fourchettes définies par rareté.", "Une offre achetée disparaît du stock commun et un administrateur peut relancer une rotation."],
   },
   {

@@ -21,7 +21,7 @@ const core = load('src/lib/catalogCoherenceCore.ts');
 const { cardDefense } = load('src/lib/cardDefense.ts');
 const { atkFromReviewScore } = load('src/lib/cardAttack.ts');
 const { rollAtkForRarity } = load('src/lib/rarityRoll.ts');
-const { parseShopPriceRanges, randomShopPrice, shopRotationWindow } = load('src/lib/shopConfig.ts', { '@/lib/prisma': { prisma: {} } });
+const { parseShopPriceRanges, parseShopRotationHours, randomShopPrice, shopRotationWindow } = load('src/lib/shopConfig.ts', { '@/lib/prisma': { prisma: {} } });
 const { buildShopWatchNotifications } = load('src/lib/shopNotifications.ts');
 const { notificationLink } = load('src/lib/notificationLinks.ts');
 const { buildLeaderboard, buildRewardObjectives, LEADERBOARD_RARITY_POINTS } = load('src/lib/leaderboard.ts');
@@ -83,6 +83,11 @@ test('shop price ranges are complete, bounded and inclusive', () => {
   const window = shopRotationWindow(new Date('2026-09-30T12:42:17.000Z'));
   assert.equal(window.startsAt.toISOString(), '2026-09-30T12:00:00.000Z');
   assert.equal(window.endsAt.toISOString(), '2026-09-30T13:00:00.000Z');
+  const sixHours = shopRotationWindow(new Date('2026-09-30T12:42:17.000Z'), 6);
+  assert.equal(sixHours.startsAt.toISOString(), '2026-09-30T12:00:00.000Z');
+  assert.equal(sixHours.endsAt.toISOString(), '2026-09-30T18:00:00.000Z');
+  assert.equal(parseShopRotationHours(1), 1); assert.equal(parseShopRotationHours('24'), 24);
+  assert.equal(parseShopRotationHours(0), null); assert.equal(parseShopRotationHours(25), null); assert.equal(parseShopRotationHours(1.5), null);
 });
 test('shop rotation notifies each matching card watcher', () => {
   const notifications = buildShopWatchNotifications(

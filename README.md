@@ -27,7 +27,7 @@ Email + mot de passe, pas de vérification mail. Statut `PENDING` jusqu'à appro
 
 - Ouverture de paquet toutes les heures, collection personnelle, catégories, suivi de cartes et défausse à 3 gigapuissances par exemplaire.
 - Catalogue complet réservé à l'administration dans `/admin/cards`; liste publique des joueurs triée alphabétiquement.
-- Magasin applicatif distinct du marché joueur-à-joueur : stock mondial commun de 50 cartes, rotation horaire, exemplaires d'un même sujet sans limite globale, prix aléatoire dans les fourchettes configurées par rareté et relance manuelle côté admin.
+- Magasin applicatif distinct du marché joueur-à-joueur : stock mondial commun de 50 cartes, rotations configurables de 1 à 24 heures, exemplaires d'un même sujet sans limite globale, prix aléatoire dans les fourchettes configurées par rareté et relance manuelle côté admin.
 - Chaque nouvelle rotation vise les pourcentages de rareté configurés, arrondis sur 50 offres, avec au moins une légendaire lorsque le catalogue le permet. Les collections des joueurs et les anciennes offres ne limitent jamais un nouveau tirage; seule l’éligibilité catalogue peut redistribuer un quota.
 - Suivre/ne plus suivre depuis les cartes Jeu/DLC/Studio ouvertes et chaque version d’une licence; fenêtres habillées avec ImageGen, listes de jeux Studio défilantes sans écrasement sur mobile/PWA.
 - Marché, enchères, échanges et envois directs : cartes et gigapuissances transférées atomiquement, avec verrouillage des exemplaires engagés.

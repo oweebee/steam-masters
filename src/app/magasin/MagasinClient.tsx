@@ -26,11 +26,18 @@ type ShopOffer = {
 type ShopPayload = { startsAt: string; endsAt: string; coins: number; offers: ShopOffer[] };
 
 function countdown(endsAt: string | null, now: number) {
-  if (!endsAt) return "--:--";
+  if (!endsAt) return "--:--:--";
   const remaining = Math.max(0, new Date(endsAt).getTime() - now);
-  const minutes = Math.floor(remaining / 60_000);
+  const hours = Math.floor(remaining / 3_600_000);
+  const minutes = Math.floor((remaining % 3_600_000) / 60_000);
   const seconds = Math.floor((remaining % 60_000) / 1000);
-  return `${String(minutes).padStart(2, "0")}:${String(seconds).padStart(2, "0")}`;
+  return `${String(hours).padStart(2, "0")}:${String(minutes).padStart(2, "0")}:${String(seconds).padStart(2, "0")}`;
+}
+
+function rotationDuration(startsAt: string | undefined, endsAt: string | undefined) {
+  if (!startsAt || !endsAt) return "CADENCE VARIABLE";
+  const hours = Math.max(1, Math.round((new Date(endsAt).getTime() - new Date(startsAt).getTime()) / 3_600_000));
+  return `CYCLE DE ${hours} H`;
 }
 
 export function MagasinClient() {
@@ -106,11 +113,11 @@ export function MagasinClient() {
       <div className="shop-storefront-title">
         <p>COMPTOIR AUTOMATIQUE · STOCK COMMUN</p>
         <h1>Magasin des maîtres</h1>
-        <span>50 cartes différentes par rotation. Chaque achat retire la carte pour tous les joueurs.</span>
+        <span>50 cartes différentes par rotation, renouvelées selon la cadence réglée. Chaque achat retire la carte pour tous les joueurs.</span>
       </div>
       <div className="shop-storefront-dashboard" aria-label="État du magasin">
         <div className="shop-storefront-meter"><small>EN RAYON</small><strong>{available}<em>/ 50</em></strong><i style={{ "--meter-fill": `${available * 2}%` } as CSSProperties} /></div>
-        <div className="shop-storefront-clock"><small>PROCHAINE ROTATION</small><strong>{countdown(shop?.endsAt ?? null, now)}</strong><span>HORAIRE CENTRAL</span></div>
+        <div className="shop-storefront-clock"><small>PROCHAINE ROTATION</small><strong>{countdown(shop?.endsAt ?? null, now)}</strong><span>{rotationDuration(shop?.startsAt, shop?.endsAt)}</span></div>
         <div className="shop-storefront-wallet"><span aria-hidden="true">●</span><div><small>TES GIGAPUISSANCES</small><strong>{shop?.coins.toLocaleString("fr-FR") ?? "—"} <em>GP</em></strong></div></div>
       </div>
       <div className="shop-storefront-bulbs" aria-hidden="true">{Array.from({ length: 12 }, (_, index) => <i key={index} />)}</div>

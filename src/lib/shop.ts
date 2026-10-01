@@ -4,7 +4,7 @@ import { isEpicGameEligible, isLegendaryGameEligible } from "@/lib/catalogRarity
 import { getRarityWeights } from "@/lib/rarityConfig";
 import { rollAtkForRarity, type Rarity, type RarityWeights } from "@/lib/rarityRoll";
 import { shopRarityQuotas, selectShopStock } from "@/lib/shopDistribution";
-import { getShopPriceRanges, randomShopPrice, SHOP_SIZE, shopRotationWindow, type ShopPriceRanges } from "@/lib/shopConfig";
+import { getShopPriceRanges, getShopRotationHours, randomShopPrice, SHOP_SIZE, shopRotationWindow, type ShopPriceRanges } from "@/lib/shopConfig";
 import { buildShopWatchNotifications, type ShopNotificationSubject } from "@/lib/shopNotifications";
 import { dispatchPushNotifications, type PushNotificationInput } from "@/lib/webPush";
 
@@ -110,14 +110,14 @@ export async function createRotation(
 }
 
 export async function ensureActiveShopRotation(now = new Date()) {
-  const ranges = await getShopPriceRanges();
+  const [ranges, rotationHours] = await Promise.all([getShopPriceRanges(), getShopRotationHours()]);
   if (!ranges) throw new Error("Le magasin attend la configuration des prix par rareté dans l’administration.");
   const active = await prisma.shopRotation.findFirst({ where: { endsAt: { gt: now } }, orderBy: { startsAt: "desc" } });
   if (active) return active;
-  const window = shopRotationWindow(now);
+  const window = shopRotationWindow(now, rotationHours);
   const usedSlot = await prisma.shopRotation.findUnique({ where: { startsAt: window.startsAt }, select: { id: true } });
   const startsAt = usedSlot ? now : window.startsAt;
-  const endsAt = usedSlot ? new Date(now.getTime() + 60 * 60 * 1000) : window.endsAt;
+  const endsAt = usedSlot ? new Date(now.getTime() + rotationHours * 60 * 60 * 1000) : window.endsAt;
   const weights = await getRarityWeights();
   try {
     const result = await prisma.$transaction(
@@ -136,10 +136,10 @@ export async function ensureActiveShopRotation(now = new Date()) {
 }
 
 export async function rotateShopNow(now = new Date()) {
-  const ranges = await getShopPriceRanges();
+  const [ranges, rotationHours] = await Promise.all([getShopPriceRanges(), getShopRotationHours()]);
   if (!ranges) throw new Error("Configure d’abord les cinq fourchettes de prix.");
   const weights = await getRarityWeights();
-  const endsAt = new Date(now.getTime() + 60 * 60 * 1000);
+  const endsAt = new Date(now.getTime() + rotationHours * 60 * 60 * 1000);
   const result = await prisma.$transaction(async (tx) => {
     await tx.shopRotation.updateMany({ where: { endsAt: { gt: now } }, data: { endsAt: now } });
     return createRotation(tx, now, endsAt, ranges, weights);
