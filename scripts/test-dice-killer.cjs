@@ -38,9 +38,11 @@ test('an attack chains hits, deals authoritative damage and rejects stale turns'
   assert.throws(() => rollBuild(state, 0, [1, 1, 1, 1, 1]));
 });
 
-test('the public view is immutable and identifies the viewer side', () => {
-  const state = createDiceKiller(1);
+test('the public view is immutable, identifies the viewer and exposes the opponent dice', () => {
+  const state = rollBuild(createDiceKiller(1), 1, [1, 2, 3, 4, 5]);
   const view = publicDiceKiller(state, 0);
   view.hp[0] = 1;
   assert.equal(state.hp[0], 30); assert.equal(view.side, 0);
+  assert.deepEqual(view.roll, [1, 2, 3, 4, 5]);
+  assert.deepEqual(view.lastEvent.dice, [1, 2, 3, 4, 5]);
 });

@@ -4,6 +4,8 @@ import { useEffect, useMemo, useState } from "react";
 import { createDiceKiller, keepBuildDice, rollAttack, rollBuild, type DiceKillerState } from "@/lib/diceKiller";
 import { DiceArena, DiceKillerRules, type DiceKillerMatch } from "../DiceKillerClient";
 
+const BOT_STEP_DELAY_MS = 4200;
+
 function dice(count: number) {
   const values = new Uint32Array(count);
   crypto.getRandomValues(values);
@@ -57,7 +59,7 @@ export function DiceKillerTraining() {
           return applyMove(current, 1, { type: "keep", indices: botChoice(current) });
         });
       } catch (reason) { setError(reason instanceof Error ? reason.message : "L'automate s'est bloqué."); }
-    }, 1500);
+    }, BOT_STEP_DELAY_MS);
     return () => clearTimeout(timer);
   }, [state]);
 
@@ -67,5 +69,5 @@ export function DiceKillerTraining() {
     catch (reason) { setError(reason instanceof Error ? reason.message : "Action impossible."); }
   }
 
-  return <div className="battle-page killer-page"><header className="battle-hero killer-hero"><div><span className="battle-eyebrow">🤖 Banc d’essai</span><h1>Entraînement Dés tueurs</h1><p>Affronte l’Automate avec les vraies règles et les vraies animations. Cette partie reste sur cet écran : aucune mise, aucune récompense.</p></div><div className="battle-actions"><button className="escalade-tuto-button" onClick={() => setRulesOpen(true)}>? Règles simples</button><a href="/bataille/des-tueurs" className="battle-secondary">← Duels réels</a><button className="battle-primary" onClick={() => { setError(""); setState(createDiceKiller(0)); }}>Nouvelle partie</button></div></header>{rulesOpen && <DiceKillerRules close={() => setRulesOpen(false)} />}{error && <p className="battle-alert" role="alert">{error}</p>}<section className="battle-panel killer-training-panel"><DiceArena match={match} busy={false} play={play}/></section></div>;
+  return <div className="battle-page killer-page"><header className="battle-hero killer-hero"><div><span className="battle-eyebrow">🤖 Banc d’essai</span><h1>Entraînement Dés tueurs</h1><p>Joue doucement contre l’Automate. Le plateau explique chaque résultat et montre aussi les dés de l’Automate. Cette partie reste sur cet écran : aucune mise, aucune récompense.</p></div><div className="battle-actions"><button className="escalade-tuto-button" onClick={() => setRulesOpen(true)}>? Règles faciles</button><a href="/bataille/des-tueurs" className="battle-secondary">← Duels réels</a><button className="battle-primary" onClick={() => { setError(""); setState(createDiceKiller(0)); }}>Nouvelle partie</button></div></header>{rulesOpen && <DiceKillerRules close={() => setRulesOpen(false)} />}{error && <p className="battle-alert" role="alert">{error}</p>}<section className="battle-panel killer-training-panel"><DiceArena match={match} busy={false} play={play}/></section></div>;
 }

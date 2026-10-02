@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState, type CSSProperties } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import Image from "next/image";
 import type { DiceKillerEvent, DiceKillerView } from "@/lib/diceKiller";
 
@@ -21,58 +21,59 @@ async function json(url: string, body?: unknown) {
 }
 
 const PIPS: Record<number, number[]> = { 1: [5], 2: [1, 9], 3: [1, 5, 9], 4: [1, 3, 7, 9], 5: [1, 3, 5, 7, 9], 6: [1, 3, 4, 6, 7, 9] };
-const FINAL: Record<number, string> = { 1: "rotateX(-12deg) rotateY(18deg)", 2: "rotateX(-12deg) rotateY(-72deg)", 3: "rotateX(-102deg) rotateY(8deg)", 4: "rotateX(78deg) rotateY(-8deg)", 5: "rotateX(-8deg) rotateY(108deg)", 6: "rotateX(-8deg) rotateY(198deg)" };
-const DICE_ROLL_MS = 1950;
+const DICE_REVEAL_MS = 2800;
 
-function Face({ value, side }: { value: number; side: string }) {
-  return <span className={`killer-die-face face-${side}`}>{Array.from({ length: 9 }, (_, index) => <i key={index} className={PIPS[value].includes(index + 1) ? "is-pip" : ""} />)}</span>;
+function Die({ value, index, revealing, held, selected, onClick }: { value: number; index: number; revealing: boolean; held?: boolean; selected?: boolean; onClick?: () => void }) {
+  return <button type="button" className={`killer-die${revealing ? " is-revealing" : ""}${held ? " is-held" : ""}${selected ? " is-selected" : ""}`} style={{ animationDelay: `${index * 150}ms` }} onClick={onClick} disabled={!onClick} aria-pressed={selected} aria-label={`Dé ${value}${held ? ", gardé" : ""}`}>
+    <span className="killer-pixel-die">{Array.from({ length: 9 }, (_, pip) => <i key={pip} className={PIPS[value].includes(pip + 1) ? "is-pip" : ""} />)}</span>
+  </button>;
 }
 
-function Die({ value, index, rolling, held, selected, onClick }: { value: number; index: number; rolling: boolean; held?: boolean; selected?: boolean; onClick?: () => void }) {
-  const directions = [-1, 1, -.65, .8, -.85];
-  const direction = directions[index % directions.length];
-  return <button type="button" className={`killer-die${rolling ? " is-rolling" : ""}${held ? " is-held" : ""}${selected ? " is-selected" : ""}`} style={{ "--die-index": index, "--roll-start-x": `${direction * -105}px`, "--roll-x-1": `${direction * 48}px`, "--roll-x-2": `${direction * -28}px`, "--roll-x-3": `${direction * 20}px`, "--roll-x-4": `${direction * -11}px`, "--roll-x-5": `${direction * 6}px`, "--roll-x-6": `${direction * -2}px`, "--final-transform": FINAL[value] } as CSSProperties} onClick={onClick} disabled={!onClick} aria-pressed={selected} aria-label={`Dé ${value}${held ? ", gardé" : ""}`}>
-    <span className="killer-die-cube"><Face value={1} side="front"/><Face value={6} side="back"/><Face value={2} side="right"/><Face value={5} side="left"/><Face value={3} side="top"/><Face value={4} side="bottom"/></span>
-  </button>;
+function DiceGroup({ label, dice, offset = 0, revealing, held, selectable, selected, select }: { label: string; dice: number[]; offset?: number; revealing: boolean; held?: boolean; selectable?: boolean; selected?: number[]; select?: (index: number) => void }) {
+  if (!dice.length) return null;
+  return <div className={`killer-dice-group${held ? " is-kept" : ""}`}><strong>{label}</strong><div>{dice.map((die, index) => <Die key={`${held ? "h" : "d"}-${index}`} value={die} index={offset + index} revealing={revealing && !held} held={held} selected={selected?.includes(index)} onClick={selectable && select ? () => select(index) : undefined} />)}</div></div>;
 }
 
 export function DiceArena({ match, busy, play }: { match: DiceKillerMatch; busy: boolean; play: (move: object, revision: number) => void }) {
   const state = match.diceKiller!;
   const [selected, setSelected] = useState<number[]>([]);
-  const [rolling, setRolling] = useState(false);
+  const [revealing, setRevealing] = useState(false);
   const timers = useRef<ReturnType<typeof setTimeout>[]>([]);
   const lastEventRevision = state.lastEvent?.revision;
   useEffect(() => {
     timers.current.forEach(clearTimeout);
     if (lastEventRevision === undefined) return;
     timers.current = [
-      setTimeout(() => { setSelected([]); setRolling(true); }, 0),
-      setTimeout(() => setRolling(false), DICE_ROLL_MS),
+      setTimeout(() => { setSelected([]); setRevealing(true); }, 0),
+      setTimeout(() => setRevealing(false), DICE_REVEAL_MS),
     ];
     return () => timers.current.forEach(clearTimeout);
   }, [lastEventRevision]);
   const myTurn = state.turn === state.side && state.phase !== "FINISHED";
   const names = [match.challenger.username, match.opponent.username];
   const eventText = describeEvent(state.lastEvent, names, state.side);
+  const guide = describeNextAction(state, names, myTurn, selected.length);
+  const eventOwner = state.lastEvent?.side ?? state.turn;
+  const lastDiceLabel = state.lastEvent?.kind === "ATTACK_READY" ? `Total final de ${names[eventOwner]}` : state.lastEvent?.kind === "HIT" || state.lastEvent?.kind === "MISS" ? `Jet d’attaque de ${names[eventOwner]}` : `Dernier lancer de ${names[eventOwner]}`;
   return <div className="killer-arena">
     <div className="killer-scoreboard"><div className={state.side === 0 ? "is-me" : ""}><small>{state.side === 0 ? "TOI" : "ADVERSAIRE"}</small><b>{names[0]}</b><strong>♥ {state.hp[0]} PV</strong></div><span>VS</span><div className={state.side === 1 ? "is-me" : ""}><small>{state.side === 1 ? "TOI" : "ADVERSAIRE"}</small><b>{names[1]}</b><strong>♥ {state.hp[1]} PV</strong></div></div>
     <div className="killer-tray">
-      <Image src="/images/battle/dice-killer-table.png" alt="" fill sizes="(max-width: 760px) 100vw, 1180px" priority />
+      <Image src="/images/battle/dice-killer-table-v2.png" alt="" fill sizes="(max-width: 760px) 100vw, 1180px" priority />
       <div className="killer-tray-content">
-        {eventText && <div className="killer-event"><small>{eventText.eyebrow}</small><strong>{eventText.title}</strong><span>{eventText.detail}</span></div>}
+        {eventText && <div className={`killer-event is-${eventText.tone}`}><small>{eventText.eyebrow}</small><strong>{eventText.title}</strong><span>{eventText.detail}</span>{eventText.calculation && <em>{eventText.calculation}</em>}</div>}
         <div className="killer-dice-row" key={state.lastEvent?.revision ?? 0}>
-          {state.phase === "BUILD" && state.held.map((die, index) => <Die key={`h-${index}`} value={die} index={index} rolling={false} held />)}
-          {state.phase === "BUILD" && state.roll.map((die, index) => <Die key={`r-${index}`} value={die} index={state.held.length + index} rolling={rolling} selected={selected.includes(index)} onClick={myTurn && !rolling ? () => setSelected((old) => old.includes(index) ? old.filter((item) => item !== index) : [...old, index]) : undefined} />)}
-          {state.phase === "BUILD" && !state.held.length && !state.roll.length && state.lastEvent?.dice.map((die, index) => <Die key={`e-${index}`} value={die} index={index} rolling={rolling} />)}
-          {state.phase === "ATTACK" && (state.lastEvent?.dice ?? []).map((die, index) => <Die key={`a-${index}`} value={die} index={index} rolling={rolling} held={state.attackValue === die && state.lastEvent?.kind === "HIT"} />)}
+          {state.phase === "BUILD" && state.roll.length > 0 ? <>
+            <DiceGroup label="Dés déjà gardés" dice={state.held} revealing={false} held />
+            <DiceGroup label={`${state.turn === state.side ? "Tes nouveaux dés" : `Nouveaux dés de ${names[state.turn]}`}`} dice={state.roll} offset={state.held.length} revealing={revealing} selectable={myTurn && !revealing} selected={selected} select={(index) => setSelected((old) => old.includes(index) ? old.filter((item) => item !== index) : [...old, index])} />
+          </> : <DiceGroup label={lastDiceLabel} dice={state.lastEvent?.dice ?? []} revealing={revealing} held={state.lastEvent?.kind === "ATTACK_READY"} />}
         </div>
       </div>
     </div>
-    <div className={`killer-turn${myTurn ? " is-active" : ""}`}><span>{myTurn ? "À toi de jouer" : state.phase === "FINISHED" ? "Duel terminé" : "Tour de l’adversaire"}</span><small>{state.phase === "BUILD" ? state.roll.length ? "Choisis au moins un dé à garder." : "Commence ton lancer de cinq dés." : state.phase === "ATTACK" ? `Attaque aux ${state.attackValue} · ${state.attackHits} touche(s) accumulée(s).` : `${names[state.winner ?? 0]} remporte les mises.`}</small></div>
+    <div className={`killer-turn${myTurn ? " is-active" : " is-waiting"}`}><b>{guide.step}</b><span>{guide.title}</span><small>{guide.detail}</small></div>
     {myTurn && <div className="battle-actions killer-actions">
-      {state.phase === "BUILD" && !state.roll.length && <button className="battle-primary" disabled={busy || rolling} onClick={() => play({ type: "roll" }, state.revision)}>Lancer les dés</button>}
-      {state.phase === "BUILD" && state.roll.length > 0 && <button className="battle-primary" disabled={busy || rolling || !selected.length} onClick={() => play({ type: "keep", indices: selected }, state.revision)}>Garder {selected.length || "…"} et relancer</button>}
-      {state.phase === "ATTACK" && <button className="battle-primary killer-attack-button" disabled={busy || rolling} onClick={() => play({ type: "attack" }, state.revision)}>Lancer l’attaque aux {state.attackValue}</button>}
+      {state.phase === "BUILD" && !state.roll.length && <button className="battle-primary" disabled={busy || revealing} onClick={() => play({ type: "roll" }, state.revision)}>Je lance mes 5 dés</button>}
+      {state.phase === "BUILD" && state.roll.length > 0 && <button className="battle-primary" disabled={busy || revealing || !selected.length} onClick={() => play({ type: "keep", indices: selected }, state.revision)}>{!selected.length ? "Choisis au moins 1 dé" : selected.length === state.roll.length ? "Je garde tout et je calcule le total" : `Je garde ${selected.length} dé${selected.length > 1 ? "s" : ""} et je relance ${state.roll.length - selected.length}`}</button>}
+      {state.phase === "ATTACK" && <button className="battle-primary killer-attack-button" disabled={busy || revealing} onClick={() => play({ type: "attack" }, state.revision)}>Je cherche des {state.attackValue} avec {state.attackDice} dés</button>}
     </div>}
     <details className="escalade-journal"><summary>Journal du duel</summary><ol>{state.log.map((line, index) => <li key={index}>{line.replace(/\bA\b/g, names[0]).replace(/\bB\b/g, names[1])}</li>)}</ol></details>
   </div>;
@@ -82,15 +83,15 @@ export function DiceKillerRules({ close }: { close: () => void }) {
   return <div className="killer-rules-overlay" role="presentation" onMouseDown={(event) => { if (event.target === event.currentTarget) close(); }}>
     <section className="killer-rules-dialog" role="dialog" aria-modal="true" aria-labelledby="killer-rules-title">
       <button className="killer-rules-close" onClick={close} aria-label="Fermer les règles">×</button>
-      <span className="battle-eyebrow">RÈGLES EN 4 ÉTAPES</span><h2 id="killer-rules-title">Le but : faire tomber l’adversaire à 0 PV</h2>
+      <span className="battle-eyebrow">RÈGLES FACILES</span><h2 id="killer-rules-title">Le but : enlever tous les PV de l’autre joueur</h2>
       <div className="killer-rule-steps">
-        <article><b>1</b><div><h3>Lance les 5 dés</h3><p>Après chaque lancer, clique sur <strong>au moins un dé</strong> à garder. Les autres seront relancés.</p></div></article>
-        <article><b>2</b><div><h3>Fabrique ton total</h3><p>Tu recommences jusqu’à avoir gardé les 5 dés. Ce total décide immédiatement ce qui arrive.</p></div></article>
-        <article className="is-example"><b>3</b><div><h3>Exemple : 1 + 1 + 2 + 2 + 3 = 9</h3><p>9 est sous 11. La différence est <strong>11 − 9 = 2</strong> : tu obtiens donc une <strong>attaque aux 2</strong>.</p></div></article>
-        <article><b>4</b><div><h3>Lance ton attaque</h3><p>Chaque dé affichant 2 vaut 2 dégâts. Tant que tu trouves au moins un 2, les autres dés repartent. Le premier lancer sans 2 termine l’attaque.</p></div></article>
+        <article><b>1</b><div><h3>Lance les 5 dés</h3><p>Tout le monde voit les dés. Quand l’autre joue, tu regardes simplement son lancer.</p></div></article>
+        <article><b>2</b><div><h3>Garde au moins 1 dé</h3><p>Quand c’est ton tour, clique sur les dés que tu veux garder. Le jeu relance les autres.</p></div></article>
+        <article className="is-example"><b>3</b><div><h3>Regarde le total</h3><p>Quand les 5 dés sont gardés, le jeu les additionne et explique le résultat avec le calcul.</p></div></article>
+        <article><b>4</b><div><h3>Suis le gros message</h3><p>Il te dira toujours quoi faire : lancer, choisir des dés, attaquer ou attendre l’autre joueur.</p></div></article>
       </div>
       <div className="killer-result-map"><div className="is-attack"><b>5–10</b><span>Attaque 6 à 1</span></div><div className="is-heal"><b>11–17</b><span>Tu récupères des PV</span></div><div className="is-danger"><b>18–23</b><span>Tu perds des PV</span></div><div className="is-heal"><b>24</b><span>Régénération</span></div><div className="is-attack"><b>25–30</b><span>Attaque 1 à 6</span></div></div>
-      <p className="killer-rules-tip"><strong>À retenir :</strong> vise un total très bas ou très haut pour attaquer. L’interface te dira toujours quoi cliquer ensuite.</p>
+      <p className="killer-rules-tip"><strong>Astuce :</strong> les petits nombres et les grands nombres servent à attaquer. Tu peux prendre ton temps : le bouton explique la prochaine action.</p>
       <button className="battle-primary" onClick={close}>J’ai compris, jouer</button>
     </section>
   </div>;
@@ -99,12 +100,22 @@ export function DiceKillerRules({ close }: { close: () => void }) {
 function describeEvent(event: DiceKillerEvent | null, names: string[], side: 0 | 1) {
   if (!event) return null;
   const who = event.side === side ? "Tu" : names[event.side];
-  if (event.kind === "ROLL") return { eyebrow: "LANCER EN COURS", title: `${who} ${event.side === side ? "fais" : "fait"} rouler les dés`, detail: "Garde au moins un dé avant la prochaine relance." };
-  if (event.kind === "ATTACK_READY") return { eyebrow: `TOTAL ${event.total}`, title: `Attaque aux ${event.attackValue}`, detail: "Chaque dé de cette valeur ajoutera des dégâts." };
-  if (event.kind === "HEAL") return { eyebrow: "RÉGÉNÉRATION", title: `+${event.amount} PV`, detail: `${who} ${event.side === side ? "récupères" : "récupère"} des forces.` };
-  if (event.kind === "BACKLASH") return { eyebrow: `TOTAL ${event.total}`, title: `−${event.amount} PV`, detail: "Le lancer reste dans la zone dangereuse." };
-  if (event.kind === "HIT") return { eyebrow: "ATTAQUE EN CHAÎNE", title: `${event.hits} touche${event.hits! > 1 ? "s" : ""} !`, detail: "Les dés restants repartent jusqu’au premier lancer sans touche." };
-  return { eyebrow: "FIN DE L’ATTAQUE", title: `${event.amount} dégât${event.amount! > 1 ? "s" : ""}`, detail: `${event.hits} touche(s) × valeur ${event.attackValue}.` };
+  if (event.kind === "ROLL") return { tone: "roll", eyebrow: "LES DÉS SONT VISIBLES", title: `${who} ${event.side === side ? "as" : "a"} lancé les dés`, detail: "Le joueur doit maintenant en garder au moins un.", calculation: `Total montré : ${event.dice.reduce((sum, die) => sum + die, 0)}` };
+  if (event.kind === "ATTACK_READY") return { tone: "attack", eyebrow: `TOTAL ${event.total}`, title: `Une attaque aux ${event.attackValue} est prête`, detail: `Il faut maintenant lancer les dés et chercher le chiffre ${event.attackValue}.`, calculation: event.total! < 11 ? `11 − ${event.total} = ${event.attackValue}` : `${event.total} − 24 = ${event.attackValue}` };
+  if (event.kind === "HEAL") return { tone: "heal", eyebrow: "DES PV EN PLUS", title: `+${event.amount} PV pour ${event.side === side ? "toi" : names[event.side]}`, detail: event.total === 11 || event.total === 24 ? `Le total exact ${event.total} donne un dé bonus. Il a donné ${event.amount}.` : `Un total entre 12 et 17 soigne le joueur.`, calculation: event.total === 11 || event.total === 24 ? `${event.total} exact → dé bonus = ${event.amount}` : `${event.total} − 11 = ${event.amount}` };
+  if (event.kind === "BACKLASH") return { tone: "danger", eyebrow: "DES PV EN MOINS", title: `−${event.amount} PV pour ${event.side === side ? "toi" : names[event.side]}`, detail: "Un total entre 18 et 23 fait perdre des PV au joueur qui a lancé.", calculation: `24 − ${event.total} = ${event.amount}` };
+  if (event.kind === "HIT") return { tone: "attack", eyebrow: "ATTAQUE RÉUSSIE", title: `${event.hits} dé${event.hits! > 1 ? "s" : ""} ${event.attackValue} trouvé${event.hits! > 1 ? "s" : ""}`, detail: "Ces dés sont gardés. Les autres vont être relancés pour essayer d’en trouver encore.", calculation: `${event.hits} nouvelle${event.hits! > 1 ? "s" : ""} touche${event.hits! > 1 ? "s" : ""}` };
+  return { tone: "danger", eyebrow: "ATTAQUE TERMINÉE", title: `${event.amount} dégât${event.amount! > 1 ? "s" : ""}`, detail: "Aucun nouveau bon dé n’est sorti : on applique maintenant tous les dégâts.", calculation: `${event.hits} × ${event.attackValue} = ${event.amount}` };
+}
+
+function describeNextAction(state: DiceKillerView, names: string[], myTurn: boolean, selected: number) {
+  if (state.phase === "FINISHED") return { step: "PARTIE TERMINÉE", title: `${names[state.winner ?? 0]} a gagné`, detail: "Les PV sont arrivés à 0. Il n’y a plus rien à jouer." };
+  if (!myTurn) return { step: "TU REGARDES", title: `C’est au tour de ${names[state.turn]}`, detail: "Ses dés sont affichés sur le plateau. Tu n’as rien à cliquer pour le moment." };
+  if (state.phase === "ATTACK") return { step: "À TOI · ATTAQUE", title: `Cherche le chiffre ${state.attackValue}`, detail: `Appuie sur le bouton. Chaque dé ${state.attackValue} trouvé ajoutera ${state.attackValue} dégâts.` };
+  if (!state.roll.length) return { step: "À TOI · ÉTAPE 1", title: "Lance tes 5 dés", detail: "Appuie sur le bouton rouge. Les cinq résultats apparaîtront doucement." };
+  if (!selected) return { step: "À TOI · ÉTAPE 2", title: "Choisis au moins 1 dé", detail: "Clique sur un ou plusieurs dés. Un contour lumineux montre ceux que tu as choisis." };
+  if (selected === state.roll.length) return { step: "À TOI · ÉTAPE 3", title: "Tous les dés sont choisis", detail: "Appuie sur le bouton : le jeu va additionner les 5 dés et expliquer le résultat." };
+  return { step: "À TOI · ÉTAPE 3", title: `${selected} dé${selected > 1 ? "s" : ""} choisi${selected > 1 ? "s" : ""}`, detail: `Appuie sur le bouton pour les garder et relancer les ${state.roll.length - selected} autres.` };
 }
 
 export function DiceKillerClient() {
@@ -139,7 +150,7 @@ export function DiceKillerClient() {
   const cardName = (card: Owned) => card.game?.name ?? card.studio?.name ?? "Carte";
   const validStake = Number.isInteger(coins) && coins >= 0 && coins <= balance && coins <= 1_000_000;
   function stakeForm(id: string | null) { return <div className="killer-stake-form"><details className="battle-stake" open><summary>Mise facultative · {coins} GP{stake ? " + une carte" : ""}</summary><p>Comme dans L’Escalade, la mise reste bloquée jusqu’à la fin et le vainqueur remporte tout.</p><label className="battle-label">Gigapuissances · solde {balance}<input type="number" min={0} max={Math.min(balance, 1_000_000)} value={coins} onChange={(event) => setCoins(Number(event.target.value))}/></label><label className="battle-label">Rechercher une carte à miser<input value={search} onChange={(event) => setSearch(event.target.value)}/></label>{stake && <button className="battle-secondary" onClick={() => setStake("")}>Retirer la carte misée</button>}<div className="escalade-stakes">{owned.filter((card) => card.sellable !== false && !card.staked && cardName(card).toLocaleLowerCase().includes(search.toLocaleLowerCase())).map((card) => <button key={card.id} className={`battle-secondary ${stake === card.id ? "escalade-selected" : ""}`} onClick={() => setStake(stake === card.id ? "" : card.id)}>{cardName(card)}{stake === card.id ? " ✓" : ""}</button>)}</div></details><button className="battle-primary" disabled={busy || !validStake || (!id && !opponent)} onClick={() => void submit(id, id ? "accept" : "create", { stakeCoins: coins, stakeCardId: stake || null })}>{id ? "Accepter le duel" : "Envoyer le défi"}</button></div>; }
-  return <div className="battle-page killer-page"><header className="battle-hero killer-hero"><div><span className="battle-eyebrow">⚄ Arène mécanique</span><h1>Combat de dés</h1><p>Le Killer en duel asynchrone : construis ton total, déclenche une attaque et fais tomber l’adversaire à 0 PV.</p></div><div className="battle-actions"><button className="escalade-tuto-button" onClick={() => setRulesOpen(true)}>? Règles simples</button><a href="/bataille/des-tueurs/entrainement" className="escalade-tuto-button">🤖 Entraînement</a><button className="battle-primary" onClick={() => setForm(form === "new" ? null : "new")}>{form === "new" ? "Fermer" : "+ Lancer un défi"}</button></div></header>
+  return <div className="battle-page killer-page"><header className="battle-hero killer-hero"><div><span className="battle-eyebrow">⚄ Arène pixel</span><h1>Combat de dés</h1><p>Le Killer en duel asynchrone : tous les dés sont visibles et le plateau explique chaque action, même pendant le tour de l’adversaire.</p></div><div className="battle-actions"><button className="escalade-tuto-button" onClick={() => setRulesOpen(true)}>? Règles faciles</button><a href="/bataille/des-tueurs/entrainement" className="escalade-tuto-button">🤖 Entraînement</a><button className="battle-primary" onClick={() => setForm(form === "new" ? null : "new")}>{form === "new" ? "Fermer" : "+ Lancer un défi"}</button></div></header>
     {rulesOpen && <DiceKillerRules close={() => setRulesOpen(false)} />}
     <div className="killer-quick-guide"><span><b>1</b>Lance</span><i>→</i><span><b>2</b>Garde au moins 1 dé</span><i>→</i><span><b>3</b>Relance le reste</span><i>→</i><span><b>4</b>Le total décide</span></div>
     {error && <p className="battle-alert" role="alert">{error}</p>}{notice && <p className="battle-notice" role="status">{notice}</p>}

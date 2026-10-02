@@ -15,7 +15,7 @@ export const CHANGELOG_POSTS: ChangelogPost[] = [
     category: "Bataille",
     title: "Les Dés tueurs entrent dans l’arène",
     summary: "Le menu Bataille accueille un second duel asynchrone fondé sur le Killer à cinq dés.",
-    details: ["Les lancers, dés gardés, attaques et dégâts sont enregistrés côté serveur pour reprendre la partie à tout moment.", "Les mises de cartes et de gigapuissances suivent les mêmes protections que L’Escalade, sur un nouveau plateau animé en 3D.", "Un entraînement sans mise permet d’affronter l’Automate avec le même moteur avant de défier un joueur."],
+    details: ["Les lancers, dés gardés, attaques et dégâts sont enregistrés côté serveur pour reprendre la partie à tout moment.", "Tous les joueurs voient les mêmes dés sur un plateau pixel art en 2D; chaque total, calcul et prochaine action est expliqué simplement.", "Un entraînement sans mise permet d’affronter lentement l’Automate avec le même moteur avant de défier un joueur."],
   },
   {
     slug: "magasin-cadence-configurable",
