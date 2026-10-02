@@ -1,5 +1,5 @@
 export const DICE_KILLER_VERSION = 4;
-export const DICE_KILLER_STARTING_HP = 10;
+export const DICE_KILLER_STARTING_HP = 30;
 
 export type DiceSide = 0 | 1;
 export type DiceKillerPhase = "BUILD" | "ATTACK" | "FINISHED";
@@ -14,10 +14,12 @@ export type DiceKillerEvent = {
   hits?: number;
   blocked?: number;
   shieldTotal?: number;
+  multiplier?: number;
 };
 
 export type DiceKillerState = {
   version: 4;
+  starter: DiceSide;
   phase: DiceKillerPhase;
   turn: DiceSide;
   hp: [number, number];
@@ -27,6 +29,7 @@ export type DiceKillerState = {
   attackValue: number | null;
   attackHits: number;
   attackDice: number;
+  attackMultiplier: number;
   winner: DiceSide | null;
   revision: number;
   log: string[];
@@ -45,6 +48,7 @@ function validateDice(dice: number[], expected: number) {
 export function createDiceKiller(starter: DiceSide): DiceKillerState {
   return {
     version: DICE_KILLER_VERSION,
+    starter,
     phase: "BUILD",
     turn: starter,
     hp: [DICE_KILLER_STARTING_HP, DICE_KILLER_STARTING_HP],
@@ -54,9 +58,10 @@ export function createDiceKiller(starter: DiceSide): DiceKillerState {
     attackValue: null,
     attackHits: 0,
     attackDice: 5,
+    attackMultiplier: 1,
     winner: null,
     revision: 0,
-    log: [`${starter === 0 ? "A" : "B"} commence avec 10 PV.`],
+    log: [`Le sélecteur désigne ${starter === 0 ? "A" : "B"} pour commencer avec 30 PV.`],
     lastEvent: null,
     displayDice: [[], []],
   };
@@ -79,6 +84,7 @@ function nextTurn(state: DiceKillerState) {
   state.attackValue = null;
   state.attackHits = 0;
   state.attackDice = 5;
+  state.attackMultiplier = 1;
 }
 
 function finishIfNeeded(state: DiceKillerState, defeated: DiceSide) {
@@ -134,13 +140,15 @@ export function keepBuildDice(
   const total = state.held.reduce((sum, die) => sum + die, 0);
   if (total < 11 || total > 24) {
     const attackValue = total < 11 ? 11 - total : total - 24;
+    const multiplier = total === 30 ? 2 : 1;
     state.phase = "ATTACK";
     state.attackValue = attackValue;
+    state.attackMultiplier = multiplier;
     state.attackHits = 0;
     state.attackDice = 5;
-    state.lastEvent = { revision: state.revision, side, kind: "ATTACK_READY", dice: [...state.held], total, attackValue };
+    state.lastEvent = { revision: state.revision, side, kind: "ATTACK_READY", dice: [...state.held], total, attackValue, multiplier };
     showDice(state, side, state.held);
-    state.log.push(`${side === 0 ? "A" : "B"} totalise ${total} : attaque aux ${attackValue}.`);
+    state.log.push(`${side === 0 ? "A" : "B"} totalise ${total} : attaque aux ${attackValue}${multiplier === 2 ? " ULTIME ×2" : ""}.`);
     return state;
   }
 
@@ -179,6 +187,7 @@ export function keepBuildDice(
 
 export function rollAttack(input: DiceKillerState, side: DiceSide, dice: number[]): DiceKillerState {
   const state = structuredClone(input);
+  state.attackMultiplier ??= 1;
   if (state.phase !== "ATTACK" || state.turn !== side || !state.attackValue) throw new Error("Aucune attaque à lancer.");
   validateDice(dice, state.attackDice);
   showDice(state, side, dice);
@@ -188,27 +197,29 @@ export function rollAttack(input: DiceKillerState, side: DiceSide, dice: number[
     state.attackHits += hits;
     state.attackDice -= hits;
     if (state.attackDice === 0) state.attackDice = 5;
-    state.lastEvent = { revision: state.revision, side, kind: "HIT", dice, attackValue: state.attackValue, hits };
+    state.lastEvent = { revision: state.revision, side, kind: "HIT", dice, attackValue: state.attackValue, hits, multiplier: state.attackMultiplier };
     state.log.push(`${side === 0 ? "A" : "B"} trouve ${hits} dé${hits > 1 ? "s" : ""} de valeur ${state.attackValue} et poursuit.`);
     return state;
   }
 
-  const rawDamage = state.attackHits * state.attackValue;
+  const rawDamage = state.attackHits * state.attackValue * state.attackMultiplier;
   const target = (1 - side) as DiceSide;
   ensureShield(state);
   const blocked = Math.min(state.shield[target], rawDamage);
   state.shield[target] -= blocked;
   const damage = rawDamage - blocked;
   state.hp[target] -= damage;
-  state.lastEvent = { revision: state.revision, side, kind: "MISS", dice, attackValue: state.attackValue, hits: state.attackHits, amount: damage, blocked };
-  state.log.push(`${side === 0 ? "A" : "B"} termine son attaque : ${state.attackHits} × ${state.attackValue} = ${rawDamage}, bouclier −${blocked}, ${damage} dégât${damage > 1 ? "s" : ""}.`);
+  state.lastEvent = { revision: state.revision, side, kind: "MISS", dice, attackValue: state.attackValue, hits: state.attackHits, amount: damage, blocked, multiplier: state.attackMultiplier };
+  state.log.push(`${side === 0 ? "A" : "B"} termine son attaque : ${state.attackHits} × ${state.attackValue}${state.attackMultiplier === 2 ? " × 2 ULTIME" : ""} = ${rawDamage}, bouclier −${blocked}, ${damage} dégât${damage > 1 ? "s" : ""}.`);
   if (!finishIfNeeded(state, target)) nextTurn(state);
   return state;
 }
 
 export function publicDiceKiller(state: DiceKillerState, side: DiceSide): DiceKillerView {
   const view = structuredClone(state);
+  view.starter ??= view.turn;
   view.shield ??= [0, 0];
+  view.attackMultiplier ??= 1;
   view.displayDice ??= [[], []];
   if (!view.displayDice[0].length && view.lastEvent?.side === 0) view.displayDice[0] = [...view.lastEvent.dice];
   if (!view.displayDice[1].length && view.lastEvent?.side === 1) view.displayDice[1] = [...view.lastEvent.dice];

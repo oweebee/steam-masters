@@ -134,7 +134,7 @@ export function EntrainementClient() {
           </div>
           <div className="battle-actions">
             <button className="escalade-tuto-button" onClick={() => setTuto(true)}>⚙ Tuto</button>
-            <a href="/bataille" className="battle-secondary">← Matchs réels</a>
+            <a href="/bataille/escalade" className="battle-secondary">← Matchs réels</a>
           </div>
         </header>
         <EscaladeRules />
@@ -181,7 +181,7 @@ export function EntrainementClient() {
         <div className="battle-actions">
           <button className="escalade-tuto-button" onClick={() => setTuto(true)}>⚙ Tuto</button>
           <button className="battle-secondary" onClick={() => setGameState(null)}>↺ Recommencer</button>
-          <a href="/bataille" className="battle-secondary">← Matchs réels</a>
+          <a href="/bataille/escalade" className="battle-secondary">← Matchs réels</a>
         </div>
       </header>
 

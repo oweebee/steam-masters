@@ -67,12 +67,14 @@ export async function handleDiceKiller(tx: Prisma.TransactionClient, battle: Bat
   } });
   if (winnerId) {
     await settleBattleStake(tx, battle, winnerId);
-    await awardBattle(tx, battle.id, winnerId, ids[1 - state.winner!], now);
+    const bankReward = battle.challengerStakeCoins === 0 && battle.opponentStakeCoins === 0 && !battle.challengerStakeCardId && !battle.opponentStakeCardId;
+    if (bankReward) await tx.user.update({ where: { id: winnerId }, data: { coins: { increment: 50 } } });
+    await awardBattle(tx, battle.id, winnerId, ids[1 - state.winner!], now, bankReward ? 0 : 3);
   }
   const otherId = ids[1 - side];
   const turnChanged = !finished && state.turn !== side;
   return { notify: finished
-    ? [{ userId: otherId, title: winnerId === otherId ? "Victoire aux dés !" : "Défaite aux dés", body: "Le duel de Dés tueurs est terminé.", href: "/bataille/des-tueurs" }]
+    ? [{ userId: otherId, title: winnerId === otherId ? "Victoire aux dés !" : "Défaite aux dés", body: winnerId === otherId && battle.challengerStakeCoins === 0 && battle.opponentStakeCoins === 0 && !battle.challengerStakeCardId && !battle.opponentStakeCardId ? "Victoire : la banque t’offre 50 gigapuissances." : "Le duel de Dés tueurs est terminé.", href: "/bataille/des-tueurs" }]
     : turnChanged
       ? [{ userId: otherId, title: "À toi de lancer", body: "Ton adversaire a terminé son tour de Dés tueurs.", turn: true, href: "/bataille/des-tueurs" }]
       : [] };

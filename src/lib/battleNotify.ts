@@ -11,7 +11,7 @@ export async function notifyBattle(items: { userId: string; title: string; body:
         const unread = await prisma.notification.count({ where: { userId: item.userId, type: "BATTLE", read: false, title: item.title } });
         if (unread) continue;
       }
-      await createNotification(item.userId, "BATTLE", item.title, item.body, item.href ?? "/bataille");
+      await createNotification(item.userId, "BATTLE", item.title, item.body, item.href ?? "/bataille/escalade");
     } catch {
       // best-effort
     }

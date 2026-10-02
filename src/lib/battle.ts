@@ -133,10 +133,10 @@ export async function nextBattleQuestion(tx: Prisma.TransactionClient, opponentD
   return { question: { text, options, source }, answerIndex: options.indexOf(answer) };
 }
 
-export async function awardBattle(tx: Prisma.TransactionClient, battleId: string, winnerId: string, loserId: string, at: Date) {
+export async function awardBattle(tx: Prisma.TransactionClient, battleId: string, winnerId: string, loserId: string, at: Date, winnerCoins = 3) {
   const day = new Date(Date.UTC(at.getUTCFullYear(), at.getUTCMonth(), at.getUTCDate()));
   const tomorrow = new Date(day.getTime() + 86_400_000);
-  for (const [userId, opponentId, xp, coins] of [[winnerId, loserId, 25, 3], [loserId, winnerId, 5, 0]] as const) {
+  for (const [userId, opponentId, xp, coins] of [[winnerId, loserId, 25, winnerCoins], [loserId, winnerId, 5, 0]] as const) {
     const prior = await tx.battleReward.findMany({
       where: { userId, createdAt: { gte: day, lt: tomorrow } },
       select: { opponentId: true },

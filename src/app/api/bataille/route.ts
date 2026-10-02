@@ -83,7 +83,7 @@ export async function POST(req: Request) {
       return { ...newBattle, challengerName: challenger?.username ?? "Un joueur" };
     }, { isolationLevel: "Serializable" });
     const diceMode = battle.rulesVersion === 4;
-    await notifyBattle([{ userId: battle.opponentId, title: diceMode ? "Nouveau défi de dés" : "Nouveau défi", body: `${battle.challengerName} te défie ${diceMode ? "aux Dés tueurs" : "en bataille"}${battle.challengerStakeCoins > 0 ? ` (mise : ${battle.challengerStakeCoins} gigapuissances)` : ""}.`, href: diceMode ? "/bataille/des-tueurs" : "/bataille" }]);
+    await notifyBattle([{ userId: battle.opponentId, title: diceMode ? "Nouveau défi de dés" : "Nouveau défi", body: `${battle.challengerName} te défie ${diceMode ? "aux Dés tueurs" : "en bataille"}${battle.challengerStakeCoins > 0 ? ` (mise : ${battle.challengerStakeCoins} gigapuissances)` : ""}.`, href: diceMode ? "/bataille/des-tueurs" : "/bataille/escalade" }]);
     return NextResponse.json({ id: battle.id }, { status: 201 });
   } catch (error) {
     if ((error as { code?: string }).code === "P2034") return NextResponse.json({ error: "Action simultanée détectée : réessaie." }, { status: 409 });
