@@ -22,16 +22,33 @@ async function json(url: string, body?: unknown) {
 
 const PIPS: Record<number, number[]> = { 1: [5], 2: [1, 9], 3: [1, 5, 9], 4: [1, 3, 7, 9], 5: [1, 3, 5, 7, 9], 6: [1, 3, 4, 6, 7, 9] };
 const DICE_REVEAL_MS = 2800;
+const DICE_RESULTS = [
+  { points: "5–10 points", effect: "Attaque aux 6 à 1", tone: "attack" },
+  { points: "11 points", effect: "+1 dé de PV", tone: "heal" },
+  { points: "12–17 points", effect: "+1 à 6 PV", tone: "heal" },
+  { points: "18–23 points", effect: "Bouclier +6 à 1", tone: "shield" },
+  { points: "24 points", effect: "+1 dé de PV", tone: "heal" },
+  { points: "25–30 points", effect: "Attaque aux 1 à 6", tone: "attack" },
+] as const;
+type DiceColor = "orange" | "blue";
 
-function Die({ value, index, revealing, held, selected, onClick }: { value: number; index: number; revealing: boolean; held?: boolean; selected?: boolean; onClick?: () => void }) {
-  return <button type="button" className={`killer-die${revealing ? " is-revealing" : ""}${held ? " is-held" : ""}${selected ? " is-selected" : ""}`} style={{ animationDelay: `${index * 150}ms` }} onClick={onClick} disabled={!onClick} aria-pressed={selected} aria-label={`Dé ${value}${held ? ", gardé" : ""}`}>
+function Die({ value, index, color, revealing, held, selected, onClick }: { value: number; index: number; color: DiceColor; revealing: boolean; held?: boolean; selected?: boolean; onClick?: () => void }) {
+  return <button type="button" className={`killer-die is-${color}${revealing ? " is-revealing" : ""}${held ? " is-held" : ""}${selected ? " is-selected" : ""}`} style={{ animationDelay: `${index * 150}ms` }} onClick={onClick} disabled={!onClick} aria-pressed={onClick ? Boolean(selected) : undefined} aria-label={`Dé ${value}${held ? ", gardé" : ""}${selected ? ", choisi" : ""}`}>
     <span className="killer-pixel-die">{Array.from({ length: 9 }, (_, pip) => <i key={pip} className={PIPS[value].includes(pip + 1) ? "is-pip" : ""} />)}</span>
+    {selected && <span className="killer-die-choice" aria-hidden="true">✓</span>}
   </button>;
 }
 
-function DiceGroup({ label, dice, offset = 0, revealing, held, selectable, selected, select }: { label: string; dice: number[]; offset?: number; revealing: boolean; held?: boolean; selectable?: boolean; selected?: number[]; select?: (index: number) => void }) {
+function DiceGroup({ label, dice, color, offset = 0, revealing, held, selectable, selected, select }: { label: string; dice: number[]; color: DiceColor; offset?: number; revealing: boolean; held?: boolean; selectable?: boolean; selected?: number[]; select?: (index: number) => void }) {
   if (!dice.length) return null;
-  return <div className={`killer-dice-group${held ? " is-kept" : ""}`}><strong>{label}</strong><div>{dice.map((die, index) => <Die key={`${held ? "h" : "d"}-${index}`} value={die} index={offset + index} revealing={revealing && !held} held={held} selected={selected?.includes(index)} onClick={selectable && select ? () => select(index) : undefined} />)}</div></div>;
+  return <div className={`killer-dice-group${held ? " is-kept" : ""}`}><strong>{label}</strong><div>{dice.map((die, index) => <Die key={`${held ? "h" : "d"}-${index}`} value={die} index={offset + index} color={color} revealing={revealing && !held} held={held} selected={selected?.includes(index)} onClick={selectable && select ? () => select(index) : undefined} />)}</div></div>;
+}
+
+function DiceResultMap({ compact = false }: { compact?: boolean }) {
+  return <section className={`killer-combo-map${compact ? " is-compact" : ""}`} aria-label="Combinaisons et points des dés">
+    {!compact && <h3>Combinaisons des dés <small>additionne tes 5 dés</small></h3>}
+    <div>{DICE_RESULTS.map((result) => <article className={`is-${result.tone}`} key={result.points}><b>{result.points}</b><span>{result.effect}</span></article>)}</div>
+  </section>;
 }
 
 export function DiceArena({ match, busy, play }: { match: DiceKillerMatch; busy: boolean; play: (move: object, revision: number) => void }) {
@@ -43,8 +60,9 @@ export function DiceArena({ match, busy, play }: { match: DiceKillerMatch; busy:
   useEffect(() => {
     timers.current.forEach(clearTimeout);
     if (lastEventRevision === undefined) return;
+    setSelected([]);
+    setRevealing(true);
     timers.current = [
-      setTimeout(() => { setSelected([]); setRevealing(true); }, 0),
       setTimeout(() => setRevealing(false), DICE_REVEAL_MS),
     ];
     return () => timers.current.forEach(clearTimeout);
@@ -55,20 +73,34 @@ export function DiceArena({ match, busy, play }: { match: DiceKillerMatch; busy:
   const guide = describeNextAction(state, names, myTurn, selected.length);
   const eventOwner = state.lastEvent?.side ?? state.turn;
   const lastDiceLabel = state.lastEvent?.kind === "ATTACK_READY" ? `Total final de ${names[eventOwner]}` : state.lastEvent?.kind === "HIT" || state.lastEvent?.kind === "MISS" ? `Jet d’attaque de ${names[eventOwner]}` : `Dernier lancer de ${names[eventOwner]}`;
+  const otherSide = (1 - state.side) as 0 | 1;
+  const colorFor = (side: 0 | 1): DiceColor => side === 0 ? "orange" : "blue";
+  const renderZone = (side: 0 | 1, isSelf: boolean) => {
+    const color = colorFor(side);
+    const showsBuild = state.phase === "BUILD" && state.turn === side && state.roll.length > 0;
+    const shownDice = state.displayDice[side];
+    const ownsLatestEvent = state.lastEvent?.side === side;
+    return <section className={`killer-player-zone is-${color}${isSelf ? " is-self" : " is-opponent"}`}>
+      <header><span>{isSelf ? "TOI · EN BAS" : "ADVERSAIRE · EN HAUT"}</span><b>{names[side]}</b><strong>♥ {state.hp[side]} PV <em>◆ {state.shield[side]}/6</em></strong></header>
+      <div className="killer-zone-dice" key={`${side}-${state.lastEvent?.revision ?? 0}`}>
+        {showsBuild ? <>
+          <DiceGroup label="Dés gardés" dice={state.held} color={color} revealing={false} held />
+          <DiceGroup label={isSelf ? "Tes dés à choisir" : `Dés de ${names[side]}`} dice={state.roll} color={color} offset={state.held.length} revealing={revealing} selectable={isSelf && myTurn} selected={selected} select={(index) => setSelected((old) => old.includes(index) ? old.filter((item) => item !== index) : [...old, index])} />
+        </> : shownDice.length ? <DiceGroup label={ownsLatestEvent ? lastDiceLabel : `Dernier jeu de ${names[side]}`} dice={shownDice} color={color} revealing={ownsLatestEvent && revealing} held={ownsLatestEvent && state.lastEvent?.kind === "ATTACK_READY"} /> : <div className={`killer-dice-placeholder is-${color}`} aria-label={`${names[side]} n’a pas encore lancé`}><strong>Premier lancer à venir</strong><div>{Array.from({ length: 5 }, (_, index) => <i key={index}>?</i>)}</div></div>}
+      </div>
+      {isSelf && myTurn && state.phase === "BUILD" && state.roll.length > 0 && <div className="killer-selection-tools" aria-live="polite"><strong>{selected.length}/{state.roll.length} choisi{selected.length > 1 ? "s" : ""}</strong><button type="button" onClick={() => setSelected(state.roll.map((_, index) => index))}>Tout choisir</button><button type="button" onClick={() => setSelected([])} disabled={!selected.length}>Annuler</button></div>}
+    </section>;
+  };
   return <div className="killer-arena">
-    <div className="killer-scoreboard"><div className={state.side === 0 ? "is-me" : ""}><small>{state.side === 0 ? "TOI" : "ADVERSAIRE"}</small><b>{names[0]}</b><strong>♥ {state.hp[0]} PV</strong></div><span>VS</span><div className={state.side === 1 ? "is-me" : ""}><small>{state.side === 1 ? "TOI" : "ADVERSAIRE"}</small><b>{names[1]}</b><strong>♥ {state.hp[1]} PV</strong></div></div>
     <div className="killer-tray">
-      <Image src="/images/battle/dice-killer-table-v2.png" alt="" fill sizes="(max-width: 760px) 100vw, 1180px" priority />
+      <Image src="/images/battle/dice-killer-board-v3.png" alt="" fill sizes="(max-width: 760px) 100vw, 1180px" priority />
       <div className="killer-tray-content">
-        {eventText && <div className={`killer-event is-${eventText.tone}`}><small>{eventText.eyebrow}</small><strong>{eventText.title}</strong><span>{eventText.detail}</span>{eventText.calculation && <em>{eventText.calculation}</em>}</div>}
-        <div className="killer-dice-row" key={state.lastEvent?.revision ?? 0}>
-          {state.phase === "BUILD" && state.roll.length > 0 ? <>
-            <DiceGroup label="Dés déjà gardés" dice={state.held} revealing={false} held />
-            <DiceGroup label={`${state.turn === state.side ? "Tes nouveaux dés" : `Nouveaux dés de ${names[state.turn]}`}`} dice={state.roll} offset={state.held.length} revealing={revealing} selectable={myTurn && !revealing} selected={selected} select={(index) => setSelected((old) => old.includes(index) ? old.filter((item) => item !== index) : [...old, index])} />
-          </> : <DiceGroup label={lastDiceLabel} dice={state.lastEvent?.dice ?? []} revealing={revealing} held={state.lastEvent?.kind === "ATTACK_READY"} />}
-        </div>
+        {renderZone(otherSide, false)}
+        <div className="killer-board-center">{eventText ? <div key={lastEventRevision} className={`killer-event is-${eventText.tone}`}><small>{eventText.eyebrow}</small><strong>{eventText.title}</strong><span>{eventText.detail}</span>{eventText.calculation && <em>{eventText.calculation}</em>}</div> : <span>⚙ DUEL ⚙</span>}</div>
+        {renderZone(state.side, true)}
       </div>
     </div>
+    <DiceResultMap />
     <div className={`killer-turn${myTurn ? " is-active" : " is-waiting"}`}><b>{guide.step}</b><span>{guide.title}</span><small>{guide.detail}</small></div>
     {myTurn && <div className="battle-actions killer-actions">
       {state.phase === "BUILD" && !state.roll.length && <button className="battle-primary" disabled={busy || revealing} onClick={() => play({ type: "roll" }, state.revision)}>Je lance mes 5 dés</button>}
@@ -90,7 +122,7 @@ export function DiceKillerRules({ close }: { close: () => void }) {
         <article className="is-example"><b>3</b><div><h3>Regarde le total</h3><p>Quand les 5 dés sont gardés, le jeu les additionne et explique le résultat avec le calcul.</p></div></article>
         <article><b>4</b><div><h3>Suis le gros message</h3><p>Il te dira toujours quoi faire : lancer, choisir des dés, attaquer ou attendre l’autre joueur.</p></div></article>
       </div>
-      <div className="killer-result-map"><div className="is-attack"><b>5–10</b><span>Attaque 6 à 1</span></div><div className="is-heal"><b>11–17</b><span>Tu récupères des PV</span></div><div className="is-danger"><b>18–23</b><span>Tu perds des PV</span></div><div className="is-heal"><b>24</b><span>Régénération</span></div><div className="is-attack"><b>25–30</b><span>Attaque 1 à 6</span></div></div>
+      <DiceResultMap compact />
       <p className="killer-rules-tip"><strong>Astuce :</strong> les petits nombres et les grands nombres servent à attaquer. Tu peux prendre ton temps : le bouton explique la prochaine action.</p>
       <button className="battle-primary" onClick={close}>J’ai compris, jouer</button>
     </section>
@@ -103,9 +135,10 @@ function describeEvent(event: DiceKillerEvent | null, names: string[], side: 0 |
   if (event.kind === "ROLL") return { tone: "roll", eyebrow: "LES DÉS SONT VISIBLES", title: `${who} ${event.side === side ? "as" : "a"} lancé les dés`, detail: "Le joueur doit maintenant en garder au moins un.", calculation: `Total montré : ${event.dice.reduce((sum, die) => sum + die, 0)}` };
   if (event.kind === "ATTACK_READY") return { tone: "attack", eyebrow: `TOTAL ${event.total}`, title: `Une attaque aux ${event.attackValue} est prête`, detail: `Il faut maintenant lancer les dés et chercher le chiffre ${event.attackValue}.`, calculation: event.total! < 11 ? `11 − ${event.total} = ${event.attackValue}` : `${event.total} − 24 = ${event.attackValue}` };
   if (event.kind === "HEAL") return { tone: "heal", eyebrow: "DES PV EN PLUS", title: `+${event.amount} PV pour ${event.side === side ? "toi" : names[event.side]}`, detail: event.total === 11 || event.total === 24 ? `Le total exact ${event.total} donne un dé bonus. Il a donné ${event.amount}.` : `Un total entre 12 et 17 soigne le joueur.`, calculation: event.total === 11 || event.total === 24 ? `${event.total} exact → dé bonus = ${event.amount}` : `${event.total} − 11 = ${event.amount}` };
-  if (event.kind === "BACKLASH") return { tone: "danger", eyebrow: "DES PV EN MOINS", title: `−${event.amount} PV pour ${event.side === side ? "toi" : names[event.side]}`, detail: "Un total entre 18 et 23 fait perdre des PV au joueur qui a lancé.", calculation: `24 − ${event.total} = ${event.amount}` };
+  if (event.kind === "SHIELD") return { tone: "shield", eyebrow: "BOUCLIER CHARGÉ", title: `Bouclier à ${event.shieldTotal}/6 pour ${event.side === side ? "toi" : names[event.side]}`, detail: event.amount ? `Il bloquera jusqu’à ${event.shieldTotal} dégâts de la prochaine attaque.` : "Le bouclier était déjà chargé au maximum.", calculation: `24 − ${event.total} = ${24 - event.total!} · plafond 6` };
   if (event.kind === "HIT") return { tone: "attack", eyebrow: "ATTAQUE RÉUSSIE", title: `${event.hits} dé${event.hits! > 1 ? "s" : ""} ${event.attackValue} trouvé${event.hits! > 1 ? "s" : ""}`, detail: "Ces dés sont gardés. Les autres vont être relancés pour essayer d’en trouver encore.", calculation: `${event.hits} nouvelle${event.hits! > 1 ? "s" : ""} touche${event.hits! > 1 ? "s" : ""}` };
-  return { tone: "danger", eyebrow: "ATTAQUE TERMINÉE", title: `${event.amount} dégât${event.amount! > 1 ? "s" : ""}`, detail: "Aucun nouveau bon dé n’est sorti : on applique maintenant tous les dégâts.", calculation: `${event.hits} × ${event.attackValue} = ${event.amount}` };
+  const rawDamage = event.hits! * event.attackValue!;
+  return { tone: "danger", eyebrow: "ATTAQUE TERMINÉE", title: `${event.amount} dégât${event.amount! > 1 ? "s" : ""}`, detail: event.blocked ? `Le bouclier a bloqué ${event.blocked} dégât${event.blocked > 1 ? "s" : ""}.` : "Aucun bouclier n’a réduit les dégâts.", calculation: event.blocked ? `${event.hits} × ${event.attackValue} = ${rawDamage} − ${event.blocked} bouclier = ${event.amount}` : `${event.hits} × ${event.attackValue} = ${event.amount}` };
 }
 
 function describeNextAction(state: DiceKillerView, names: string[], myTurn: boolean, selected: number) {
