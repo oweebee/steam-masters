@@ -7,9 +7,10 @@ import { awardBattle, deckFromJson, loadBattleDeck, nextBattleQuestion, type Bat
 import { assertStakeCardAvailable, parseStakeCardId, parseStakeCoins, settleBattleStake, stakedCardCount } from "@/lib/battleStake";
 import { notifyBattle } from "@/lib/battleNotify";
 import { handleEscalade } from "@/lib/escaladeServer";
+import { handleDiceKiller } from "@/lib/diceKillerServer";
 
 type Outcome = {
-  notify: { userId: string; title: string; body: string; turn?: boolean }[];
+  notify: { userId: string; title: string; body: string; turn?: boolean; href?: string }[];
   result?: { correct: boolean; correctAnswer: string | null; damage: number; knockout: boolean; finished: boolean; won: boolean | null };
 };
 
@@ -34,12 +35,14 @@ export async function POST(req: Request, context: { params: Promise<{ id: string
         if (battle.challengerStakeCoins > 0) {
           await tx.user.update({ where: { id: battle.challengerId }, data: { coins: { increment: battle.challengerStakeCoins } } });
         }
+        const href = battle.rulesVersion === 4 ? "/bataille/des-tueurs" : "/bataille";
         return { notify: body.action === "cancel"
-          ? [{ userId: battle.opponentId, title: "Défi annulé", body: `${battle.challenger.username} a annulé son défi.` }]
-          : [{ userId: battle.challengerId, title: "Défi refusé", body: `${battle.opponent.username} a refusé ton défi.${battle.challengerStakeCoins > 0 ? " Ta mise t'a été rendue." : ""}` }] };
+          ? [{ userId: battle.opponentId, title: "Défi annulé", body: `${battle.challenger.username} a annulé son défi.`, href }]
+          : [{ userId: battle.challengerId, title: "Défi refusé", body: `${battle.opponent.username} a refusé ton défi.${battle.challengerStakeCoins > 0 ? " Ta mise t'a été rendue." : ""}`, href }] };
       }
 
       if (battle.rulesVersion === 3) return handleEscalade(tx, battle, userId, body);
+      if (battle.rulesVersion === 4) return handleDiceKiller(tx, battle, userId, body);
 
       if (body.action === "accept") {
         if (battle.status !== "PENDING" || battle.opponentId !== userId) throw new Error("Défi indisponible");

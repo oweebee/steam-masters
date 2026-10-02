@@ -9,6 +9,7 @@
     "lint": "eslint",
     "test:coherence": "node --test scripts/test-coherence.cjs",
     "test:escalade": "node --test scripts/test-escalade.cjs",
+    "test:dice-killer": "node --test scripts/test-dice-killer.cjs",
     "test:studio-licenses": "node --test scripts/test-studio-licenses.cjs",
     "db:generate": "prisma generate",
     "db:push": "prisma db push",

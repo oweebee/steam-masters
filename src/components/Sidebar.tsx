@@ -55,7 +55,7 @@ function BottomNav({ isAdmin, unreadNotifs, unreadMsgs, unclaimedRewards, order 
           key={item.href}
           href={item.href}
           className={`flex flex-col items-center justify-center gap-0.5 flex-1 py-2 transition ${
-            pathname === item.href ? "text-white" : "text-gray-500"
+            pathname === item.href || (item.href === "/bataille" && pathname.startsWith("/bataille/")) ? "text-white" : "text-gray-500"
           }`}
         >
           <span className="relative inline-flex">
@@ -207,7 +207,7 @@ export function Sidebar({ isAdmin, username, coins, unreadNotifs = 0, unreadMsgs
 
         <nav className="flex min-h-0 flex-col gap-1 flex-1 overflow-y-auto overscroll-contain">
           {items.map((item, index) => {
-            const active = pathname === item.href;
+            const active = pathname === item.href || (item.href === "/bataille" && pathname.startsWith("/bataille/"));
             return (
               <div key={item.href} className="flex items-center gap-1">
               <Link

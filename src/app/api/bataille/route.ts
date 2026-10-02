@@ -6,6 +6,7 @@ import { deckFromJson, publicBattleDeck } from "@/lib/battle";
 import { assertStakeCardAvailable, parseStakeCardId, parseStakeCoins } from "@/lib/battleStake";
 import { draftHand, publicEscalade, type AbilityLayout, type EscaladeState } from "@/lib/escalade";
 import { currentDraftOffer, verifyDraftOffer } from "@/lib/escaladeDraft";
+import { publicDiceKiller, type DiceKillerState } from "@/lib/diceKiller";
 
 async function playerId() {
   const session = await auth();
@@ -36,6 +37,7 @@ export async function GET() {
       challengerDeck: battle.rulesVersion === 3 ? [] : battle.status === "PENDING" && battle.challengerId !== userId ? [] : publicBattleDeck(deckFromJson(battle.challengerDeck)),
       opponentDeck: battle.rulesVersion === 3 ? [] : battle.opponentDeck ? (battle.status === "PENDING" && battle.opponentId !== userId ? [] : publicBattleDeck(deckFromJson(battle.opponentDeck))) : null,
       escalation: battle.rulesVersion === 3 && battle.status !== "PENDING" && escalationState ? publicEscalade(escalationState as unknown as EscaladeState, battle.challengerId === userId ? 0 : 1) : null,
+      diceKiller: battle.rulesVersion === 4 && battle.status !== "PENDING" && escalationState ? publicDiceKiller(escalationState as unknown as DiceKillerState, battle.challengerId === userId ? 0 : 1) : null,
       draft: battle.rulesVersion === 3 && battle.status === "PENDING" && battle.challengerId === userId ? battle.challengerDeck : null,
       abilityLayout: battle.rulesVersion === 3 && battle.status === "PENDING" ? pendingRules?.abilityLayout ?? null : null,
       draftBudget: battle.rulesVersion === 3 && battle.status === "PENDING" ? pendingRules?.draftBudget ?? null : null,
@@ -50,7 +52,7 @@ export async function GET() {
 export async function POST(req: Request) {
   const userId = await playerId();
   if (!userId) return NextResponse.json({ error: "Non connecté" }, { status: 401 });
-  let body: { opponentId?: unknown; cardIds?: unknown; stakeCoins?: unknown; stakeCardId?: unknown; dealId?: unknown };
+  let body: { mode?: unknown; opponentId?: unknown; cardIds?: unknown; stakeCoins?: unknown; stakeCardId?: unknown; dealId?: unknown };
   try { body = await req.json(); } catch { return NextResponse.json({ error: "Requête invalide" }, { status: 400 }); }
   if (!body || typeof body !== "object" || Array.isArray(body)) return NextResponse.json({ error: "Requête invalide" }, { status: 400 });
   if (typeof body.opponentId !== "string" || body.opponentId === userId) {
@@ -65,17 +67,23 @@ export async function POST(req: Request) {
       if (!opponent) throw new Error("Joueur introuvable ou inactif");
       const pending = await tx.battle.count({ where: { challengerId: userId, status: "PENDING" } });
       if (pending >= 3) throw new Error("Tu as déjà 3 défis en attente");
-      const offer = verifyDraftOffer(body.dealId);
-      const deck = draftHand(body.cardIds, offer.layout, offer.budget);
       await assertStakeCardAvailable(tx, userId, stakeCardId);
       if (stakeCoins > 0) {
         const debited = await tx.user.updateMany({ where: { id: userId, coins: { gte: stakeCoins } }, data: { coins: { decrement: stakeCoins } } });
         if (debited.count !== 1) throw new Error("Gigapuissances insuffisantes pour cette mise");
       }
-      const newBattle = await tx.battle.create({ data: { rulesVersion: 3, challengerId: userId, opponentId: opponent.id, challengerDeck: deck, challengerStakeCoins: stakeCoins, challengerStakeCardId: stakeCardId, escalationState: { abilitySeed: offer.seed, abilityLayout: offer.layout, draftBudget: offer.budget } } });
+      const diceMode = body.mode === "DICE_KILLER";
+      const offer = diceMode ? null : verifyDraftOffer(body.dealId);
+      const deck = diceMode ? [] : draftHand(body.cardIds, offer!.layout, offer!.budget);
+      const newBattle = await tx.battle.create({ data: {
+        rulesVersion: diceMode ? 4 : 3, challengerId: userId, opponentId: opponent.id,
+        challengerDeck: deck, challengerStakeCoins: stakeCoins, challengerStakeCardId: stakeCardId,
+        escalationState: diceMode ? undefined : { abilitySeed: offer!.seed, abilityLayout: offer!.layout, draftBudget: offer!.budget },
+      } });
       return { ...newBattle, challengerName: challenger?.username ?? "Un joueur" };
     }, { isolationLevel: "Serializable" });
-    await notifyBattle([{ userId: battle.opponentId, title: "Nouveau défi", body: `${battle.challengerName} te défie en bataille${battle.challengerStakeCoins > 0 ? ` (mise : ${battle.challengerStakeCoins} gigapuissances)` : ""}.` }]);
+    const diceMode = battle.rulesVersion === 4;
+    await notifyBattle([{ userId: battle.opponentId, title: diceMode ? "Nouveau défi de dés" : "Nouveau défi", body: `${battle.challengerName} te défie ${diceMode ? "aux Dés tueurs" : "en bataille"}${battle.challengerStakeCoins > 0 ? ` (mise : ${battle.challengerStakeCoins} gigapuissances)` : ""}.`, href: diceMode ? "/bataille/des-tueurs" : "/bataille" }]);
     return NextResponse.json({ id: battle.id }, { status: 201 });
   } catch (error) {
     if ((error as { code?: string }).code === "P2034") return NextResponse.json({ error: "Action simultanée détectée : réessaie." }, { status: 409 });
