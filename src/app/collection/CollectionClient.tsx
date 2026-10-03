@@ -22,6 +22,7 @@ type Card = {
   id: string;
   sellable: boolean;
   onAuction: boolean;
+  isPinned: boolean;
   // Rareté propre à CET exemplaire (loot table booster), indépendante de la
   // rareté intrinsèque du jeu/studio (ownerEstimate) — c'est elle qu'on affiche.
   rarity: Rarity;
@@ -85,6 +86,7 @@ function OwnedCardActions({ card, players, onChanged, categories, onToggleCatego
   async function send() {
     setError(""); setMessage("");
     if (!recipientId) { setError("Choisis un joueur."); return; }
+    if (card.isPinned && !window.confirm("Cette carte est dans tes favoris. Confirmer son envoi ?")) return;
     const priceCoins = Number(price);
     if (!Number.isInteger(priceCoins) || priceCoins < 0 || priceCoins > 1_000_000) {
       setError("Prix invalide."); return;
@@ -93,7 +95,7 @@ function OwnedCardActions({ card, players, onChanged, categories, onToggleCatego
     try {
       const response = await fetch("/api/envois", {
         method: "POST", headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ cardId: card.id, toUserId: recipientId, priceCoins }),
+        body: JSON.stringify({ cardId: card.id, toUserId: recipientId, priceCoins, confirmedFavoriteCardIds: card.isPinned ? [card.id] : [] }),
       });
       const result = await response.json();
       if (!response.ok) throw new Error(result.error ?? "Envoi impossible");
@@ -104,12 +106,12 @@ function OwnedCardActions({ card, players, onChanged, categories, onToggleCatego
   }
 
   async function discard() {
-    if (!window.confirm(`Défausser cette carte contre ${CARD_DISCARD_VALUE} gigapuissances ?`)) return;
+    if (!window.confirm(card.isPinned ? `Cette carte est dans tes favoris. Confirmer sa défausse contre ${CARD_DISCARD_VALUE} gigapuissances ?` : `Défausser cette carte contre ${CARD_DISCARD_VALUE} gigapuissances ?`)) return;
     setWorking(true); setError("");
     try {
       const response = await fetch("/api/collection/sell", {
         method: "POST", headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ cardIds: [card.id] }),
+        body: JSON.stringify({ cardIds: [card.id], confirmedFavoriteCardIds: card.isPinned ? [card.id] : [] }),
       });
       const result = await response.json();
       if (!response.ok) throw new Error(result.error ?? "Vente impossible");
@@ -190,8 +192,9 @@ export function CollectionClient() {
   const [searchQuery, setSearchQuery] = useState("");
   const [rarityFilter, setRarityFilter] = useState<Rarity | "ALL">("ALL");
   const [categoryFilter, setCategoryFilter] = useState("ALL");
-  const [typeFilter, setTypeFilter] = useState<"ALL" | "GAME" | "DLC" | "STUDIO">("ALL");
+  const [typeFilter, setTypeFilter] = useState<"ALL" | "GAME" | "DLC" | "STUDIO" | "FAVORITE">("ALL");
   const [platformFilter, setPlatformFilter] = useState("ALL");
+  const [favoriteBusyId, setFavoriteBusyId] = useState<string | null>(null);
   const platformName = usePlatformNames();
 
   async function refreshAll() {
@@ -269,6 +272,20 @@ export function CollectionClient() {
       : [...current, card.id]);
   }
 
+  async function toggleFavorite(card: Card) {
+    setFavoriteBusyId(card.id);
+    try {
+      const response = await fetch("/api/collection", {
+        method: "PATCH", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ cardId: card.id, isPinned: !card.isPinned }),
+      });
+      const data = await response.json();
+      if (!response.ok) throw new Error(data.error ?? "Favori impossible");
+      setCards((current) => current.map((item) => item.id === card.id ? { ...item, isPinned: data.isPinned } : item));
+    } catch (reason) { setSaleError(reason instanceof Error ? reason.message : "Favori impossible"); }
+    finally { setFavoriteBusyId(null); }
+  }
+
   function closeSaleMode() {
     setSelectionMode(false);
     setSelectedIds([]);
@@ -281,8 +298,10 @@ export function CollectionClient() {
       setSaleError("Retire de la sélection les cartes déjà engagées avant de les vendre.");
       return;
     }
-    const confirmed = window.confirm(
-      `Vendre ${selectedIds.length} carte${selectedIds.length > 1 ? "s" : ""} pour ${selectedIds.length * CARD_DISCARD_VALUE} gigapuissances ?`
+    const favoriteIds = cards.filter((card) => selectedIds.includes(card.id) && card.isPinned).map((card) => card.id);
+    const confirmed = window.confirm(favoriteIds.length
+      ? `${favoriteIds.length} carte${favoriteIds.length > 1 ? "s" : ""} favorite${favoriteIds.length > 1 ? "s" : ""} est dans cette vente. Confirmer la défausse de ${selectedIds.length} carte${selectedIds.length > 1 ? "s" : ""} ?`
+      : `Vendre ${selectedIds.length} carte${selectedIds.length > 1 ? "s" : ""} pour ${selectedIds.length * CARD_DISCARD_VALUE} gigapuissances ?`
     );
     if (!confirmed) return;
 
@@ -291,7 +310,7 @@ export function CollectionClient() {
     const response = await fetch("/api/collection/sell", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ cardIds: selectedIds }),
+      body: JSON.stringify({ cardIds: selectedIds, confirmedFavoriteCardIds: favoriteIds }),
     });
     const data = await response.json();
     setSelling(false);
@@ -311,6 +330,7 @@ export function CollectionClient() {
     if (rarityFilter !== "ALL" && card.rarity !== rarityFilter) return false;
     if (categoryFilter !== "ALL" && !card.categories.some((category) => category.id === categoryFilter)) return false;
     if (typeFilter !== "ALL") {
+      if (typeFilter === "FAVORITE" && !card.isPinned) return false;
       if (typeFilter === "STUDIO" && !card.studio) return false;
       if (typeFilter === "GAME" && card.game?.contentType !== "GAME") return false;
       if (typeFilter === "DLC" && card.game?.contentType !== "DLC") return false;
@@ -436,7 +456,7 @@ export function CollectionClient() {
         <div className="steam-floating-toolbar" role="toolbar" aria-label="Outils de sélection">
           <button
             type="button"
-            onClick={() => setSelectedIds((current) => allVisibleSellableSelected
+            onClick={() => setSelectedIds(() => allVisibleSellableSelected
               ? []
               : [...sellableIds])}
             className="steam-sale-secondary"
@@ -463,8 +483,8 @@ export function CollectionClient() {
         <label><span>Rareté</span><select value={rarityFilter} onChange={(event) => setRarityFilter(event.target.value as Rarity | "ALL")}>
           <option value="ALL">Toutes</option><option value="COMMON">Blanche</option><option value="UNCOMMON">Verte</option><option value="RARE">Bleue</option><option value="EPIC">Violette</option><option value="LEGENDARY">Légendaire</option>
         </select></label>
-        <label><span>Type</span><select value={typeFilter} onChange={(event) => setTypeFilter(event.target.value as "ALL" | "GAME" | "DLC" | "STUDIO")}>
-          <option value="ALL">Tous</option><option value="GAME">Jeux</option><option value="DLC">DLC</option><option value="STUDIO">Studios</option>
+        <label><span>Type</span><select value={typeFilter} onChange={(event) => setTypeFilter(event.target.value as "ALL" | "GAME" | "DLC" | "STUDIO" | "FAVORITE")}>
+          <option value="ALL">Tous</option><option value="GAME">Jeux</option><option value="DLC">DLC</option><option value="STUDIO">Studios</option><option value="FAVORITE">Favoris</option>
         </select></label>
         <label><span>Plateforme</span><select value={platformFilter} onChange={(event) => setPlatformFilter(event.target.value)}><option value="ALL">Toutes</option>{availablePlatforms.map((platform) => <option key={platform} value={platform}>{platformName(platform)}</option>)}</select></label>
         <label><span>Catégorie</span><select value={categoryFilter} onChange={(event) => setCategoryFilter(event.target.value)}>
@@ -538,6 +558,7 @@ export function CollectionClient() {
               forceClosed={!flippedIds.includes(c.id)}
             />
           ) : null}
+              {!selectionMode && !flippedIds.includes(c.id) && <button type="button" className={`steam-card-favorite-toggle${c.isPinned ? " is-active" : ""}`} aria-label={c.isPinned ? "Retirer des favoris" : "Ajouter aux favoris"} aria-pressed={c.isPinned} disabled={favoriteBusyId === c.id} onClick={() => void toggleFavorite(c)}><span aria-hidden="true">★</span></button>}
               {flippedIds.includes(c.id) && !selectionMode && <OwnedCardActions card={c} players={players} onChanged={() => { void refreshAll(); }} categories={categories} onToggleCategory={toggleCategoryForCard} categoryBusy={categoryBusy} onManageCategories={() => setCategoryModal(true)} />}
               {selectionMode && (
                 <button

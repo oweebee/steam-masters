@@ -9,7 +9,7 @@ import type { Rarity } from "@/lib/rarityStyles";
 import type { PublicBattleCard, BattleQuestion } from "@/lib/battle";
 
 type OwnedCard = {
-  id: string; rarity: Rarity; atk: number; sellable?: boolean; staked?: boolean;
+  id: string; rarity: Rarity; atk: number; sellable?: boolean; staked?: boolean; isPinned?: boolean;
   game?: { id: string; name: string; headerImage: string; description: string; def: number; tags: string[]; developers: string[]; reviewScore: number; peakCcu: number; ownerEstimate: number; priceCents: number | null; isFree: boolean; contentType: "GAME" | "DLC" } | null;
   studio?: { name: string; avatarUrl: string | null; gameCount: number; def: number; games: { name: string; appid: string | null; hasCard: boolean; headerImage?: string | null }[]; about: string | null } | null;
 };
@@ -162,9 +162,11 @@ export function BatailleClient({ legacyOnly = false }: { legacyOnly?: boolean })
   }, [refresh]);
 
   async function act(id: string, action: string, extra: Record<string, unknown> = {}) {
+    const favoriteIds = action === "accept" && stakeCardId && cards.find((card) => card.id === stakeCardId)?.isPinned ? [stakeCardId] : [];
+    if (favoriteIds.length && !window.confirm("Cette carte est dans tes favoris. Confirmer sa mise ?")) return;
     setBusy(true); setError(""); setNotice("");
     try {
-      const data = await readJson(await fetch(`/api/bataille/${id}`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ action, ...extra }) }));
+      const data = await readJson(await fetch(`/api/bataille/${id}`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ action, ...extra, confirmedFavoriteCardIds: favoriteIds }) }));
       const r = data.result as { correct: boolean; correctAnswer: string | null; damage: number; knockout: boolean; finished: boolean; won: boolean | null } | null;
       setNotice(action === "answer" && r
         ? `${r.correct ? `✅ Bonne réponse ! ${r.damage} dégâts${r.knockout ? " · carte adverse éliminée" : ""}.` : `❌ Mauvaise réponse${r.correctAnswer ? ` : c’était « ${r.correctAnswer} »` : ""}.`}${r.finished ? (r.won ? " 🏆 Victoire !" : " Combat terminé : défaite.") : ""}`
@@ -180,9 +182,11 @@ export function BatailleClient({ legacyOnly = false }: { legacyOnly?: boolean })
   }
 
   async function challenge() {
+    const favoriteIds = stakeCardId && cards.find((card) => card.id === stakeCardId)?.isPinned ? [stakeCardId] : [];
+    if (favoriteIds.length && !window.confirm("Cette carte est dans tes favoris. Confirmer sa mise ?")) return;
     setBusy(true); setError(""); setNotice("");
     try {
-      await readJson(await fetch("/api/bataille", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ opponentId, cardIds: selected, stakeCoins, stakeCardId: stakeCardId || null }) }));
+      await readJson(await fetch("/api/bataille", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ opponentId, cardIds: selected, stakeCoins, stakeCardId: stakeCardId || null, confirmedFavoriteCardIds: favoriteIds }) }));
       setNotice("Défi envoyé."); setSelected([]); setStakeCardId(""); setStakeCoins(0); setShowNew(false); await refresh();
       setCards(await readJson(await fetch("/api/collection", { cache: "no-store" })));
     } catch (err) { setError(err instanceof Error ? err.message : "Défi impossible"); }

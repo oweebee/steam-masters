@@ -7,6 +7,7 @@ import { assertStakeCardAvailable, parseStakeCardId, parseStakeCoins } from "@/l
 import { draftHand, publicEscalade, type AbilityLayout, type EscaladeState } from "@/lib/escalade";
 import { currentDraftOffer, verifyDraftOffer } from "@/lib/escaladeDraft";
 import { publicDiceKiller, type DiceKillerState } from "@/lib/diceKiller";
+import { confirmedFavoriteCardIds } from "@/lib/cardFavorites";
 
 async function playerId() {
   const session = await auth();
@@ -52,7 +53,7 @@ export async function GET() {
 export async function POST(req: Request) {
   const userId = await playerId();
   if (!userId) return NextResponse.json({ error: "Non connecté" }, { status: 401 });
-  let body: { mode?: unknown; opponentId?: unknown; cardIds?: unknown; stakeCoins?: unknown; stakeCardId?: unknown; dealId?: unknown };
+  let body: { mode?: unknown; opponentId?: unknown; cardIds?: unknown; stakeCoins?: unknown; stakeCardId?: unknown; dealId?: unknown; confirmedFavoriteCardIds?: unknown };
   try { body = await req.json(); } catch { return NextResponse.json({ error: "Requête invalide" }, { status: 400 }); }
   if (!body || typeof body !== "object" || Array.isArray(body)) return NextResponse.json({ error: "Requête invalide" }, { status: 400 });
   if (typeof body.opponentId !== "string" || body.opponentId === userId) {
@@ -62,12 +63,13 @@ export async function POST(req: Request) {
     const battle = await prisma.$transaction(async (tx) => {
       const stakeCoins = parseStakeCoins(body.stakeCoins);
       const stakeCardId = parseStakeCardId(body.stakeCardId);
+      const confirmedFavorites = confirmedFavoriteCardIds(body.confirmedFavoriteCardIds);
       const opponent = await tx.user.findFirst({ where: { id: body.opponentId as string, status: "ACTIVE" }, select: { id: true } });
       const challenger = await tx.user.findUnique({ where: { id: userId }, select: { username: true } });
       if (!opponent) throw new Error("Joueur introuvable ou inactif");
       const pending = await tx.battle.count({ where: { challengerId: userId, status: "PENDING" } });
       if (pending >= 3) throw new Error("Tu as déjà 3 défis en attente");
-      await assertStakeCardAvailable(tx, userId, stakeCardId);
+      await assertStakeCardAvailable(tx, userId, stakeCardId, confirmedFavorites);
       if (stakeCoins > 0) {
         const debited = await tx.user.updateMany({ where: { id: userId, coins: { gte: stakeCoins } }, data: { coins: { decrement: stakeCoins } } });
         if (debited.count !== 1) throw new Error("Gigapuissances insuffisantes pour cette mise");

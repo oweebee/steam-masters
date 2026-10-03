@@ -4,6 +4,7 @@ import { z } from "zod";
 import { awardBattle } from "./battle";
 import { assertStakeCardAvailable, parseStakeCardId, parseStakeCoins, settleBattleStake } from "./battleStake";
 import { createDiceKiller, forfeitDiceKiller, keepBuildDice, rollAttack, rollBuild, type DiceKillerState, type DiceSide } from "./diceKiller";
+import { confirmedFavoriteCardIds } from "./cardFavorites";
 
 const actionSchema = z.discriminatedUnion("type", [
   z.object({ type: z.literal("roll") }),
@@ -23,7 +24,7 @@ export async function handleDiceKiller(tx: Prisma.TransactionClient, battle: Bat
     if (battle.status !== "PENDING" || side !== 1) throw new Error("Défi indisponible.");
     const coins = parseStakeCoins(body.stakeCoins);
     const cardId = parseStakeCardId(body.stakeCardId);
-    await assertStakeCardAvailable(tx, userId, cardId);
+    await assertStakeCardAvailable(tx, userId, cardId, confirmedFavoriteCardIds(body.confirmedFavoriteCardIds));
     if (battle.challengerStakeCardId && !await tx.card.findFirst({ where: { id: battle.challengerStakeCardId, userId: battle.challengerId } })) {
       throw new Error("La carte misée par l'adversaire n'est plus disponible.");
     }

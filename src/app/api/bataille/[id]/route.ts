@@ -8,6 +8,7 @@ import { assertStakeCardAvailable, parseStakeCardId, parseStakeCoins, settleBatt
 import { notifyBattle } from "@/lib/battleNotify";
 import { handleEscalade } from "@/lib/escaladeServer";
 import { handleDiceKiller } from "@/lib/diceKillerServer";
+import { confirmedFavoriteCardIds } from "@/lib/cardFavorites";
 
 type Outcome = {
   notify: { userId: string; title: string; body: string; turn?: boolean; href?: string }[];
@@ -19,7 +20,7 @@ export async function POST(req: Request, context: { params: Promise<{ id: string
   const userId = (session?.user as { id?: string } | undefined)?.id;
   if (!userId) return NextResponse.json({ error: "Non connecté" }, { status: 401 });
   const { id } = await context.params;
-  let body: { action?: unknown; cardIds?: unknown; answer?: unknown; stakeCoins?: unknown; stakeCardId?: unknown; revision?: unknown; move?: unknown };
+  let body: { action?: unknown; cardIds?: unknown; answer?: unknown; stakeCoins?: unknown; stakeCardId?: unknown; revision?: unknown; move?: unknown; confirmedFavoriteCardIds?: unknown };
   try { body = await req.json(); } catch { return NextResponse.json({ error: "Requête invalide" }, { status: 400 }); }
   if (!body || typeof body !== "object" || Array.isArray(body)) return NextResponse.json({ error: "Requête invalide" }, { status: 400 });
   try {
@@ -48,6 +49,7 @@ export async function POST(req: Request, context: { params: Promise<{ id: string
         if (battle.status !== "PENDING" || battle.opponentId !== userId) throw new Error("Défi indisponible");
         const stakeCoins = battle.rulesVersion >= 2 ? parseStakeCoins(body.stakeCoins) : 0;
         const stakeCardId = battle.rulesVersion >= 2 ? parseStakeCardId(body.stakeCardId) : null;
+        const confirmedFavorites = confirmedFavoriteCardIds(body.confirmedFavoriteCardIds);
         const opponentDeck = await loadBattleDeck(tx, userId, body.cardIds, battle.rulesVersion);
         const challengerDeck = deckFromJson(battle.challengerDeck);
         const challengerCardIds = challengerDeck.map((card) => card.id);
@@ -56,7 +58,7 @@ export async function POST(req: Request, context: { params: Promise<{ id: string
           throw new Error("Le deck du challenger a changé ; demande-lui de recréer le défi");
         }
         if (stakeCardId && opponentDeck.some((card) => card.id === stakeCardId)) throw new Error("La carte misée doit rester hors des 5 cartes jouables");
-        await assertStakeCardAvailable(tx, userId, stakeCardId);
+        await assertStakeCardAvailable(tx, userId, stakeCardId, confirmedFavorites);
         if (battle.challengerStakeCardId) {
           const stillOwned = await tx.card.count({ where: { id: battle.challengerStakeCardId, userId: battle.challengerId } });
           if (stillOwned !== 1) throw new Error("La carte mise par l'adversaire n'est plus disponible");

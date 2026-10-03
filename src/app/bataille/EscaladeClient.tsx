@@ -17,7 +17,7 @@ type Match = {
 };
 type DraftOffer = { dealId: number; seed: number; budget: number; layout: AbilityLayout };
 type SkinData = { image: string; rarity: string; name: string; atk: number; def: number };
-type Owned = { id: string; sellable?: boolean; staked?: boolean; game?: { name: string; headerImage: string; rarity: string; atk: number; def: number } | null; studio?: { name: string; avatarUrl?: string | null; rarity: string; atk: number; def: number } | null };
+type Owned = { id: string; sellable?: boolean; staked?: boolean; isPinned?: boolean; game?: { name: string; headerImage: string; rarity: string; atk: number; def: number } | null; studio?: { name: string; avatarUrl?: string | null; rarity: string; atk: number; def: number } | null };
 async function json(url: string, body?: unknown) {
   const response = await fetch(url, { cache: "no-store", signal: AbortSignal.timeout(20000), ...(body ? { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) } : {}) });
   const data = await response.json();
@@ -375,7 +375,9 @@ export function EscaladeClient() {
     requestLock.current = true; setBusy(true); setError(""); setNotice(""); ++refreshCounter.current;
     try {
       if (id && action === "play") setPresentedFinishedId(id);
-      await json(id ? `/api/bataille/${id}` : "/api/bataille", id ? { action, ...extra } : { opponentId: opponent, cardIds: draft, stakeCoins: coins, stakeCardId: stake || null, dealId: draftOffer?.dealId });
+      const favoriteIds = stake && owned.find((card) => card.id === stake)?.isPinned ? [stake] : [];
+      if ((action === "create" || action === "accept") && favoriteIds.length && !window.confirm("Cette carte est dans tes favoris. Confirmer sa mise ?")) return;
+      await json(id ? `/api/bataille/${id}` : "/api/bataille", id ? { action, ...extra, confirmedFavoriteCardIds: favoriteIds } : { opponentId: opponent, cardIds: draft, stakeCoins: coins, stakeCardId: stake || null, dealId: draftOffer?.dealId, confirmedFavoriteCardIds: favoriteIds });
       if (action !== "play") { setForm(null); setDraft([]); setStake(""); setCoins(0); }
       await refresh();
       setNotice(action === "create" ? "Défi envoyé, main gardée secrète." : "Action enregistrée.");

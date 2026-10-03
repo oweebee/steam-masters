@@ -4,6 +4,7 @@ import { z } from "zod";
 import { createEscalade, draftHand, playEscalade, type AbilityLayout, type EscaladeState, type Side, type Tactic } from "./escalade";
 import { assertStakeCardAvailable, parseStakeCoins, parseStakeCardId, settleBattleStake } from "./battleStake";
 import { awardBattle } from "./battle";
+import { confirmedFavoriteCardIds } from "./cardFavorites";
 
 const actionSchema = z.discriminatedUnion("type", [
   z.object({ type: z.literal("draft"), cardIds: z.array(z.string()).length(5) }),
@@ -20,7 +21,7 @@ export async function handleEscalade(tx: Prisma.TransactionClient, battle: Battl
     const hand = draftHand(body.cardIds, pending?.abilityLayout, pending?.draftBudget);
     const coins = parseStakeCoins(body.stakeCoins);
     const cardId = parseStakeCardId(body.stakeCardId);
-    await assertStakeCardAvailable(tx, userId, cardId);
+    await assertStakeCardAvailable(tx, userId, cardId, confirmedFavoriteCardIds(body.confirmedFavoriteCardIds));
     if (battle.challengerStakeCardId && !await tx.card.findFirst({ where: { id: battle.challengerStakeCardId, userId: battle.challengerId } })) throw new Error("La carte misée par l'adversaire n'est plus disponible.");
     if (coins && (await tx.user.updateMany({ where: { id: userId, coins: { gte: coins } }, data: { coins: { decrement: coins } } })).count !== 1) throw new Error("Gigapuissances insuffisantes.");
     const state = createEscalade((battle.challengerDeck as unknown as Tactic[]).map(c => c.id), hand.map(c => c.id), randomInt(2) as Side, pending?.abilitySeed ?? 0, pending?.draftBudget ?? 23);

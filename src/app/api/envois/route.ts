@@ -4,6 +4,7 @@ import { createNotification } from "@/lib/notifications";
 import { prisma } from "@/lib/prisma";
 import { activeTradeWhere, expireCardDeliveries } from "@/lib/tradeExpiry";
 import { assertStakeCardAvailable, stakedCardCount } from "@/lib/battleStake";
+import { assertFavoriteCardsConfirmed, confirmedFavoriteCardIds } from "@/lib/cardFavorites";
 
 async function currentUserId() {
   const session = await auth();
@@ -37,19 +38,21 @@ export async function POST(request: Request) {
   const cardId = typeof body?.cardId === "string" ? body.cardId : "";
   const toUserId = typeof body?.toUserId === "string" ? body.toUserId : "";
   const priceCoins = body?.priceCoins;
+  const confirmedFavorites = confirmedFavoriteCardIds(body?.confirmedFavoriteCardIds);
   if (!cardId || !toUserId || toUserId === fromUserId || !Number.isInteger(priceCoins) || priceCoins < 0 || priceCoins > 1_000_000) {
     return NextResponse.json({ error: "Carte, destinataire ou prix invalide" }, { status: 400 });
   }
   try {
     const offer = await prisma.$transaction(async (tx) => {
       const [card, recipient, pendingTrades, auctions, staked] = await Promise.all([
-        tx.card.findFirst({ where: { id: cardId, userId: fromUserId }, select: { id: true } }),
+        tx.card.findFirst({ where: { id: cardId, userId: fromUserId }, select: { id: true, isPinned: true } }),
         tx.user.findFirst({ where: { id: toUserId, status: "ACTIVE" }, select: { id: true } }),
         tx.tradeCard.count({ where: { cardId, trade: activeTradeWhere() } }),
         tx.auction.count({ where: { cardId, status: "ACTIVE" } }),
         stakedCardCount(tx, [cardId]),
       ]);
       if (!card) throw new Error("Cette carte ne t’appartient plus");
+      assertFavoriteCardsConfirmed([card], confirmedFavorites);
       if (!recipient) throw new Error("Joueur destinataire introuvable");
       if (pendingTrades || auctions || staked) throw new Error("Cette carte est déjà engagée ailleurs");
       await assertStakeCardAvailable(tx, fromUserId, cardId);

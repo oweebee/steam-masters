@@ -6,13 +6,15 @@ import { matchesPlatform, platformOptions } from "@/lib/platforms";
 type Rarity = "COMMON" | "UNCOMMON" | "RARE" | "EPIC" | "LEGENDARY";
 
 type Joueur = { id: string; username: string };
-type CardOption = { id: string; label: string; headerImage: string | null; rarity: Rarity; type: "GAME" | "DLC" | "STUDIO"; source?: "STEAM" | "IGDB"; platforms?: string[] };
-type OwnedCollectionRecord = { id: string; sellable: boolean; rarity: Rarity; game: { name: string; headerImage: string; contentType: "GAME" | "DLC"; source: "STEAM" | "IGDB"; platforms: string[] } | null; studio: { name: string } | null };
+type CardOption = { id: string; label: string; headerImage: string | null; rarity: Rarity; type: "GAME" | "DLC" | "STUDIO"; source?: "STEAM" | "IGDB"; platforms?: string[]; isPinned?: boolean };
+type OwnedCollectionRecord = { id: string; sellable: boolean; isPinned: boolean; rarity: Rarity; game: { name: string; headerImage: string; contentType: "GAME" | "DLC"; source: "STEAM" | "IGDB"; platforms: string[] } | null; studio: { name: string } | null };
 type CardSort = "name" | "rarity" | "type";
 
 type TradeCard = {
   side: "OFFER" | "WANT";
   card: {
+    id: string;
+    isPinned: boolean;
     game: { name: string; rarity: Rarity; contentType: "GAME" | "DLC" } | null;
     studio: { name: string; rarity: Rarity } | null;
   };
@@ -197,7 +199,7 @@ export function EchangesClient({ myUserId }: { myUserId: string }) {
       .then((r) => (r.ok ? r.json() : []))
       .then((cards: OwnedCollectionRecord[]) => {
         const available = cards.filter((c) => c.sellable);
-        setMyCollection(available.map((c) => ({ id: c.id, label: c.game?.name ?? c.studio?.name ?? "?", headerImage: c.game?.headerImage ?? null, rarity: c.rarity, type: c.game?.contentType ?? "STUDIO", source: c.game?.source, platforms: c.game?.platforms })));
+        setMyCollection(available.map((c) => ({ id: c.id, label: c.game?.name ?? c.studio?.name ?? "?", headerImage: c.game?.headerImage ?? null, rarity: c.rarity, type: c.game?.contentType ?? "STUDIO", source: c.game?.source, platforms: c.game?.platforms, isPinned: c.isPinned })));
       }).catch(() => {});
   }
 
@@ -216,6 +218,7 @@ export function EchangesClient({ myUserId }: { myUserId: string }) {
             type: c.game?.contentType ?? "STUDIO",
             source: c.game?.source,
             platforms: c.game?.platforms,
+            isPinned: c.isPinned,
           }))
         );
         const params = new URLSearchParams(window.location.search);
@@ -259,9 +262,11 @@ export function EchangesClient({ myUserId }: { myUserId: string }) {
     setError("");
     setConfirmation("");
     if (!targetId) { setError("Choisis un joueur"); return; }
+    const favoriteIds = myCollection.filter((card) => offerCardIds.includes(card.id) && card.isPinned).map((card) => card.id);
+    if (favoriteIds.length && !window.confirm(`${favoriteIds.length} carte${favoriteIds.length > 1 ? "s" : ""} favorite${favoriteIds.length > 1 ? "s" : ""} est offerte. Confirmer l’échange ?`)) return;
     sendLock.current = true;
     setSending(true);
-    const payload = { toUserId: targetId, offerCardIds, wantCardIds, offerCoins, wantCoins };
+    const payload = { toUserId: targetId, offerCardIds, wantCardIds, offerCoins, wantCoins, confirmedFavoriteCardIds: favoriteIds };
     const fingerprint = JSON.stringify(payload);
     if (pendingRequest.current.payload !== fingerprint) pendingRequest.current = { payload: fingerprint, id: crypto.randomUUID() };
     try {
@@ -286,7 +291,10 @@ export function EchangesClient({ myUserId }: { myUserId: string }) {
     setActingId(id);
     setError("");
     try {
-      const res = await fetch(`/api/echanges/${id}/${action}`, { method: "POST", signal: AbortSignal.timeout(30_000) });
+      const trade = trades.find((item) => item.id === id);
+      const favoriteIds = action === "accept" ? trade?.cards.filter((item) => item.side === "WANT" && item.card.isPinned).map((item) => item.card.id) ?? [] : [];
+      if (favoriteIds.length && !window.confirm(`${favoriteIds.length} carte${favoriteIds.length > 1 ? "s" : ""} favorite${favoriteIds.length > 1 ? "s" : ""} sera échangée. Confirmer ?`)) return;
+      const res = await fetch(`/api/echanges/${id}/${action}`, { method: "POST", headers: action === "accept" ? { "Content-Type": "application/json" } : undefined, body: action === "accept" ? JSON.stringify({ confirmedFavoriteCardIds: favoriteIds }) : undefined, signal: AbortSignal.timeout(30_000) });
       const data = await res.json().catch(() => null);
       if (!res.ok || !data) throw new Error(data?.error ?? "Réponse serveur interrompue. Actualise les échanges.");
       await Promise.all([loadTrades(), loadMyCollection()]);

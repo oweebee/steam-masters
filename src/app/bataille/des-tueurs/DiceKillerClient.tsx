@@ -5,7 +5,7 @@ import Image from "next/image";
 import type { DiceKillerEvent, DiceKillerView } from "@/lib/diceKiller";
 
 type Player = { id: string; username: string; isSelf?: boolean };
-type Owned = { id: string; sellable?: boolean; staked?: boolean; game?: { name: string } | null; studio?: { name: string } | null };
+type Owned = { id: string; sellable?: boolean; staked?: boolean; isPinned?: boolean; game?: { name: string } | null; studio?: { name: string } | null };
 export type DiceKillerMatch = {
   id: string; rulesVersion: number; status: "PENDING" | "ACTIVE" | "DECLINED" | "FINISHED";
   challengerId: string; opponentId: string; challenger: { username: string }; opponent: { username: string };
@@ -209,7 +209,9 @@ export function DiceKillerClient() {
   async function submit(id: string | null, action: string, extra: Record<string, unknown> = {}) {
     if (lock.current) return; lock.current = true; setBusy(true); setError(""); setNotice("");
     try {
-      await json(id ? `/api/bataille/${id}` : "/api/bataille", id ? { action, ...extra } : { mode: "DICE_KILLER", opponentId: opponent, stakeCoins: coins, stakeCardId: stake || null });
+      const favoriteIds = stake && owned.find((card) => card.id === stake)?.isPinned ? [stake] : [];
+      if ((action === "create" || action === "accept") && favoriteIds.length && !window.confirm("Cette carte est dans tes favoris. Confirmer sa mise ?")) return;
+      await json(id ? `/api/bataille/${id}` : "/api/bataille", id ? { action, ...extra, confirmedFavoriteCardIds: favoriteIds } : { mode: "DICE_KILLER", opponentId: opponent, stakeCoins: coins, stakeCardId: stake || null, confirmedFavoriteCardIds: favoriteIds });
       setForm(null); setStake(""); setCoins(0); await refresh(); setNotice(id ? "Action enregistrée." : "Défi de dés envoyé.");
       void json("/api/collection").then(setOwned).catch(() => {});
     } catch (reason) { setError(reason instanceof Error ? reason.message : "Action impossible."); await refresh().catch(() => {}); }

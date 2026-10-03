@@ -5,6 +5,7 @@ import { auth } from "@/auth";
 import { createNotification } from "@/lib/notifications";
 import { prisma } from "@/lib/prisma";
 import { activeTradeWhere, expireCardDeliveries } from "@/lib/tradeExpiry";
+import { assertFavoriteCardsConfirmed, confirmedFavoriteCardIds } from "@/lib/cardFavorites";
 
 // Système d'échange : N cartes contre M cartes (N ou M peuvent être 0), plus
 // optionnellement des gigapuissances de chaque côté. L'initiateur (fromUser) propose,
@@ -14,7 +15,7 @@ import { activeTradeWhere, expireCardDeliveries } from "@/lib/tradeExpiry";
 export async function GET() {
   const session = await auth();
   if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-  const userId = (session.user as any).id as string;
+  const userId = (session.user as { id?: string }).id as string;
   await expireCardDeliveries();
 
   const trades = await prisma.trade.findMany({
@@ -47,6 +48,7 @@ const tradeInput = z.object({
   offerCoins: z.number().int().min(0).max(2147483647).default(0),
   wantCoins: z.number().int().min(0).max(2147483647).default(0),
   requestId: z.string().uuid().optional(),
+  confirmedFavoriteCardIds: z.array(z.string().min(1).max(100)).max(200).default([]),
 });
 export async function POST(req: Request) {
   const session = await auth();
@@ -55,6 +57,7 @@ export async function POST(req: Request) {
   const parsed = tradeInput.safeParse(await req.json().catch(() => null));
   if (!parsed.success) return NextResponse.json({ error: "Proposition invalide : cartes et montants entiers positifs requis." }, { status: 400 });
   const { toUserId, offerCardIds, wantCardIds, offerCoins, wantCoins } = parsed.data;
+  const confirmedFavorites = confirmedFavoriteCardIds(parsed.data.confirmedFavoriteCardIds);
   const requestId = parsed.data.requestId ?? crypto.randomUUID();
   if (toUserId === fromUserId) return NextResponse.json({ error: "Choisis un autre joueur." }, { status: 400 });
   if (!offerCardIds.length && !wantCardIds.length && !offerCoins && !wantCoins) return NextResponse.json({ error: "Échange vide." }, { status: 400 });
@@ -81,6 +84,8 @@ export async function POST(req: Request) {
   if (offerOwned !== offerCardIds.length) {
     return NextResponse.json({ error: "Une des cartes offertes ne t'appartient pas (plus)" }, { status: 400 });
   }
+  const offeredCards = await tx.card.findMany({ where: { id: { in: offerCardIds }, userId: fromUserId }, select: { id: true, isPinned: true } });
+  assertFavoriteCardsConfirmed(offeredCards, confirmedFavorites);
   if (wantOwned !== wantCardIds.length) {
     return NextResponse.json({ error: "Une des cartes demandées n'appartient pas (plus) au destinataire" }, { status: 400 });
   }

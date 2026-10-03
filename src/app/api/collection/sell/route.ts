@@ -4,8 +4,9 @@ import { prisma } from "@/lib/prisma";
 import { activeDeckCardCount, stakedCardCount } from "@/lib/battleStake";
 import { activeTradeWhere } from "@/lib/tradeExpiry";
 import { CARD_DISCARD_VALUE } from "@/lib/economy";
+import { assertFavoriteCardsConfirmed, confirmedFavoriteCardIds } from "@/lib/cardFavorites";
 
-const MAX_CARDS_PER_SALE = 100;
+const MAX_CARDS_PER_SALE = 1000;
 
 export async function POST(req: Request) {
   const session = await auth();
@@ -18,6 +19,7 @@ export async function POST(req: Request) {
   const cardIds: string[] = Array.from(
     new Set(rawIds.filter((id): id is string => typeof id === "string" && id.length > 0))
   );
+  const confirmedFavorites = confirmedFavoriteCardIds(body?.confirmedFavoriteCardIds);
 
   if (cardIds.length === 0 || cardIds.length > MAX_CARDS_PER_SALE) {
     return NextResponse.json({ error: "Sélection invalide" }, { status: 400 });
@@ -27,12 +29,13 @@ export async function POST(req: Request) {
     const result = await prisma.$transaction(async (tx) => {
       const cards = await tx.card.findMany({
         where: { id: { in: cardIds }, userId },
-        select: { id: true },
+        select: { id: true, isPinned: true },
       });
 
       if (cards.length !== cardIds.length) {
         throw new Error("Une carte sélectionnée ne t’appartient plus");
       }
+      assertFavoriteCardsConfirmed(cards, confirmedFavorites);
       const [pendingTrades, linkedAuctions, staked, activeDeck] = await Promise.all([
         tx.tradeCard.count({
           where: { cardId: { in: cardIds }, trade: activeTradeWhere() },

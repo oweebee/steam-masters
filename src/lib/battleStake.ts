@@ -1,5 +1,6 @@
 import type { Prisma } from "@prisma/client";
 import { activeTradeWhere } from "@/lib/tradeExpiry";
+import { assertFavoriteCardsConfirmed } from "@/lib/cardFavorites";
 
 export function parseStakeCoins(value: unknown): number {
   if (value === undefined || value === null || value === "") return 0;
@@ -36,10 +37,11 @@ export async function activeDeckCardCount(tx: Prisma.TransactionClient, userId: 
   }, 0);
 }
 
-export async function assertStakeCardAvailable(tx: Prisma.TransactionClient, userId: string, cardId: string | null): Promise<void> {
+export async function assertStakeCardAvailable(tx: Prisma.TransactionClient, userId: string, cardId: string | null, confirmedFavorites = new Set<string>()): Promise<void> {
   if (!cardId) return;
-  const card = await tx.card.findFirst({ where: { id: cardId, userId }, select: { id: true } });
+  const card = await tx.card.findFirst({ where: { id: cardId, userId }, select: { id: true, isPinned: true } });
   if (!card) throw new Error("La carte misée ne t'appartient plus");
+  assertFavoriteCardsConfirmed([card], confirmedFavorites);
   const [trades, auctions, battles] = await Promise.all([
     tx.tradeCard.count({ where: { cardId, trade: activeTradeWhere() } }),
     tx.auction.count({ where: { cardId, status: "ACTIVE" } }),

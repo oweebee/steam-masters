@@ -6,7 +6,7 @@ import { matchesPlatform, platformOptions } from "@/lib/platforms";
 
 type Rarity = "COMMON" | "UNCOMMON" | "RARE" | "EPIC" | "LEGENDARY";
 type CollectionCard = {
-  id: string; rarity: Rarity; atk: number; sellable: boolean;
+  id: string; rarity: Rarity; atk: number; sellable: boolean; isPinned: boolean;
   game: { id: string; name: string; headerImage: string; def: number; contentType: "GAME" | "DLC"; source: "STEAM" | "IGDB"; platforms: string[] } | null;
   studio: { id: string; name: string; avatarUrl: string | null; def: number } | null;
 };
@@ -188,7 +188,8 @@ export function MarcheClient({ userId }: { userId: string }) {
 
   async function createAuction(event: React.FormEvent) {
     event.preventDefault();
-    const result = await action("/api/marche", { cardId: selectedCardId, startPrice: Number(startPrice), durationMinutes: Number(durationMinutes) });
+    if (selectedCard?.isPinned && !window.confirm("Cette carte est dans tes favoris. Confirmer sa mise aux enchères ?")) return;
+    const result = await action("/api/marche", { cardId: selectedCardId, startPrice: Number(startPrice), durationMinutes: Number(durationMinutes), confirmedFavoriteCardIds: selectedCard?.isPinned ? [selectedCard.id] : [] });
     if (result) { setMessage("Carte mise aux enchères."); setCreateModalOpen(false); }
   }
 

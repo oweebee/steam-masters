@@ -5,6 +5,7 @@ import { settleExpiredAuctions } from "@/lib/market";
 import { activeDeckCardCount, stakedCardCount } from "@/lib/battleStake";
 import { activeTradeWhere } from "@/lib/tradeExpiry";
 import { createNotifications } from "@/lib/notifications";
+import { assertFavoriteCardsConfirmed, confirmedFavoriteCardIds } from "@/lib/cardFavorites";
 
 const DURATIONS = new Set([10, 30, 60, 360, 1440]);
 
@@ -70,6 +71,7 @@ export async function POST(request: Request) {
   const cardId = typeof body?.cardId === "string" ? body.cardId : "";
   const startPrice = Number(body?.startPrice);
   const durationMinutes = Number(body?.durationMinutes);
+  const confirmedFavorites = confirmedFavoriteCardIds(body?.confirmedFavoriteCardIds);
 
   if (!cardId || !Number.isInteger(startPrice) || startPrice < 1 || startPrice > 1_000_000) {
     return NextResponse.json({ error: "Prix de départ invalide (1 à 1 000 000 gigapuissances)" }, { status: 400 });
@@ -82,10 +84,11 @@ export async function POST(request: Request) {
     const auction = await prisma.$transaction(async (tx) => {
       const card = await tx.card.findUnique({
         where: { id: cardId },
-        select: { id: true, userId: true, gameId: true, studioId: true },
+        select: { id: true, userId: true, gameId: true, studioId: true, isPinned: true },
       });
       if (!card || card.userId !== userId) throw new Error("Cette carte ne t’appartient plus");
       if (!card.gameId && !card.studioId) throw new Error("Carte incomplète, mise en vente impossible");
+      assertFavoriteCardsConfirmed([card], confirmedFavorites);
 
       const [pendingTrade, activeAuction, staked, activeDeck] = await Promise.all([
         tx.tradeCard.count({ where: { cardId, trade: activeTradeWhere() } }),

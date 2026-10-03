@@ -10,6 +10,14 @@ export type ChangelogPost = {
 // Un changement majeur = un objet/post autonome. Toujours ajouter le nouveau post en tête.
 export const CHANGELOG_POSTS: ChangelogPost[] = [
   {
+    slug: "favoris-cartes-collection",
+    date: "2026-10-03",
+    category: "Collection",
+    title: "Les cartes favorites sont protégées",
+    summary: "Chaque exemplaire de la collection peut être ajouté aux favoris depuis son coin inférieur droit.",
+    details: ["Le filtre Type > Favoris isole rapidement les cartes marquées.", "Une confirmation est demandée avant de défausser, envoyer, échanger, mettre aux enchères ou miser une carte favorite.", "La défausse en sélection accepte désormais jusqu’à 1 000 cartes en une fois."],
+  },
+  {
     slug: "combat-des-tueurs",
     date: "2026-10-03",
     category: "Bataille",

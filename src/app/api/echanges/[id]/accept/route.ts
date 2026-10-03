@@ -3,17 +3,20 @@ import { auth } from "@/auth";
 import { createNotification } from "@/lib/notifications";
 import { prisma } from "@/lib/prisma";
 import { stakedCardCount } from "@/lib/battleStake";
+import { assertFavoriteCardsConfirmed, confirmedFavoriteCardIds } from "@/lib/cardFavorites";
 
 // Acceptation par le destinataire : ré-vérifie tout (propriété des cartes,
 // soldes de gigapuissances) au moment T, puis exécute le transfert de façon atomique.
 // Rien n'est jamais transféré à moitié : soit tout passe, soit l'échange
 // échoue et repasse en erreur explicite (carte déjà revendue/échangée entre-
 // temps, gigapuissances dépensées ailleurs, etc.) sans toucher à rien.
-export async function POST(_req: Request, { params }: { params: Promise<{ id: string }> }) {
+export async function POST(req: Request, { params }: { params: Promise<{ id: string }> }) {
   const session = await auth();
   if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-  const userId = (session.user as any).id as string;
+  const userId = (session.user as { id?: string }).id as string;
   const { id } = await params;
+  const body = await req.json().catch(() => null);
+  const confirmedFavorites = confirmedFavoriteCardIds(body?.confirmedFavoriteCardIds);
 
   try {
     const result = await prisma.$transaction(async (tx) => {
@@ -37,6 +40,8 @@ export async function POST(_req: Request, { params }: { params: Promise<{ id: st
       ]);
       if (offerOwned !== offerCardIds.length) throw new Error("L'initiateur ne possède plus toutes les cartes offertes");
       if (wantOwned !== wantCardIds.length) throw new Error("Tu ne possèdes plus toutes les cartes demandées");
+      const requestedCards = await tx.card.findMany({ where: { id: { in: wantCardIds }, userId }, select: { id: true, isPinned: true } });
+      assertFavoriteCardsConfirmed(requestedCards, confirmedFavorites);
       if (!fromUser || fromUser.coins < trade.offerCoins) throw new Error("L'initiateur n'a plus assez de gigapuissances");
       if (!toUser || toUser.coins < trade.wantCoins) throw new Error("Tu n'as plus assez de gigapuissances");
       if (await stakedCardCount(tx, [...offerCardIds, ...wantCardIds])) throw new Error("Une carte de cet échange est misée dans un combat");
@@ -48,11 +53,11 @@ export async function POST(_req: Request, { params }: { params: Promise<{ id: st
       if (activeAuctions) throw new Error("Une carte est déjà en vente");
 
       if (offerCardIds.length > 0) {
-        const moved = await tx.card.updateMany({ where: { id: { in: offerCardIds }, userId: trade.fromUserId }, data: { userId: trade.toUserId } });
+        const moved = await tx.card.updateMany({ where: { id: { in: offerCardIds }, userId: trade.fromUserId }, data: { userId: trade.toUserId, isPinned: false } });
         if (moved.count !== offerCardIds.length) throw new Error("La carte offerte a changé de propriétaire");
       }
       if (wantCardIds.length > 0) {
-        const moved = await tx.card.updateMany({ where: { id: { in: wantCardIds }, userId: trade.toUserId }, data: { userId: trade.fromUserId } });
+        const moved = await tx.card.updateMany({ where: { id: { in: wantCardIds }, userId: trade.toUserId }, data: { userId: trade.fromUserId, isPinned: false } });
         if (moved.count !== wantCardIds.length) throw new Error("La carte demandée a changé de propriétaire");
       }
       if (trade.offerCoins > 0) {
@@ -75,7 +80,8 @@ export async function POST(_req: Request, { params }: { params: Promise<{ id: st
     const accepter = await prisma.user.findUnique({ where: { id: result.toUserId }, select: { username: true } }).catch(() => null);
     await createNotification(result.fromUserId, "TRADE", result.isDelivery ? "Envoi accepté" : "Échange accepté", `${accepter?.username ?? "Un joueur"} a accepté ta proposition.`, "/echanges");
     return NextResponse.json(result);
-  } catch (e: any) {
-    return NextResponse.json({ error: e.message ?? "Échec de l'échange" }, { status: 400 });
+  } catch (error: unknown) {
+    const message = error instanceof Error ? error.message : "Échec de l'échange";
+    return NextResponse.json({ error: message }, { status: 400 });
   }
 }

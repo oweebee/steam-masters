@@ -67,3 +67,20 @@ export async function GET() {
 
   return NextResponse.json(out);
 }
+
+export async function PATCH(request: Request) {
+  const session = await auth();
+  if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  const userId = (session.user as { id?: string }).id;
+  if (!userId) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  const body = await request.json().catch(() => null);
+  if (typeof body?.cardId !== "string" || typeof body?.isPinned !== "boolean") {
+    return NextResponse.json({ error: "Carte ou état favori invalide" }, { status: 400 });
+  }
+  const updated = await prisma.card.updateMany({
+    where: { id: body.cardId, userId },
+    data: { isPinned: body.isPinned },
+  });
+  if (updated.count !== 1) return NextResponse.json({ error: "Carte introuvable" }, { status: 404 });
+  return NextResponse.json({ id: body.cardId, isPinned: body.isPinned });
+}
