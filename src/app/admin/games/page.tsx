@@ -860,7 +860,7 @@ export default function AdminGamesPage({ distributionOnly = false }: { distribut
 
         <div className="rounded-xl border border-red-900/60 bg-red-950/20 p-5">
           <h2 className="text-base font-semibold text-red-300 mb-1">⚠️ Zone dangereuse</h2>
-          <p className="text-gray-500 text-xs mb-3">Remet toutes les cartes de tous les joueurs dans la pioche (suppression irréversible). Les raretsé catalogue et les jeux ne sont pas touchés.</p>
+          <p className="text-gray-500 text-xs mb-3">Remet toutes les cartes de tous les joueurs dans la pioche (suppression irréversible). Les raretés catalogue et les jeux ne sont pas touchés.</p>
           <div className="flex items-center gap-3">
             <button type="button" onClick={() => void resetAllCards()} disabled={resetCardsWorking}
               className="rounded-lg bg-red-800 hover:bg-red-700 disabled:opacity-50 text-white font-semibold px-4 py-2 text-sm transition">

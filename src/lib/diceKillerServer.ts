@@ -3,7 +3,7 @@ import { randomInt } from "node:crypto";
 import { z } from "zod";
 import { awardBattle } from "./battle";
 import { assertStakeCardAvailable, parseStakeCardId, parseStakeCoins, settleBattleStake } from "./battleStake";
-import { createDiceKiller, keepBuildDice, rollAttack, rollBuild, type DiceKillerState, type DiceSide } from "./diceKiller";
+import { createDiceKiller, forfeitDiceKiller, keepBuildDice, rollAttack, rollBuild, type DiceKillerState, type DiceSide } from "./diceKiller";
 
 const actionSchema = z.discriminatedUnion("type", [
   z.object({ type: z.literal("roll") }),
@@ -42,20 +42,23 @@ export async function handleDiceKiller(tx: Prisma.TransactionClient, battle: Bat
     ] };
   }
 
-  if (body.action !== "play" || battle.status !== "ACTIVE" || !battle.escalationState) throw new Error("Action indisponible.");
+  if ((body.action !== "play" && body.action !== "forfeit") || battle.status !== "ACTIVE" || !battle.escalationState) throw new Error("Action indisponible.");
   const current = battle.escalationState as unknown as DiceKillerState;
   if (body.revision !== current.revision) throw new Error("Le duel a évolué. Actualise avant de jouer.");
-  if (current.turn !== side) throw new Error("Ce n'est pas ton tour.");
-  const parsed = actionSchema.safeParse(body.move);
-  if (!parsed.success) throw new Error("Action de dés invalide.");
 
   let state: DiceKillerState;
-  if (parsed.data.type === "roll") state = rollBuild(current, side, dice(5 - current.held.length));
-  else if (parsed.data.type === "keep") {
-    const uniqueCount = new Set(parsed.data.indices).size;
-    const remaining = 5 - current.held.length - uniqueCount;
-    state = keepBuildDice(current, side, parsed.data.indices, dice(remaining), randomInt(1, 7));
-  } else state = rollAttack(current, side, dice(current.attackDice));
+  if (body.action === "forfeit") state = forfeitDiceKiller(current, side);
+  else {
+    if (current.turn !== side) throw new Error("Ce n'est pas ton tour.");
+    const parsed = actionSchema.safeParse(body.move);
+    if (!parsed.success) throw new Error("Action de dés invalide.");
+    if (parsed.data.type === "roll") state = rollBuild(current, side, dice(5 - current.held.length));
+    else if (parsed.data.type === "keep") {
+      const uniqueCount = new Set(parsed.data.indices).size;
+      const remaining = 5 - current.held.length - uniqueCount;
+      state = keepBuildDice(current, side, parsed.data.indices, dice(remaining), randomInt(1, 7));
+    } else state = rollAttack(current, side, dice(current.attackDice));
+  }
 
   const finished = state.phase === "FINISHED";
   const winnerId = finished && state.winner !== null ? ids[state.winner] : null;
@@ -74,7 +77,7 @@ export async function handleDiceKiller(tx: Prisma.TransactionClient, battle: Bat
   const otherId = ids[1 - side];
   const turnChanged = !finished && state.turn !== side;
   return { notify: finished
-    ? [{ userId: otherId, title: winnerId === otherId ? "Victoire aux dés !" : "Défaite aux dés", body: winnerId === otherId && battle.challengerStakeCoins === 0 && battle.opponentStakeCoins === 0 && !battle.challengerStakeCardId && !battle.opponentStakeCardId ? "Victoire : la banque t’offre 50 gigapuissances." : "Le duel de Dés tueurs est terminé.", href: "/bataille/des-tueurs" }]
+    ? [{ userId: otherId, title: winnerId === otherId ? "Victoire aux dés !" : "Défaite aux dés", body: body.action === "forfeit" ? (winnerId === otherId && battle.challengerStakeCoins === 0 && battle.opponentStakeCoins === 0 && !battle.challengerStakeCardId && !battle.opponentStakeCardId ? "Ton adversaire abandonne : la banque t’offre 50 gigapuissances." : "Ton adversaire abandonne le duel de Dés tueurs.") : winnerId === otherId && battle.challengerStakeCoins === 0 && battle.opponentStakeCoins === 0 && !battle.challengerStakeCardId && !battle.opponentStakeCardId ? "Victoire : la banque t’offre 50 gigapuissances." : "Le duel de Dés tueurs est terminé.", href: "/bataille/des-tueurs" }]
     : turnChanged
       ? [{ userId: otherId, title: "À toi de lancer", body: "Ton adversaire a terminé son tour de Dés tueurs.", turn: true, href: "/bataille/des-tueurs" }]
       : [] };

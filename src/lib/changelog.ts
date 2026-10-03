@@ -14,8 +14,8 @@ export const CHANGELOG_POSTS: ChangelogPost[] = [
     date: "2026-10-03",
     category: "Bataille",
     title: "Les Dés tueurs entrent dans l’arène",
-    summary: "Le Combat de dés devient le mode Bataille par défaut avec un plateau à deux camps et des règles enrichies.",
-    details: ["Chaque joueur se voit en bas dans sa couleur; les deux derniers jeux de dés restent visibles et le premier joueur est annoncé par un sélecteur animé.", "Le total 18–23 charge un bouclier de 1 à 6 dégâts, tandis que 30 déclenche une attaque ultime aux dégâts doublés.", "Le bouton d’action rouge reste sur le plateau, les phases et dés sont animés en pixel art cel-shading, et un écran final annonce le vainqueur.", "Un vrai duel sans aucune mise rapporte 50 gigapuissances au vainqueur; l’entraînement reste sans mise ni récompense."],
+    summary: "Le Combat de dés devient le mode Bataille par défaut avec un plateau à deux camps, 20 PV de départ et des règles enrichies.",
+    details: ["Chaque joueur se voit en bas dans sa couleur; les deux derniers jeux de dés restent visibles et le premier joueur est annoncé par un sélecteur animé.", "Les attaques gagnent 20 % de dégâts; le total 18–23 charge un bouclier de 2 à 7 dégâts, tandis que 30 déclenche une attaque ultime aux dégâts doublés.", "Le bouton d’action rouge reste sur le plateau, les phases et dés sont animés en pixel art cel-shading, et un écran final annonce le vainqueur.", "Un vrai duel sans aucune mise rapporte 50 gigapuissances au vainqueur; l’entraînement reste sans mise ni récompense."],
   },
   {
     slug: "magasin-cadence-configurable",

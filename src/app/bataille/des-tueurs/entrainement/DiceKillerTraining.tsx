@@ -44,7 +44,7 @@ export function DiceKillerTraining() {
   const [victoryDismissed, setVictoryDismissed] = useState(false);
   const match = useMemo<DiceKillerMatch>(() => ({
     id: "training-dice", rulesVersion: 4, status: state.phase === "FINISHED" ? "FINISHED" : "ACTIVE",
-    challengerId: "player", opponentId: "bot", challenger: { username: "Toi" }, opponent: { username: "Automate" },
+    challengerId: "player", opponentId: "bot", challenger: { username: "Toi" }, opponent: { username: "Michel" },
     challengerStakeCoins: 0, opponentStakeCoins: 0, winnerId: state.winner === null ? null : state.winner === 0 ? "player" : "bot",
     diceKiller: { ...state, side: 0 },
   }), [state]);
@@ -59,7 +59,7 @@ export function DiceKillerTraining() {
           if (!current.roll.length) return applyMove(current, 1, { type: "roll" });
           return applyMove(current, 1, { type: "keep", indices: botChoice(current) });
         });
-      } catch (reason) { setError(reason instanceof Error ? reason.message : "L'automate s'est bloqué."); }
+      } catch (reason) { setError(reason instanceof Error ? reason.message : "Michel s’est bloqué."); }
     }, BOT_STEP_DELAY_MS);
     return () => clearTimeout(timer);
   }, [state]);
@@ -70,5 +70,5 @@ export function DiceKillerTraining() {
     catch (reason) { setError(reason instanceof Error ? reason.message : "Action impossible."); }
   }
 
-  return <div className="battle-page killer-page"><header className="battle-hero killer-hero"><div><span className="battle-eyebrow">🤖 Banc d’essai</span><h1>Entraînement Dés tueurs</h1><p>Joue doucement contre l’Automate. Le plateau explique chaque résultat et montre aussi les dés de l’Automate. Cette partie reste sur cet écran : aucune mise, aucune récompense.</p></div><div className="battle-actions"><button className="escalade-tuto-button" onClick={() => setRulesOpen(true)}>? Règles faciles</button><a href="/bataille/des-tueurs" className="battle-secondary">← Duels réels</a><button className="battle-primary" onClick={() => { setError(""); setVictoryDismissed(false); setState(createDiceKiller(0)); }}>Nouvelle partie</button></div></header>{rulesOpen && <DiceKillerRules close={() => setRulesOpen(false)} />}{state.phase === "FINISHED" && !victoryDismissed && <DiceVictorySplash match={match} selfId="player" training close={() => setVictoryDismissed(true)} />}{error && <p className="battle-alert" role="alert">{error}</p>}<section className="battle-panel killer-training-panel"><DiceArena match={match} busy={false} play={play}/></section></div>;
+  return <div className="battle-page killer-page"><header className="battle-hero killer-hero"><div><span className="battle-eyebrow">🤖 Banc d’essai</span><h1>Entraînement Dés tueurs</h1><p>Joue doucement contre Michel. Le plateau explique chaque résultat et montre aussi les dés de Michel. Cette partie reste sur cet écran : aucune mise, aucune récompense.</p></div><div className="battle-actions"><button className="escalade-tuto-button" onClick={() => setRulesOpen(true)}>? Règles faciles</button><a href="/bataille/des-tueurs" className="battle-secondary">← Duels réels</a><button className="battle-primary" onClick={() => { setError(""); setVictoryDismissed(false); setState(createDiceKiller(0)); }}>Nouvelle partie</button></div></header>{rulesOpen && <DiceKillerRules close={() => setRulesOpen(false)} />}{state.phase === "FINISHED" && !victoryDismissed && <DiceVictorySplash match={match} selfId="player" training close={() => setVictoryDismissed(true)} />}{error && <p className="battle-alert" role="alert">{error}</p>}<section className="battle-panel killer-training-panel"><DiceArena match={match} busy={false} play={play}/></section></div>;
 }

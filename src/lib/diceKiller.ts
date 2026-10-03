@@ -1,5 +1,7 @@
 export const DICE_KILLER_VERSION = 4;
-export const DICE_KILLER_STARTING_HP = 30;
+export const DICE_KILLER_STARTING_HP = 20;
+export const DICE_KILLER_DAMAGE_MULTIPLIER = 1.2;
+export const DICE_KILLER_SHIELD_MAX = 7;
 
 export type DiceSide = 0 | 1;
 export type DiceKillerPhase = "BUILD" | "ATTACK" | "FINISHED";
@@ -61,7 +63,7 @@ export function createDiceKiller(starter: DiceSide): DiceKillerState {
     attackMultiplier: 1,
     winner: null,
     revision: 0,
-    log: [`Le sélecteur désigne ${starter === 0 ? "A" : "B"} pour commencer avec 30 PV.`],
+    log: [`Le sélecteur désigne ${starter === 0 ? "A" : "B"} pour commencer avec 20 PV.`],
     lastEvent: null,
     displayDice: [[], []],
   };
@@ -174,13 +176,13 @@ export function keepBuildDice(
   }
 
   ensureShield(state);
-  const shieldGain = 24 - total;
+  const shieldGain = 25 - total;
   const before = state.shield[side];
-  state.shield[side] = Math.min(6, before + shieldGain);
+  state.shield[side] = Math.min(DICE_KILLER_SHIELD_MAX, before + shieldGain);
   const added = state.shield[side] - before;
   state.lastEvent = { revision: state.revision, side, kind: "SHIELD", dice: [...state.held], total, amount: added, shieldTotal: state.shield[side] };
   showDice(state, side, state.held);
-  state.log.push(`${side === 0 ? "A" : "B"} totalise ${total} et charge son bouclier à ${state.shield[side]}/6.`);
+  state.log.push(`${side === 0 ? "A" : "B"} totalise ${total} et charge son bouclier à ${state.shield[side]}/${DICE_KILLER_SHIELD_MAX}.`);
   nextTurn(state);
   return state;
 }
@@ -202,7 +204,7 @@ export function rollAttack(input: DiceKillerState, side: DiceSide, dice: number[
     return state;
   }
 
-  const rawDamage = state.attackHits * state.attackValue * state.attackMultiplier;
+  const rawDamage = Math.ceil(state.attackHits * state.attackValue * state.attackMultiplier * DICE_KILLER_DAMAGE_MULTIPLIER);
   const target = (1 - side) as DiceSide;
   ensureShield(state);
   const blocked = Math.min(state.shield[target], rawDamage);
@@ -210,8 +212,19 @@ export function rollAttack(input: DiceKillerState, side: DiceSide, dice: number[
   const damage = rawDamage - blocked;
   state.hp[target] -= damage;
   state.lastEvent = { revision: state.revision, side, kind: "MISS", dice, attackValue: state.attackValue, hits: state.attackHits, amount: damage, blocked, multiplier: state.attackMultiplier };
-  state.log.push(`${side === 0 ? "A" : "B"} termine son attaque : ${state.attackHits} × ${state.attackValue}${state.attackMultiplier === 2 ? " × 2 ULTIME" : ""} = ${rawDamage}, bouclier −${blocked}, ${damage} dégât${damage > 1 ? "s" : ""}.`);
+  state.log.push(`${side === 0 ? "A" : "B"} termine son attaque : ${state.attackHits} × ${state.attackValue}${state.attackMultiplier === 2 ? " × 2 ULTIME" : ""} × 1,2 = ${rawDamage}, bouclier −${blocked}, ${damage} dégât${damage > 1 ? "s" : ""}.`);
   if (!finishIfNeeded(state, target)) nextTurn(state);
+  return state;
+}
+
+export function forfeitDiceKiller(input: DiceKillerState, side: DiceSide): DiceKillerState {
+  const state = structuredClone(input);
+  if (state.phase === "FINISHED") throw new Error("Ce duel est déjà terminé.");
+  state.hp[side] = 0;
+  state.phase = "FINISHED";
+  state.winner = (1 - side) as DiceSide;
+  state.revision++;
+  state.log.push(`${side === 0 ? "A" : "B"} abandonne le duel. ${state.winner === 0 ? "A" : "B"} remporte le duel.`);
   return state;
 }
 
