@@ -5,6 +5,7 @@ import { createDiceKiller, keepBuildDice, rollAttack, rollBuild, type DiceKiller
 import { DiceArena, DiceKillerRules, DiceVictorySplash, type DiceKillerMatch } from "../DiceKillerClient";
 
 const BOT_STEP_DELAY_MS = 4200;
+type CurrentPlayer = { username: string; isSelf: boolean };
 
 function dice(count: number) {
   const values = new Uint32Array(count);
@@ -39,15 +40,28 @@ function applyMove(state: DiceKillerState, side: 0 | 1, move: object) {
 
 export function DiceKillerTraining() {
   const [state, setState] = useState(() => createDiceKiller(0));
+  const [playerName, setPlayerName] = useState("Joueur");
   const [error, setError] = useState("");
   const [rulesOpen, setRulesOpen] = useState(false);
   const [victoryDismissed, setVictoryDismissed] = useState(false);
   const match = useMemo<DiceKillerMatch>(() => ({
     id: "training-dice", rulesVersion: 4, status: state.phase === "FINISHED" ? "FINISHED" : "ACTIVE",
-    challengerId: "player", opponentId: "bot", challenger: { username: "Toi" }, opponent: { username: "Michel" },
+    challengerId: "player", opponentId: "bot", challenger: { username: playerName }, opponent: { username: "Michel" },
     challengerStakeCoins: 0, opponentStakeCoins: 0, winnerId: state.winner === null ? null : state.winner === 0 ? "player" : "bot",
     diceKiller: { ...state, side: 0 },
-  }), [state]);
+  }), [playerName, state]);
+
+  useEffect(() => {
+    let disposed = false;
+    void fetch("/api/joueurs", { cache: "no-store" })
+      .then((response) => response.ok ? response.json() as Promise<CurrentPlayer[]> : [])
+      .then((players) => {
+        const current = players.find((player) => player.isSelf);
+        if (!disposed && current?.username) setPlayerName(current.username);
+      })
+      .catch(() => {});
+    return () => { disposed = true; };
+  }, []);
 
   useEffect(() => {
     if (state.phase === "FINISHED" || state.turn !== 1) return;

@@ -24,13 +24,13 @@ async function json(url: string, body?: unknown) {
 const PIPS: Record<number, number[]> = { 1: [5], 2: [1, 9], 3: [1, 5, 9], 4: [1, 3, 7, 9], 5: [1, 3, 5, 7, 9], 6: [1, 3, 4, 6, 7, 9] };
 const DICE_REVEAL_MS = 2800;
 const DICE_RESULTS = [
-  { points: "5–10 points", effect: "Attaque : 6 à 1 dégâts", tone: "attack" },
+  { points: "5–10 points", effect: "Cible : 6 à 1 · dégâts +20 %", tone: "attack" },
   { points: "11 points", effect: "Dé bonus : +1 à +6 PV", tone: "heal" },
   { points: "12–17 points", effect: "+1 à 6 PV", tone: "heal" },
   { points: "18–23 points", effect: "Bouclier : +2 à +7", tone: "shield" },
   { points: "24 points", effect: "Dé bonus : +1 à +6 PV", tone: "heal" },
-  { points: "25–29 points", effect: "Attaque : 1 à 5 dégâts", tone: "attack" },
-  { points: "30 points", effect: "ULTI · attaque aux 6 ×2", tone: "ulti" },
+  { points: "25–29 points", effect: "Cible : 1 à 5 · dégâts +20 %", tone: "attack" },
+  { points: "30 points", effect: "ULTI · cible 6 · 15 dégâts/touche", tone: "ulti" },
 ] as const;
 type DiceColor = "orange" | "blue";
 
@@ -48,9 +48,15 @@ function DiceGroup({ label, dice, color, offset = 0, revealing, held, selectable
 
 function DiceResultMap({ compact = false }: { compact?: boolean }) {
   return <section className={`killer-combo-map${compact ? " is-compact" : ""}`} aria-label="Combinaisons et points des dés">
-    {!compact && <h3>Combinaisons des dés <small>additionne tes 5 dés</small></h3>}
+    {!compact && <h3>Combinaisons des dés <small>total des 5 dés</small></h3>}
     <div>{DICE_RESULTS.map((result) => <article className={`is-${result.tone}`} key={result.points}><b>{result.points}</b><span>{result.effect}</span></article>)}</div>
   </section>;
+}
+
+function formatDiceLog(line: string, names: string[]) {
+  const name = (token: string) => names[token === "A" ? 0 : 1];
+  if (/^Le sélecteur désigne [AB] pour/.test(line)) return line.replace(/^Le sélecteur désigne ([AB]) pour/, (_, token) => `Le sélecteur désigne ${name(token)} pour`);
+  return line.replace(/\b([AB]) (lance|garde|totalise|termine|tombe|abandonne|remporte)\b/g, (_, token, verb) => `${name(token)} ${verb}`);
 }
 
 export function DiceArena({ match, busy, play }: { match: DiceKillerMatch; busy: boolean; play: (move: object, revision: number) => void }) {
@@ -70,10 +76,10 @@ export function DiceArena({ match, busy, play }: { match: DiceKillerMatch; busy:
   }, [lastEventRevision]);
   const myTurn = state.turn === state.side && state.phase !== "FINISHED";
   const names = [match.challenger.username, match.opponent.username];
-  const eventText = describeEvent(state.lastEvent, names, state.side);
+  const eventText = describeEvent(state.lastEvent, names);
   const guide = describeNextAction(state, names, myTurn, selected.length);
   const eventOwner = state.lastEvent?.side ?? state.turn;
-  const eventPlayer = eventOwner === state.side ? "pour toi" : `de ${names[eventOwner]}`;
+  const eventPlayer = `de ${names[eventOwner]}`;
   const lastDiceLabel = state.lastEvent?.kind === "ATTACK_READY" ? `Total final ${eventPlayer}` : state.lastEvent?.kind === "HIT" || state.lastEvent?.kind === "MISS" ? `Jet d’attaque ${eventPlayer}` : `Dernier lancer ${eventPlayer}`;
   const otherSide = (1 - state.side) as 0 | 1;
   const colorFor = (side: 0 | 1): DiceColor => side === 0 ? "orange" : "blue";
@@ -83,12 +89,12 @@ export function DiceArena({ match, busy, play }: { match: DiceKillerMatch; busy:
     const shownDice = state.displayDice[side];
     const ownsLatestEvent = state.lastEvent?.side === side;
     return <section className={`killer-player-zone is-${color}${isSelf ? " is-self" : " is-opponent"}`}>
-      <header><span>{isSelf ? "TOI · EN BAS" : "ADVERSAIRE · EN HAUT"}</span><b>{names[side]}</b><strong>♥ {state.hp[side]} PV <em><i aria-hidden="true" /> {state.shield[side]}/7</em></strong></header>
+      <header><span>{names[side]} · {isSelf ? "EN BAS" : "EN HAUT"}</span><b>{names[side]}</b><strong>♥ {state.hp[side]} PV <em><i aria-hidden="true" /> {state.shield[side]}/7</em></strong></header>
       <div className="killer-zone-dice" key={`${side}-${state.lastEvent?.revision ?? 0}`}>
         {showsBuild ? <>
-          <DiceGroup label="Dés gardés" dice={state.held} color={color} revealing={false} held />
-          <DiceGroup label={isSelf ? "Tes dés à choisir" : `Dés de ${names[side]}`} dice={state.roll} color={color} offset={state.held.length} revealing={revealing} selectable={isSelf && myTurn} selected={selected} select={(index) => setSelected((old) => old.includes(index) ? old.filter((item) => item !== index) : [...old, index])} />
-        </> : shownDice.length ? <DiceGroup label={ownsLatestEvent ? lastDiceLabel : isSelf ? "Ton dernier jeu de dés" : `Dernier jeu de ${names[side]}`} dice={shownDice} color={color} revealing={ownsLatestEvent && revealing} held={ownsLatestEvent && state.lastEvent?.kind === "ATTACK_READY"} targetValue={state.phase === "ATTACK" && state.turn === side ? state.attackValue ?? undefined : undefined} /> : <div className={`killer-dice-placeholder is-${color}`} aria-label={`${isSelf ? "Tu" : names[side]} n’a pas encore lancé`}><strong>Premier lancer à venir</strong><div>{Array.from({ length: 5 }, (_, index) => <i key={index}>?</i>)}</div></div>}
+          <DiceGroup label={`Dés gardés de ${names[side]}`} dice={state.held} color={color} revealing={false} held />
+          <DiceGroup label={`Dés de ${names[side]} à choisir`} dice={state.roll} color={color} offset={state.held.length} revealing={revealing} selectable={isSelf && myTurn} selected={selected} select={(index) => setSelected((old) => old.includes(index) ? old.filter((item) => item !== index) : [...old, index])} />
+        </> : shownDice.length ? <DiceGroup label={ownsLatestEvent ? lastDiceLabel : `Dernier jeu de ${names[side]}`} dice={shownDice} color={color} revealing={ownsLatestEvent && revealing} held={ownsLatestEvent && state.lastEvent?.kind === "ATTACK_READY"} targetValue={state.phase === "ATTACK" && state.turn === side ? state.attackValue ?? undefined : undefined} /> : <div className={`killer-dice-placeholder is-${color}`} aria-label={`${names[side]} n’a pas encore lancé`}><strong>Premier lancer à venir</strong><div>{Array.from({ length: 5 }, (_, index) => <i key={index}>?</i>)}</div></div>}
       </div>
       {isSelf && myTurn && state.phase === "BUILD" && state.roll.length > 0 && <div className="killer-selection-tools" aria-live="polite"><strong>{selected.length}/{state.roll.length} choisi{selected.length > 1 ? "s" : ""}</strong><button type="button" onClick={() => setSelected(state.roll.map((_, index) => index))}>Tout choisir</button><button type="button" onClick={() => setSelected([])} disabled={!selected.length}>Annuler</button></div>}
     </section>;
@@ -108,12 +114,12 @@ export function DiceArena({ match, busy, play }: { match: DiceKillerMatch; busy:
         <div className="killer-board-center">{eventText ? <div key={lastEventRevision} className={`killer-event is-${eventText.tone}`}><small>{eventText.eyebrow}</small><strong>{eventText.title}</strong><span>{eventText.detail}</span>{eventText.calculation && <em>{eventText.calculation}</em>}</div> : <span>⚙ DUEL ⚙</span>}</div>
         {renderZone(state.side, true)}
       </div>
-      {match.status === "ACTIVE" && <div className="killer-initiative" role="status" aria-live="assertive"><Image src="/images/battle/dice-initiative.png" alt="" width={1983} height={793} priority /><div><small>LE SÉLECTEUR TOURNE…</small><strong>{state.starter === state.side ? "Tu commences" : `${names[state.starter]} commence`}</strong></div></div>}
+      {match.status === "ACTIVE" && <div className="killer-initiative" role="status" aria-live="assertive"><Image src="/images/battle/dice-initiative.png" alt="" width={1983} height={793} priority /><div><small>LE SÉLECTEUR TOURNE…</small><strong>{names[state.starter]} commence</strong></div></div>}
       <button type="button" className={`killer-action-orb${myTurn ? " is-ready" : ""}`} disabled={actionDisabled} onClick={act}><Image src="/images/battle/dice-action-button.png" alt="" fill sizes="130px" /><span>{actionLabel}</span></button>
     </div>
     <DiceResultMap />
     <div className={`killer-turn${myTurn ? " is-active" : " is-waiting"}`}><b>{guide.step}</b><span>{guide.title}</span><small>{guide.detail}</small></div>
-    <details className="escalade-journal"><summary>Journal du duel</summary><ol>{state.log.map((line, index) => <li key={index}>{line.replace(/\bA\b/g, names[0]).replace(/\bB\b/g, names[1])}</li>)}</ol></details>
+    <details className="escalade-journal"><summary>Journal du duel</summary><ol>{state.log.map((line, index) => <li key={index}>{formatDiceLog(line, names)}</li>)}</ol></details>
   </div>;
 }
 
@@ -123,8 +129,8 @@ export function DiceKillerRules({ close }: { close: () => void }) {
       <button className="killer-rules-close" onClick={close} aria-label="Fermer les règles">×</button>
       <span className="battle-eyebrow">RÈGLES FACILES</span><h2 id="killer-rules-title">Le but : faire tomber les 20 PV de l’autre joueur</h2>
       <div className="killer-rule-steps">
-        <article><b>1</b><div><h3>Lance les 5 dés</h3><p>Tout le monde voit les dés. Quand l’autre joue, tu regardes simplement son lancer.</p></div></article>
-        <article><b>2</b><div><h3>Garde au moins 1 dé</h3><p>Quand c’est ton tour, clique sur les dés que tu veux garder. Le jeu relance les autres.</p></div></article>
+        <article><b>1</b><div><h3>Lance les 5 dés</h3><p>Les dés de chaque joueur restent visibles pendant tout le duel.</p></div></article>
+        <article><b>2</b><div><h3>Garde au moins 1 dé</h3><p>Le joueur actif choisit les dés à garder. Le jeu relance les autres.</p></div></article>
         <article className="is-example"><b>3</b><div><h3>Regarde le total</h3><p>Quand les 5 dés sont gardés, le jeu les additionne et explique le résultat avec le calcul.</p></div></article>
         <article><b>4</b><div><h3>Bouclier ou attaque</h3><p>Un total de 18 à 23 charge jusqu’à 7 points de bouclier. Les attaques gagnent 20 % de dégâts. Un total de 30 déclenche une attaque ultime aux dégâts doublés.</p></div></article>
       </div>
@@ -151,26 +157,27 @@ export function DiceVictorySplash({ match, selfId, close, training = false }: { 
   </div>;
 }
 
-function describeEvent(event: DiceKillerEvent | null, names: string[], side: 0 | 1) {
+function describeEvent(event: DiceKillerEvent | null, names: string[]) {
   if (!event) return null;
-  const who = event.side === side ? "Tu" : names[event.side];
-  if (event.kind === "ROLL") return { tone: "roll", eyebrow: "LES DÉS SONT VISIBLES", title: `${who} ${event.side === side ? "as" : "a"} lancé les dés`, detail: "Le joueur doit maintenant en garder au moins un.", calculation: `Total montré : ${event.dice.reduce((sum, die) => sum + die, 0)}` };
+  const who = names[event.side];
+  if (event.kind === "ROLL") return { tone: "roll", eyebrow: "LES DÉS SONT VISIBLES", title: `${who} a lancé les dés`, detail: "Le joueur doit maintenant en garder au moins un.", calculation: `Total montré : ${event.dice.reduce((sum, die) => sum + die, 0)}` };
   if (event.kind === "ATTACK_READY") return { tone: event.multiplier === 2 ? "ulti" : "attack", eyebrow: event.multiplier === 2 ? "TOTAL 30 · ULTIME" : `TOTAL ${event.total}`, title: event.multiplier === 2 ? "Attaque ultime aux 6 prête" : `Une attaque aux ${event.attackValue} est prête`, detail: event.multiplier === 2 ? "Chaque touche compte double, puis l’attaque gagne 20 % de dégâts." : `Il faut maintenant lancer les dés et chercher le chiffre ${event.attackValue}. L’attaque gagnera 20 % de dégâts.`, calculation: event.multiplier === 2 ? "6 × 2 × 1,2 = 15 dégâts par touche" : event.total! < 11 ? `11 − ${event.total} = ${event.attackValue}` : `${event.total} − 24 = ${event.attackValue}` };
-  if (event.kind === "HEAL") return { tone: "heal", eyebrow: "DES PV EN PLUS", title: `+${event.amount} PV pour ${event.side === side ? "toi" : names[event.side]}`, detail: event.total === 11 || event.total === 24 ? `Le total exact ${event.total} lance un dé bonus : sa face donne les PV récupérés.` : `Un total entre 12 et 17 soigne le joueur.`, calculation: event.total === 11 || event.total === 24 ? `${event.total} exact → dé bonus = ${event.amount} PV` : `${event.total} − 11 = ${event.amount}` };
-  if (event.kind === "SHIELD") return { tone: "shield", eyebrow: "BOUCLIER CHARGÉ", title: `Bouclier à ${event.shieldTotal}/7 pour ${event.side === side ? "toi" : names[event.side]}`, detail: event.amount ? `Il bloquera jusqu’à ${event.shieldTotal} dégâts de la prochaine attaque.` : "Le bouclier était déjà chargé au maximum.", calculation: `25 − ${event.total} = ${25 - event.total!} · plafond 7` };
+  if (event.kind === "HEAL") return { tone: "heal", eyebrow: "DES PV EN PLUS", title: `+${event.amount} PV pour ${names[event.side]}`, detail: event.total === 11 || event.total === 24 ? `Le total exact ${event.total} lance un dé bonus : sa face donne les PV récupérés.` : `Un total entre 12 et 17 soigne le joueur.`, calculation: event.total === 11 || event.total === 24 ? `${event.total} exact → dé bonus = ${event.amount} PV` : `${event.total} − 11 = ${event.amount}` };
+  if (event.kind === "SHIELD") return { tone: "shield", eyebrow: "BOUCLIER CHARGÉ", title: `Bouclier à ${event.shieldTotal}/7 pour ${names[event.side]}`, detail: event.amount ? `Il bloquera jusqu’à ${event.shieldTotal} dégâts de la prochaine attaque.` : "Le bouclier était déjà chargé au maximum.", calculation: `25 − ${event.total} = ${25 - event.total!} · plafond 7` };
   if (event.kind === "HIT") return { tone: event.multiplier === 2 ? "ulti" : "attack", eyebrow: event.multiplier === 2 ? "ULTIME EN COURS" : "ATTAQUE RÉUSSIE", title: `${event.hits} dé${event.hits! > 1 ? "s" : ""} ${event.attackValue} trouvé${event.hits! > 1 ? "s" : ""}`, detail: event.multiplier === 2 ? "Ces touches compteront double. Les autres dés sont relancés." : "Ces dés sont gardés. Les autres vont être relancés pour essayer d’en trouver encore.", calculation: `${event.hits} nouvelle${event.hits! > 1 ? "s" : ""} touche${event.hits! > 1 ? "s" : ""}${event.multiplier === 2 ? " ×2" : ""}` };
   const rawDamage = Math.ceil(event.hits! * event.attackValue! * (event.multiplier ?? 1) * 1.2);
   return { tone: event.multiplier === 2 ? "ulti" : "danger", eyebrow: event.multiplier === 2 ? "ULTIME TERMINÉ" : "ATTAQUE TERMINÉE", title: `${event.amount} dégât${event.amount! > 1 ? "s" : ""}`, detail: event.blocked ? `Le bouclier a bloqué ${event.blocked} dégât${event.blocked > 1 ? "s" : ""}.` : "Aucun bouclier n’a réduit les dégâts.", calculation: event.blocked ? `${event.hits} × ${event.attackValue}${event.multiplier === 2 ? " × 2" : ""} × 1,2 = ${rawDamage} − ${event.blocked} bouclier = ${event.amount}` : `${event.hits} × ${event.attackValue}${event.multiplier === 2 ? " × 2" : ""} × 1,2 = ${event.amount}` };
 }
 
 function describeNextAction(state: DiceKillerView, names: string[], myTurn: boolean, selected: number) {
-  if (state.phase === "FINISHED") return { step: "PARTIE TERMINÉE", title: state.winner === state.side ? "Tu as gagné" : `${names[state.winner ?? 0]} a gagné`, detail: "Les PV sont tombés à 0. Il n’y a plus rien à jouer." };
-  if (!myTurn) return { step: "TU REGARDES", title: `C’est au tour de ${names[state.turn]}`, detail: "Ses dés sont affichés sur le plateau. Tu n’as rien à cliquer pour le moment." };
-  if (state.phase === "ATTACK") return { step: state.attackMultiplier === 2 ? "À TOI · ULTIME ×2" : "À TOI · ATTAQUE", title: `Cherche le chiffre ${state.attackValue}`, detail: "Appuie sur le bouton. Les dés trouvés augmentent l’attaque, qui reçoit 20 % de dégâts en plus." };
-  if (!state.roll.length) return { step: "À TOI · ÉTAPE 1", title: "Lance tes 5 dés", detail: "Appuie sur le bouton rouge. Les cinq résultats apparaîtront doucement." };
-  if (!selected) return { step: "À TOI · ÉTAPE 2", title: "Choisis au moins 1 dé", detail: "Clique sur un ou plusieurs dés. Un contour lumineux montre ceux que tu as choisis." };
-  if (selected === state.roll.length) return { step: "À TOI · ÉTAPE 3", title: "Tous les dés sont choisis", detail: "Appuie sur le bouton : le jeu va additionner les 5 dés et expliquer le résultat." };
-  return { step: "À TOI · ÉTAPE 3", title: `${selected} dé${selected > 1 ? "s" : ""} choisi${selected > 1 ? "s" : ""}`, detail: `Appuie sur le bouton pour les garder et relancer les ${state.roll.length - selected} autres.` };
+  const selfName = names[state.side];
+  if (state.phase === "FINISHED") return { step: "PARTIE TERMINÉE", title: `${names[state.winner ?? 0]} a gagné`, detail: "Les PV sont tombés à 0. Il n’y a plus rien à jouer." };
+  if (!myTurn) return { step: `${selfName} · EN ATTENTE`, title: `C’est au tour de ${names[state.turn]}`, detail: "Les dés de ce joueur sont affichés sur le plateau. Aucune action n’est nécessaire pour le moment." };
+  if (state.phase === "ATTACK") return { step: `${selfName} · ${state.attackMultiplier === 2 ? "ULTIME ×2" : "ATTAQUE"}`, title: `Cherche le chiffre ${state.attackValue}`, detail: "Appuie sur le bouton. Les dés trouvés augmentent l’attaque, qui reçoit 20 % de dégâts en plus." };
+  if (!state.roll.length) return { step: `${selfName} · ÉTAPE 1`, title: "Lance les 5 dés", detail: "Appuie sur le bouton rouge. Les cinq résultats apparaîtront doucement." };
+  if (!selected) return { step: `${selfName} · ÉTAPE 2`, title: "Choisis au moins 1 dé", detail: "Clique sur un ou plusieurs dés. Un contour lumineux montre ceux qui sont choisis." };
+  if (selected === state.roll.length) return { step: `${selfName} · ÉTAPE 3`, title: "Tous les dés sont choisis", detail: "Appuie sur le bouton : le jeu va additionner les 5 dés et expliquer le résultat." };
+  return { step: `${selfName} · ÉTAPE 3`, title: `${selected} dé${selected > 1 ? "s" : ""} choisi${selected > 1 ? "s" : ""}`, detail: `Appuie sur le bouton pour les garder et relancer les ${state.roll.length - selected} autres.` };
 }
 
 export function DiceKillerClient() {
@@ -220,7 +227,7 @@ export function DiceKillerClient() {
     <div className="killer-quick-guide"><span><b>1</b>Lance</span><i>→</i><span><b>2</b>Garde au moins 1 dé</span><i>→</i><span><b>3</b>Relance le reste</span><i>→</i><span><b>4</b>Le total décide</span></div>
     {error && <p className="battle-alert" role="alert">{error}</p>}{notice && <p className="battle-notice" role="status">{notice}</p>}
     {form === "new" && <section className="battle-panel"><h2>Nouveau défi de dés</h2><label className="battle-label">Adversaire<select value={opponent} onChange={(event) => setOpponent(event.target.value)}><option value="">Choisir un joueur</option>{players.map((player) => <option key={player.id} value={player.id}>{player.username}</option>)}</select></label>{stakeForm(null)}</section>}
-    <section className="battle-section"><div className="battle-section-heading"><h2>Duels en cours · {active.length}</h2><button className="battle-refresh" disabled={busy} onClick={() => void refresh()}>Actualiser</button></div>{!loaded && <p>Chargement…</p>}{loaded && !active.length && <p>Aucun duel de dés actif.</p>}{active.map((match) => <article className="battle-panel" key={match.id}><p className="battle-muted">Mises : {match.challengerStakeCoins + match.opponentStakeCoins} gigapuissances{match.challengerStakeCardName ? ` · ${match.challengerStakeCardName}` : ""}{match.opponentStakeCardName ? ` · ${match.opponentStakeCardName}` : ""}</p>{match.diceKiller && <><DiceArena match={match} busy={busy} play={(move, revision) => void submit(match.id, "play", { move, revision })}/><div className="killer-forfeit-zone"><button type="button" disabled={busy} onClick={() => { if (window.confirm("Abandonner ce duel ? Ton adversaire sera déclaré vainqueur.")) void submit(match.id, "forfeit", { revision: match.diceKiller!.revision }); }}>Abandonner le duel</button></div></>}</article>)}</section>
+    <section className="battle-section"><div className="battle-section-heading"><h2>Duels en cours · {active.length}</h2><button className="battle-refresh" disabled={busy} onClick={() => void refresh()}>Actualiser</button></div>{!loaded && <p>Chargement…</p>}{loaded && !active.length && <p>Aucun duel de dés actif.</p>}{active.map((match) => <article className="battle-panel" key={match.id}><p className="battle-muted">Mises : {match.challengerStakeCoins + match.opponentStakeCoins} gigapuissances{match.challengerStakeCardName ? ` · ${match.challengerStakeCardName}` : ""}{match.opponentStakeCardName ? ` · ${match.opponentStakeCardName}` : ""}</p>{match.diceKiller && <><DiceArena match={match} busy={busy} play={(move, revision) => void submit(match.id, "play", { move, revision })}/><div className="killer-forfeit-zone"><button type="button" disabled={busy} onClick={() => { const winnerName = match.challengerId === self ? match.opponent.username : match.challenger.username; if (window.confirm(`Abandonner ce duel ? ${winnerName} sera déclaré vainqueur.`)) void submit(match.id, "forfeit", { revision: match.diceKiller!.revision }); }}>Abandonner le duel</button></div></>}</article>)}</section>
     <section className="battle-section"><h2>Défis en attente · {pending.length}</h2>{pending.map((match) => <article className="battle-panel" key={match.id}><h3>{match.challenger.username} contre {match.opponent.username}</h3><p>Mise proposée : {match.challengerStakeCoins} gigapuissances{match.challengerStakeCardName ? ` + ${match.challengerStakeCardName}` : ""}.</p>{match.challengerId === self ? <button className="battle-secondary" disabled={busy} onClick={() => void submit(match.id, "cancel")}>Annuler et récupérer ma mise</button> : <><div className="battle-actions"><button className="battle-primary" disabled={busy} onClick={() => setForm(form === match.id ? null : match.id)}>Répondre au défi</button><button className="battle-secondary" disabled={busy} onClick={() => void submit(match.id, "decline")}>Refuser</button></div>{form === match.id && stakeForm(match.id)}</>}</article>)}</section>
     <section className="battle-section"><h2>Résultats récents</h2>{diceMatches.filter((match) => match.status === "FINISHED").slice(0, 12).map((match) => <details className="battle-panel" key={match.id}><summary>{match.winnerId === self ? "Victoire" : "Défaite"} · {match.challenger.username} / {match.opponent.username}</summary>{match.diceKiller && <DiceArena match={match} busy play={() => {}}/>}</details>)}</section>
   </div>;

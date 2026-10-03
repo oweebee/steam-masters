@@ -372,7 +372,6 @@ a.bg-purple-600 {
 }
 .steam-card-wrap.is-flipped,
 .steam-card-wrap.is-flipped:hover { transform: none; filter: none; }
-.steam-card-wrap.is-flipped.is-settled { perspective: none; }
 
 .steam-card-shell {
   --card-accent: #c4b49e;
@@ -1224,7 +1223,7 @@ a.bg-purple-600 {
 
 .steam-owned-slot { width: 100%; height: 26rem; position: relative; }
 .steam-owned-frame { display: flex; align-items: stretch; gap: 0; width: 100%; transition: transform .55s cubic-bezier(.2,.76,.2,1); }
-.steam-owned-backdrop { position: fixed; inset: 0; z-index: 49; background: rgba(5, 4, 3, .72); backdrop-filter: blur(2px); }
+.steam-owned-backdrop { position: fixed; inset: 0; z-index: 49; background: rgba(5, 4, 3, .78); }
 .steam-owned-frame.is-returning {
   position: relative;
   z-index: 50;
@@ -1235,9 +1234,11 @@ a.bg-purple-600 {
      moyen de scroller jusqu'a lui des que la carte etait dans une colonne de
      droite, rendant le menu invisible. */
   position: fixed;
-  left: 50%;
-  top: 50%;
-  transform: translate(-50%, -50%);
+  inset: 0;
+  height: min(26.7rem, calc(100dvh - 24px));
+  margin: auto;
+  transform: none;
+  transition: none;
   z-index: 50;
   /* Largeur explicite (carte 18rem + atelier 15.5rem + padding + bordure) :
      "max-content" valait ~0 pour la carte (faces en absolute) dans Firefox,
@@ -1251,7 +1252,7 @@ a.bg-purple-600 {
   background: linear-gradient(135deg, #4b2e1d, #1a120d 12%, #211711 86%, #6c3e23);
   box-shadow: inset 0 0 0 2px #17100b, 0 0 20px #080504, 0 0 0 1px #38291f;
 }
-.steam-owned-frame.is-flipped .steam-card-wrap { flex: 0 0 18rem; width: 18rem; max-width: 18rem; }
+.steam-owned-frame.is-flipped .steam-card-wrap { flex: 0 0 18rem; width: 18rem; max-width: 18rem; height: 26rem; }
 .steam-owned-actions {
   flex: 0 0 15.5rem;
   width: 15.5rem;
@@ -1314,7 +1315,7 @@ a.bg-purple-600 {
 .steam-delivery-row button { padding: 0 0.7rem; }
 
 @media (max-width: 760px), (display-mode: standalone) and (max-width: 900px) {
-  .steam-owned-frame.is-flipped { flex-direction: column; width: min(calc(18.7rem + 2px), calc(100vw - 1.5rem)); }
+  .steam-owned-frame.is-flipped { inset:12px 0; flex-direction: column; width: min(calc(18.7rem + 2px), calc(100vw - 1.5rem)); height:auto; margin:auto; }
   .steam-owned-frame.is-flipped .steam-card-wrap { flex: none; width: 100%; max-width: 100%; }
   .steam-owned-actions { flex: none; width: 100%; height: auto; max-height: none; border-left: 1px solid #6f4b2c; border-top: 3px double #c78a4c; border-radius: 0 0 0.7rem 0.7rem; }
   .steam-delivery-row { align-items: flex-start; flex-direction: column; }
